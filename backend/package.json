@@ -1,11 +1,12 @@
 {
-  "name": "sistema-requisicao-servico-backend",
+  "name": "tcc-servico-facil-backend",
   "version": "1.0.0",
-  "description": "API REST do Sistema de Requisição de Serviço (TCC - Node.js, Express, Sequelize e MySQL)",
-  "main": "server.js",
+  "description": "API REST Node.js com Express, Sequelize ORM, MySQL e TypeScript para o TCC",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "db:migrate": "npx sequelize-cli db:migrate",
     "db:seed": "npx sequelize-cli db:seed:all"
   },
@@ -13,12 +14,13 @@
     "tcc",
     "nodejs",
     "express",
+    "typescript",
     "sequelize",
     "mysql",
-    "jwt",
-    "swagger"
+    "swagger",
+    "jwt"
   ],
-  "author": "Equipe TCC UNIP 2026",
+  "author": "Gabriel Cassaro, Julia Souza, Rodrigo Dias, Thaina Ponti",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -33,7 +35,14 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
-    "sequelize-cli": "^6.6.2"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.12",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.6",
+    "sequelize-cli": "^6.6.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
   }
 }

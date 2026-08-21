@@ -32,17 +32,16 @@ O **ServiçoFácil** é uma plataforma web bilateral de intermediação de servi
 ## 🛠️ Stack Tecnológica (Conforme Especificação do TCC)
 
 ### ⚙️ Backend (API REST)
-- **Runtime**: Node.js
+- **Runtime & Linguagem**: Node.js (v20+) com **TypeScript**
 - **Framework Web**: Express.js
 - **ORM / Banco de Dados**: Sequelize ORM com MySQL 8.0
 - **Segurança & Auth**: JSON Web Tokens (JWT) e Bcryptjs (Hash de senhas)
 - **Documentação de API**: Swagger UI & OpenAPI 3.0 (disponível em `/api-docs`)
 
-### 🎨 Frontend (SPA)
-- **Biblioteca Base**: React.js (v18+)
-- **Build Tool**: Vite
+### 🎨 Frontend (SPA / SSR)
+- **Framework Web**: Next.js 14 (App Router) com **React.js (v18+)** e **TypeScript**
 - **Cliente HTTP**: Axios (com interceptor automático de token JWT)
-- **Roteamento**: React Router DOM (v6)
+- **Componentes & Ícones**: Lucide Icons & Componentização Reutilizável
 - **Estilização**: CSS Vanilla com Design System tokenizado e suporte a Dark Mode
 
 ### 🛡️ Governança, Metodologia e IA
@@ -58,30 +57,28 @@ O **ServiçoFácil** é uma plataforma web bilateral de intermediação de servi
 TCC-SistemaRequisicaoDeServico/
 ├── .agents/
 │   └── AGENTS.md                  # Regras arquiteturais e conduta da IA
-├── backend/                       # API REST em Node.js, Express e Sequelize
+├── backend/                       # API REST em Node.js, Express, Sequelize e TypeScript
 │   ├── src/
-│   │   ├── config/database.js    # Conexão MySQL anotada com referências
-│   │   ├── app.js                # Middlewares (Helmet, CORS) e Swagger UI
-│   │   ├── controllers/          # Lógica de controle das rotas
-│   │   ├── models/               # Modelos relacionais do Sequelize
-│   │   ├── services/             # Regras de negócio da aplicação
-│   │   └── middlewares/          # Autenticação JWT e tratamento de erros
+│   │   ├── config/database.ts    # Conexão MySQL anotada com referências
+│   │   ├── app.ts                # Middlewares (Helmet, CORS) e Swagger UI
+│   │   ├── server.ts             # Servidor HTTP em TypeScript na porta 3001
+│   │   ├── controllers/          # Controllers da API REST (.ts)
+│   │   ├── models/               # Modelos relacionais do Sequelize (.ts)
+│   │   ├── services/             # Regras de negócio da aplicação (.ts)
+│   │   └── middlewares/          # Autenticação JWT e tratamento de erros (.ts)
 │   ├── .env.example              # Modelo de variáveis de ambiente
-│   ├── .sequelizerc              # Mapeamento do Sequelize CLI
+│   ├── tsconfig.json             # Compilador TypeScript do Backend
 │   ├── package.json              # Dependências do backend anotadas
-│   └── server.js                 # Servidor HTTP na porta 3001
-├── frontend/                      # Interface Web em React e Vite
+├── frontend/                      # Interface Web em Next.js 14, React e TypeScript
 │   ├── src/
-│   │   ├── components/           # Componentes reutilizáveis
-│   │   ├── pages/                # Telas da aplicação
-│   │   ├── services/api.js       # Cliente Axios pré-configurado
-│   │   ├── App.jsx               # Tela principal conectada à API
-│   │   └── index.css             # Design System e temas
+│   │   ├── app/                  # Next.js App Router (layout.tsx, page.tsx, globals.css)
+│   │   ├── components/           # Componentes reutilizáveis (.tsx)
+│   │   └── services/api.ts       # Cliente Axios em TypeScript
+│   ├── tsconfig.json             # Compilador TypeScript do Frontend
 │   ├── package.json              # Dependências do frontend anotadas
-│   └── vite.config.js            # Servidor Vite na porta 3000
 ├── LOG_DESENVOLVIMENTO.md         # Registro de etapas e tabela de bibliotecas
 ├── README.md                      # Documentação principal do repositório
-├── TCC.md                         # Monografia acadêmica oficial do TCC
+├── TCC.md                         # Monografia acadêmica oficial do TCC (com Next.js & TS)
 └── historia.md                    # Backlog completo (26 USs e 9 Épicos)
 ```
 
@@ -96,7 +93,7 @@ TCC-SistemaRequisicaoDeServico/
 
 ---
 
-### 1️⃣ Configurando o Backend (API REST)
+### 1️⃣ Configurando o Backend (API REST Node.js + TypeScript)
 
 ```bash
 # Entrar na pasta do backend
@@ -111,7 +108,7 @@ cp .env.example .env
 # Executar as migrações do banco de dados MySQL
 npm run db:migrate
 
-# Iniciar o servidor em ambiente de desenvolvimento
+# Iniciar o servidor em ambiente de desenvolvimento (ts-node-dev)
 npm run dev
 ```
 
@@ -120,7 +117,7 @@ npm run dev
 
 ---
 
-### 2️⃣ Configurando o Frontend (React)
+### 2️⃣ Configurando o Frontend (Next.js 14 + TypeScript)
 
 ```bash
 # Entrar na pasta do frontend (a partir da raiz)
@@ -129,7 +126,7 @@ cd frontend
 # Instalar as dependências
 npm install
 
-# Iniciar a aplicação React
+# Iniciar a aplicação Next.js
 npm run dev
 ```
 
@@ -139,6 +136,6 @@ npm run dev
 
 ## 📝 Documentação Incremental e Licença
 
-Todas as adições técnicas, referências oficiais de bibliotecas e registros de execução de testes são obrigatoriamente documentadas no arquivo [LOG_DESENVOLVIMENTO.md](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/LOG_DESENVOLVIMENTO.md).
+Todas as adições técnicas, referências oficiais de bibliotecas e registros de execução de testes são obrigatoriamente documentados no arquivo [LOG_DESENVOLVIMENTO.md](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/LOG_DESENVOLVIMENTO.md).
 
 Desenvolvido para o curso de Ciência da Computação da Universidade Paulista (UNIP) - 2026.

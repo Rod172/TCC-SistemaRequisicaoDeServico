@@ -17,14 +17,14 @@ Este arquivo define as diretrizes de desenvolvimento, arquitetura e conduta estr
 ---
 
 ## 3. 🏗️ Arquitetura e Padrões de Código (Stack do TCC)
-- **Backend (Node.js & Express)**:
-  - Estrutura em camadas bem definidas: `Controllers`, `Services`, `Repositories/Models (Sequelize)`, `Middlewares` e `DTOs/Validators`.
+- **Backend (Node.js & Express com TypeScript)**:
+  - Estrutura em camadas bem definidas em TypeScript (`.ts`): `Controllers`, `Services`, `Repositories/Models (Sequelize)`, `Middlewares` e `DTOs/Validators`.
   - Tratamento centralizado de erros (Middleware de erro global).
   - Senhas sempre salvas com hash usando **bcrypt**.
   - Autenticação e autorização via **JWT**.
-- **Frontend (React)**:
-  - Componentes funcionais reutilizáveis, modularizados e com validação de tipos de dados.
-  - Gerenciamento de estado claro e consumo de APIs via Axios/Fetch isolado em serviços de API.
+- **Frontend (Next.js com React & TypeScript)**:
+  - Framework **Next.js (App Router)** com componentes funcionais React e tipagem estática **TypeScript (`.tsx`)**.
+  - Gerenciamento de estado claro e consumo de APIs isolado em serviços de API.
 - **Banco de Dados (MySQL & Sequelize)**:
   - Toda alteração de estrutura deve ser feita por **Migrations**.
   - Fornecer **Seeders** (dados fictícios) para facilitar a demonstração do sistema para a banca examinadora.
