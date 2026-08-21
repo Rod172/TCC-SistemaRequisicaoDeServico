@@ -1,0 +1,48 @@
+# Regras do Projeto - Sistema de Requisição de Serviço (TCC)
+
+Este arquivo define as diretrizes de desenvolvimento, arquitetura e conduta estrita para qualquer assistente de IA neste projeto de Trabalho de Conclusão de Curso (TCC).
+
+---
+
+## 1. 🌐 Idioma e Comunicação
+- **Português Padrão**: Todas as respostas, explicações, documentações, comentários no código, mensagens de commit e artefatos devem ser redigidos estritamente em **Português**.
+
+---
+
+## 2. 📚 Registro e Documentação OBRIGATÓRIA de APIs e Bibliotecas de Terceiros (REGRA RIGOROSA)
+- **Anotação e Referenciação Obrigatória em 2 Locais**: Toda e qualquer **API externa**, **serviço** ou **biblioteca de terceiros** (`npm`, dependências de backend, frameworks, drivers, utilitários, etc.) adicionada ou utilizada no projeto **DEVE ser expressamente anotada e referenciada de forma rigorosa**:
+  1. **Anotação no Código-Fonte**: Adicionar comentários detalhados no topo/ponto de importação do arquivo de código onde a biblioteca for utilizada, com a descrição do propósito e o link para a documentação oficial.
+  2. **Tabela de Referências no LOG_DESENVOLVIMENTO.md**: Manter e atualizar uma tabela no arquivo `LOG_DESENVOLVIMENTO.md` contendo: Nome da Biblioteca, Versão, Propósito/Justificativa no Projeto e Link para a Documentação Oficial.
+
+---
+
+## 3. 🏗️ Arquitetura e Padrões de Código (Stack do TCC)
+- **Backend (Node.js & Express)**:
+  - Estrutura em camadas bem definidas: `Controllers`, `Services`, `Repositories/Models (Sequelize)`, `Middlewares` e `DTOs/Validators`.
+  - Tratamento centralizado de erros (Middleware de erro global).
+  - Senhas sempre salvas com hash usando **bcrypt**.
+  - Autenticação e autorização via **JWT**.
+- **Frontend (React)**:
+  - Componentes funcionais reutilizáveis, modularizados e com validação de tipos de dados.
+  - Gerenciamento de estado claro e consumo de APIs via Axios/Fetch isolado em serviços de API.
+- **Banco de Dados (MySQL & Sequelize)**:
+  - Toda alteração de estrutura deve ser feita por **Migrations**.
+  - Fornecer **Seeders** (dados fictícios) para facilitar a demonstração do sistema para a banca examinadora.
+
+---
+
+## 4. 🎓 Exigências Acadêmicas de TCC
+- **Documentação de API**: Manter/gerar especificação Swagger/OpenAPI para os endpoints REST desenvolvidos.
+- **Diagramas UML**: Quando solicitado para explicar a arquitetura ou processos, utilizar sintaxe **Mermaid** (Casos de Uso, Diagrama de Classes, Fluxos de Sequência).
+- **Testes**: Código crítico (autenticação, cálculos de propostas e máquina de estados de serviços) deve ser acompanhado de testes unitários ou de integração (Jest/Supertest).
+
+---
+
+## 5. 📝 Registro Obrigatório do Que Foi Feito (Log de Desenvolvimento)
+- **Documentação Incremental**: Ao final de cada funcionalidade, tarefa ou etapa concluída, deve-se obrigatoriamente manter e atualizar o arquivo `LOG_DESENVOLVIMENTO.md`.
+- **Conteúdo Exigido no Registro**:
+  - Tabela atualizada de bibliotecas/APIs adotadas com versões e referências oficiais.
+  - Resumo das alterações e funcionalidades criadas.
+  - Relação dos arquivos criados e/ou modificados.
+  - Procedimentos de teste realizados e validações de sucesso.
+  - Decisões de arquitetura relevantes tomadas durante o processo.
