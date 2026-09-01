@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # 1. Banco de Dados Relacional (MySQL 8.0)
+  db:
+    image: mysql:8.0
+    container_name: tcc_servico_facil_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tcc_servico_facil
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-proot']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 2. Servidor Backend (API REST Node.js + Express + Sequelize + TypeScript)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tcc_servico_facil_backend
+    restart: always
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: 3001
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: tcc_servico_facil
+      DB_PORT: 3306
+      NODE_ENV: development
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npm run db:migrate && npm run dev"
+
+  # 3. Interface Frontend (Next.js 14 + React + TypeScript)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tcc_servico_facil_frontend
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    command: npm run dev
+
+# Persistência de dados do MySQL
+volumes:
+  mysql_data:

@@ -1,6 +1,6 @@
 /**
  * @file app.ts
- * @description Configuração da aplicação Express, middlewares de segurança (Helmet, CORS) e documentação Swagger UI.
+ * @description Configuração da aplicação Express, rotas da API, middlewares de segurança (Helmet, CORS) e Swagger UI.
  * 
  * BIBLIOTECAS UTILIZADAS:
  * 1. Express.js (^4.19.2): Framework web para Node.js.
@@ -14,10 +14,14 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsDoc from 'swagger-jsdoc';
+import authRoutes from './routes/authRoutes';
+import perfilRoutes from './routes/perfilRoutes';
+import solicitacaoRoutes from './routes/solicitacaoRoutes';
 
 const app = express();
 
@@ -26,6 +30,18 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servidor de arquivos estáticos enviados pelos usuários (ex.: foto de perfil da US04).
+// O cabeçalho Cross-Origin-Resource-Policy do Helmet é relaxado apenas aqui para
+// permitir que o frontend (porta 3000) exiba as imagens hospedadas no backend (porta 3001).
+app.use(
+  '/uploads',
+  (req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  express.static(path.join(__dirname, '../uploads'))
+);
 
 // Configuração da Especificação Swagger / OpenAPI 3.0
 const swaggerOptions: swaggerJsDoc.Options = {
@@ -62,6 +78,11 @@ app.get('/api/v1/health', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Registro dos Módulos de Rotas da Aplicação
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/perfil', perfilRoutes);
+app.use('/api/v1/solicitacoes', solicitacaoRoutes);
 
 // Middleware Global de Tratamento de Erros
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
