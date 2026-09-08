@@ -11,6 +11,7 @@ import Usuario from './Usuario';
 import PrestadorPerfil from './PrestadorPerfil';
 import Solicitacao from './Solicitacao';
 import Proposta from './Proposta';
+import AnexoSolicitacao from './AnexoSolicitacao';
 
 // Associação 1:1 entre Usuario e PrestadorPerfil
 Usuario.hasOne(PrestadorPerfil, {
@@ -57,5 +58,17 @@ Proposta.belongsTo(Usuario, {
   as: 'prestador',
 });
 
-export { Usuario, PrestadorPerfil, Solicitacao, Proposta };
-export default { Usuario, PrestadorPerfil, Solicitacao, Proposta };
+// Associação 1:N entre Solicitacao e AnexoSolicitacao (US05)
+Solicitacao.hasMany(AnexoSolicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'anexos',
+  onDelete: 'CASCADE',
+});
+
+AnexoSolicitacao.belongsTo(Solicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'solicitacao',
+});
+
+export { Usuario, PrestadorPerfil, Solicitacao, Proposta, AnexoSolicitacao };
+export default { Usuario, PrestadorPerfil, Solicitacao, Proposta, AnexoSolicitacao };

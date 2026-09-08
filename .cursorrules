@@ -46,3 +46,11 @@ Este arquivo define as diretrizes de desenvolvimento, arquitetura e conduta estr
   - Relação dos arquivos criados e/ou modificados.
   - Procedimentos de teste realizados e validações de sucesso.
   - Decisões de arquitetura relevantes tomadas durante o processo.
+
+---
+
+## 6. 📋 Toda Mudança de Escopo Vira História no Backlog e no Jira (REGRA RIGOROSA)
+- **Nenhum trabalho fora do backlog**: Qualquer funcionalidade, tela, endpoint ou mudança de escopo que for implementada e **não estiver coberta por uma História de Usuário já existente** no `historia.md` **DEVE, obrigatoriamente**:
+  1. Ser registrada como uma **nova História de Usuário** no `historia.md` (mesmo formato das demais: Como/Quero/Para que, Critérios de Aceite, Tarefas Técnicas), dentro do Épico correspondente (ou de um novo Épico, se nenhum se aplicar) e incluída na Matriz de Priorização (MoSCoW).
+  2. Ser **importada para o Jira** do projeto (`https://rfmdesenvolvimento.atlassian.net`, projeto **TCC**) como Épico/História vinculados, usando o script reutilizável `scripts/jira/importar_historia.py` (as credenciais ficam em `scripts/jira/.jira-credentials.json`, fora do controle de versão — nunca commitar esse arquivo nem expor o token em texto).
+- **Ordem**: primeiro documentar a história no `historia.md`, depois importar pro Jira, e só então (ou em paralelo) implementar — mantendo backlog, Jira e código sempre sincronizados.

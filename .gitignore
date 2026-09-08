@@ -18,6 +18,7 @@ backend/uploads/*
 .env
 backend/.env
 *.local
+scripts/jira/.jira-credentials.json
 
 # Logs e Temporários
 npm-debug.log*

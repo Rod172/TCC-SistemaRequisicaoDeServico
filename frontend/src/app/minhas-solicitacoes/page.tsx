@@ -16,8 +16,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Search, Inbox, AlertCircle, ChevronRight, X } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Search, Inbox, AlertCircle, ChevronRight, X, Plus } from 'lucide-react';
 import api from '@/services/api';
 
 interface SolicitacaoResumo {
@@ -52,11 +52,13 @@ function formatarData(iso: string) {
 
 export default function MinhasSolicitacoesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const buscaInicial = searchParams.get('busca') || '';
 
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoResumo[]>([]);
   const [status, setStatus] = useState('');
-  const [buscaDigitada, setBuscaDigitada] = useState('');
-  const [busca, setBusca] = useState('');
+  const [buscaDigitada, setBuscaDigitada] = useState(buscaInicial);
+  const [busca, setBusca] = useState(buscaInicial);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
@@ -69,6 +71,8 @@ export default function MinhasSolicitacoesPage() {
   }, []);
 
   useEffect(() => {
+    if (!localStorage.getItem('@ServicoFacil:token')) return;
+
     let cancelado = false;
     setCarregando(true);
     setErro('');
@@ -79,7 +83,14 @@ export default function MinhasSolicitacoesPage() {
         if (!cancelado) setSolicitacoes(response.data.data);
       })
       .catch((err) => {
-        if (!cancelado) setErro(err.response?.data?.message || 'Não foi possível carregar suas solicitações.');
+        if (cancelado) return;
+        if (err.response?.status === 401) {
+          localStorage.removeItem('@ServicoFacil:token');
+          localStorage.removeItem('@ServicoFacil:user');
+          router.replace('/login');
+          return;
+        }
+        setErro(err.response?.data?.message || 'Não foi possível carregar suas solicitações.');
       })
       .finally(() => {
         if (!cancelado) setCarregando(false);
@@ -121,11 +132,20 @@ export default function MinhasSolicitacoesPage() {
             Acompanhe o andamento dos seus pedidos e as propostas recebidas.
           </p>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <strong style={{ fontSize: '1.5rem' }}>{carregando ? '—' : solicitacoes.length}</strong>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-            {solicitacoes.length === 1 ? 'solicitação' : 'solicitações'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ textAlign: 'right' }}>
+            <strong style={{ fontSize: '1.5rem' }}>{carregando ? '—' : solicitacoes.length}</strong>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+              {solicitacoes.length === 1 ? 'solicitação' : 'solicitações'}
+            </div>
           </div>
+          <Link href="/nova-solicitacao" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+            padding: '0.6rem 1.1rem', background: '#3b82f6', color: '#fff',
+            borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none',
+          }}>
+            <Plus size={16} /> Nova Solicitação
+          </Link>
         </div>
       </header>
 

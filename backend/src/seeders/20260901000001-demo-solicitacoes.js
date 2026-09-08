@@ -1,8 +1,8 @@
 /**
  * @file 20260901000001-demo-solicitacoes.js
- * @description Seeder de demonstração para a banca do TCC: cria 1 solicitante, 2 prestadores e 3
+ * @description Seeder de demonstração para a banca do TCC: cria 1 solicitante, 2 prestadores, 1 admin e
  * solicitações em estágios diferentes (ABERTA com propostas para comparar, EM_NEGOCIACAO com
- * contraproposta e CONTRATADA já aceita), cobrindo US06, US11 e US12 sem depender de cadastro manual.
+ * contraproposta e CONTRATADA já aceita), cobrindo US06, US08-US12 sem depender de cadastro manual.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Sequelize CLI (^6.6.2): Automação de Seeders via `queryInterface.bulkInsert`.
@@ -23,11 +23,13 @@ const IDS = {
   solicitante: 'd0000000-0000-4000-8000-000000000001',
   prestadorEletrica: 'd0000000-0000-4000-8000-000000000002',
   prestadorEncanamento: 'd0000000-0000-4000-8000-000000000003',
+  admin: 'd0000000-0000-4000-8000-00000000000a',
   perfilEletrica: 'd0000000-0000-4000-8000-000000000004',
   perfilEncanamento: 'd0000000-0000-4000-8000-000000000005',
   solicitacaoAberta: 'd0000000-0000-4000-8000-000000000006',
   solicitacaoNegociacao: 'd0000000-0000-4000-8000-000000000007',
   solicitacaoContratada: 'd0000000-0000-4000-8000-000000000008',
+  solicitacaoAberta2: 'd0000000-0000-4000-8000-000000000009',
 };
 
 module.exports = {
@@ -79,6 +81,20 @@ module.exports = {
         created_at: agora,
         updated_at: agora,
       },
+      {
+        id: IDS.admin,
+        nome: 'Admin Demonstração',
+        email: 'demo.admin@servicofacil.com',
+        cpf: '00000000009',
+        telefone: '11900000009',
+        senha_hash: senhaHash,
+        tipo_perfil: 'ADMIN',
+        termo_lgpd_aceito: true,
+        termo_lgpd_aceito_em: agora,
+        ativo: true,
+        created_at: agora,
+        updated_at: agora,
+      },
     ]);
 
     await queryInterface.bulkInsert('prestadores_perfil', [
@@ -112,6 +128,10 @@ module.exports = {
         solicitante_id: IDS.solicitante,
         titulo: 'Instalação de 3 tomadas na cozinha',
         descricao: 'Preciso instalar 3 tomadas novas na cozinha, próximas à bancada, com disjuntor dedicado.',
+        categoria: 'Elétrica',
+        cidade: 'São Paulo',
+        bairro: 'Pinheiros',
+        orcamento_cliente: 300.0,
         status: 'ABERTA',
         created_at: agora,
         updated_at: agora,
@@ -121,6 +141,10 @@ module.exports = {
         solicitante_id: IDS.solicitante,
         titulo: 'Troca de sifão e conserto de vazamento no banheiro',
         descricao: 'Vazamento embaixo da pia do banheiro social, provavelmente no sifão ou na conexão da coluna.',
+        categoria: 'Encanamento',
+        cidade: 'São Paulo',
+        bairro: 'Pinheiros',
+        orcamento_cliente: 280.0,
         status: 'EM_NEGOCIACAO',
         created_at: agora,
         updated_at: agora,
@@ -130,7 +154,24 @@ module.exports = {
         solicitante_id: IDS.solicitante,
         titulo: 'Revisão do quadro de disjuntores',
         descricao: 'Quadro de disjuntores antigo, preciso de uma revisão completa e troca dos disjuntores queimados.',
+        categoria: 'Elétrica',
+        cidade: 'São Paulo',
+        bairro: 'Pinheiros',
+        orcamento_cliente: 450.0,
         status: 'CONTRATADA',
+        created_at: agora,
+        updated_at: agora,
+      },
+      {
+        id: IDS.solicitacaoAberta2,
+        solicitante_id: IDS.solicitante,
+        titulo: 'Pintura de sala e corredor',
+        descricao: 'Pintura de sala de estar (18m²) e corredor, tinta já comprada, preciso apenas da mão de obra.',
+        categoria: 'Pintura',
+        cidade: 'Campinas',
+        bairro: 'Cambuí',
+        orcamento_cliente: null,
+        status: 'ABERTA',
         created_at: agora,
         updated_at: agora,
       },
@@ -203,16 +244,16 @@ module.exports = {
 
   down: async (queryInterface) => {
     await queryInterface.bulkDelete('propostas', {
-      solicitacao_id: [IDS.solicitacaoAberta, IDS.solicitacaoNegociacao, IDS.solicitacaoContratada],
+      solicitacao_id: [IDS.solicitacaoAberta, IDS.solicitacaoNegociacao, IDS.solicitacaoContratada, IDS.solicitacaoAberta2],
     });
     await queryInterface.bulkDelete('solicitacoes', {
-      id: [IDS.solicitacaoAberta, IDS.solicitacaoNegociacao, IDS.solicitacaoContratada],
+      id: [IDS.solicitacaoAberta, IDS.solicitacaoNegociacao, IDS.solicitacaoContratada, IDS.solicitacaoAberta2],
     });
     await queryInterface.bulkDelete('prestadores_perfil', {
       id: [IDS.perfilEletrica, IDS.perfilEncanamento],
     });
     await queryInterface.bulkDelete('usuarios', {
-      id: [IDS.solicitante, IDS.prestadorEletrica, IDS.prestadorEncanamento],
+      id: [IDS.solicitante, IDS.prestadorEletrica, IDS.prestadorEncanamento, IDS.admin],
     });
   },
 };

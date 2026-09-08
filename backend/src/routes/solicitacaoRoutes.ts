@@ -10,10 +10,16 @@
 import { Router } from 'express';
 import solicitacaoController from '../controllers/solicitacaoController';
 import authMiddleware from '../middlewares/authMiddleware';
+import uploadAnexosSolicitacao from '../middlewares/uploadAnexosMiddleware';
 
 const solicitacaoRoutes = Router();
 
 solicitacaoRoutes.use(authMiddleware);
+
+// POST /api/v1/solicitacoes — Publicação de nova solicitação com anexos (US05)
+solicitacaoRoutes.post('/', uploadAnexosSolicitacao.array('anexos', 5), (req, res) =>
+  solicitacaoController.criarSolicitacao(req, res)
+);
 
 // GET /api/v1/solicitacoes/minhas — Painel "Minhas Solicitações" (US06)
 solicitacaoRoutes.get('/minhas', (req, res) => solicitacaoController.listarMinhas(req, res));

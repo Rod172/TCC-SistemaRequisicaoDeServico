@@ -2,8 +2,10 @@
 
 /**
  * @file page.tsx
- * @description Página inicial da plataforma ServiçoFácil com design premium e responsivo.
- * 
+ * @description Página inicial da plataforma ServiçoFácil — ponto de entrada do sistema, com barra de
+ * navegação (busca embutida, ao estilo OLX) e atalhos de acordo com o perfil autenticado. Status
+ * técnico da API fica em /status.
+ *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones vetoriais em React/TypeScript.
  *    Doc Oficial: https://lucide.dev/
@@ -11,39 +13,20 @@
  *    Doc Oficial: https://nextjs.org/docs
  */
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-  Activity, CheckCircle2, Server, Sparkles, Layers,
-  UserPlus, Briefcase, LogIn, ArrowRight, Star,
-  Shield, Zap, Clock, UserCircle2, LogOut, ClipboardList
+  UserPlus, Briefcase, LogIn, ArrowRight,
+  UserCircle2, LogOut, ClipboardList, ShieldCheck, Activity, PlusCircle, Search,
 } from 'lucide-react';
-import api from '@/services/api';
-
-interface HealthStatus {
-  status: string;
-  service: string;
-  version: string;
-  environment: string;
-}
 
 export default function Home() {
-  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [healthData, setHealthData] = useState<HealthStatus | null>(null);
+  const router = useRouter();
   const [usuarioLogado, setUsuarioLogado] = useState<{ nome: string; tipo_perfil?: string } | null>(null);
+  const [busca, setBusca] = useState('');
 
   useEffect(() => {
-    async function checkBackendHealth() {
-      try {
-        const response = await api.get<HealthStatus>('/health');
-        setHealthData(response.data);
-        setApiStatus('online');
-      } catch {
-        setApiStatus('offline');
-      }
-    }
-    checkBackendHealth();
-
     const userRaw = localStorage.getItem('@ServicoFacil:user');
     if (userRaw) {
       try {
@@ -60,270 +43,186 @@ export default function Home() {
     setUsuarioLogado(null);
   }
 
+  const isAdmin = usuarioLogado?.tipo_perfil === 'ADMIN';
+  const isSolicitante = usuarioLogado?.tipo_perfil === 'SOLICITANTE';
+
+  // A busca da barra de navegação leva pra listagem certa de cada perfil: o solicitante busca nas
+  // próprias solicitações, o prestador busca no feed de oportunidades. O admin, que enxerga tudo,
+  // busca no feed de oportunidades (é a listagem com busca textual mais abrangente da plataforma).
+  const destinoBusca = isSolicitante ? '/minhas-solicitacoes' : '/oportunidades';
+  const placeholderBusca = isSolicitante ? 'Buscar nas minhas solicitações...' : 'Buscar oportunidades abertas...';
+
+  function handleBuscar(e: React.FormEvent) {
+    e.preventDefault();
+    const query = busca.trim();
+    router.push(query ? `${destinoBusca}?busca=${encodeURIComponent(query)}` : destinoBusca);
+  }
+
   return (
-    <main style={{ maxWidth: '960px', margin: '0 auto', padding: '3rem 1.5rem 5rem' }}>
-
-      {/* ── BARRA DE SESSÃO ─────────────────────── */}
-      {usuarioLogado && (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* ── BARRA DE NAVEGAÇÃO ─────────────────── */}
+      <header style={{
+        borderBottom: '1px solid #1e293b',
+        background: 'rgba(15,23,42,0.6)',
+        backdropFilter: 'blur(8px)',
+      }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-          gap: '0.75rem', marginBottom: '1.5rem',
+          maxWidth: '1280px', margin: '0 auto', padding: '0.85rem 1.5rem',
+          display: 'flex', alignItems: 'center', gap: '1.25rem',
         }}>
-          <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-            Olá, <strong style={{ color: '#fff' }}>{usuarioLogado.nome}</strong>
-          </span>
-          <Link href="/perfil" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-            background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
-            border: '1px solid #8b5cf6', borderRadius: '8px',
-            padding: '0.4rem 0.85rem', fontSize: '0.85rem', fontWeight: 600,
-          }}>
-            <UserCircle2 size={15} /> Meu Perfil
-          </Link>
-          <button onClick={handleLogout} style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-            background: 'transparent', border: '1px solid #334155', color: '#94a3b8',
-            borderRadius: '8px', padding: '0.4rem 0.85rem', fontSize: '0.85rem', cursor: 'pointer',
-          }}>
-            <LogOut size={15} /> Sair
-          </button>
-        </div>
-      )}
-
-      {/* ── HERO ─────────────────────────────── */}
-      <header style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-          padding: '0.4rem 1rem',
-          background: 'rgba(59,130,246,0.12)',
-          border: '1px solid rgba(59,130,246,0.35)',
-          borderRadius: '20px', color: '#60a5fa',
-          fontSize: '0.8rem', fontWeight: 600,
-          letterSpacing: '0.05em', textTransform: 'uppercase',
-          marginBottom: '1.25rem'
-        }}>
-          <Sparkles size={14} />
-          TCC · Ciência da Computação · UNIP
-        </div>
-
-        <h1 style={{
-          fontSize: 'clamp(2rem, 5vw, 3rem)',
-          fontWeight: 800, lineHeight: 1.15,
-          background: 'linear-gradient(135deg, #fff 0%, #94a3b8 100%)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          marginBottom: '1rem'
-        }}>
-          ServiçoFácil
-        </h1>
-
-        <p style={{
-          color: '#94a3b8', fontSize: '1.1rem', maxWidth: '560px',
-          margin: '0 auto 2rem', lineHeight: 1.6
-        }}>
-          A plataforma que conecta quem precisa de serviços a profissionais qualificados — com orçamentos, chat e avaliações em tempo real.
-        </p>
-
-        {/* Badges de diferenciais */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center' }}>
-          {[
-            { icon: <Shield size={14} />, text: 'Seguro & LGPD' },
-            { icon: <Zap size={14} />, text: 'Orçamentos rápidos' },
-            { icon: <Star size={14} />, text: 'Sistema de reputação' },
-            { icon: <Clock size={14} />, text: 'Chat em tempo real' },
-          ].map(({ icon, text }) => (
-            <span key={text} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '0.35rem 0.85rem',
-              background: 'rgba(30,41,59,0.8)',
-              border: '1px solid #334155',
-              borderRadius: '20px', color: '#94a3b8', fontSize: '0.8rem'
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', flexShrink: 0 }}>
+            <div style={{
+              width: '32px', height: '32px', borderRadius: '8px',
+              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontWeight: 800, fontSize: '0.95rem',
             }}>
-              {icon}{text}
-            </span>
-          ))}
+              S
+            </div>
+            <span style={{ fontWeight: 700, fontSize: '1.05rem', color: '#f1f5f9' }}>ServiçoFácil</span>
+          </Link>
+
+          {/* Busca pública — dá pra ver oportunidades abertas sem estar logado, como um classificado. */}
+          <form onSubmit={handleBuscar} style={{ flex: 1, maxWidth: '520px', position: 'relative' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder={placeholderBusca}
+              style={{
+                width: '100%', padding: '0.55rem 0.75rem 0.55rem 2.2rem',
+                background: '#0f172a', border: '1px solid #334155', borderRadius: '8px',
+                color: '#fff', fontSize: '0.875rem',
+              }}
+            />
+          </form>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginLeft: 'auto', flexShrink: 0 }}>
+            {usuarioLogado ? (
+              <>
+                {isAdmin && (
+                  <Link href="/minhas-solicitacoes" style={estiloLinkNav}>Solicitações</Link>
+                )}
+                {(usuarioLogado.tipo_perfil === 'PRESTADOR' || isAdmin) && (
+                  <Link href="/oportunidades" style={estiloLinkNav}>Oportunidades</Link>
+                )}
+                {isAdmin && (
+                  <Link href="/admin" style={estiloLinkNav}>Painel Admin</Link>
+                )}
+                <Link href="/perfil" title="Meu Perfil" style={{ color: '#94a3b8', display: 'flex' }}>
+                  <UserCircle2 size={20} />
+                </Link>
+                <button onClick={handleLogout} title="Sair" style={{
+                  background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex',
+                }}>
+                  <LogOut size={19} />
+                </button>
+                {(isSolicitante || isAdmin) && (
+                  <Link href="/nova-solicitacao" style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                    background: '#3b82f6', color: '#fff', borderRadius: '8px',
+                    padding: '0.5rem 1rem', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'none',
+                  }}>
+                    <PlusCircle size={15} /> Nova Solicitação
+                  </Link>
+                )}
+              </>
+            ) : (
+              <>
+                <Link href="/login" style={{ padding: '0.5rem 1rem', color: '#cbd5e1', fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none' }}>
+                  Entrar
+                </Link>
+                <Link href="/register-solicitante" style={{
+                  padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff',
+                  borderRadius: '8px', fontSize: '0.875rem', fontWeight: 600, textDecoration: 'none',
+                }}>
+                  Criar conta
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* ── CARDS DE AÇÃO ──────────────────────── */}
-      {usuarioLogado ? (
-        <section style={{
-          display: 'grid',
-          gridTemplateColumns: usuarioLogado.tipo_perfil === 'SOLICITANTE' ? 'repeat(2, 1fr)' : '1fr',
-          gap: '1.25rem',
-          marginBottom: '3rem',
-        }}>
-          {usuarioLogado.tipo_perfil === 'SOLICITANTE' && (
+      <main style={{ maxWidth: '1080px', margin: '0 auto', padding: '2.5rem 1.5rem 4rem', flex: 1, width: '100%' }}>
+        {!usuarioLogado && (
+          <div style={{ marginBottom: '2rem' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.4rem' }}>Bem-vindo ao ServiçoFácil</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+              Plataforma de intermediação de serviços sob demanda entre clientes e prestadores.
+            </p>
+          </div>
+        )}
+
+        {!usuarioLogado && (
+          <section style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '1.25rem',
+          }}>
             <ActionCard
-              icon={<ClipboardList size={28} />}
+              icon={<UserPlus size={26} />}
               iconBg="rgba(59,130,246,0.15)"
               iconColor="#60a5fa"
               borderColor="#3b82f6"
-              title="Minhas Solicitações"
-              description="Acompanhe suas solicitações, compare propostas e aceite a melhor oferta."
-              href="/minhas-solicitacoes"
+              title="Sou Cliente"
+              description="Publique sua necessidade e receba orçamentos de profissionais próximos a você."
+              href="/register-solicitante"
               btnColor="#3b82f6"
-              btnLabel="Ver minhas solicitações"
+              btnLabel="Criar conta gratuita"
             />
-          )}
 
-          <ActionCard
-            icon={<UserCircle2 size={28} />}
-            iconBg="rgba(139,92,246,0.15)"
-            iconColor="#a78bfa"
-            borderColor="#8b5cf6"
-            title="Meu Perfil"
-            description="Edite seus dados, foto de perfil, senha e preferências de privacidade (LGPD)."
-            href="/perfil"
-            btnColor="#8b5cf6"
-            btnLabel="Gerenciar minha conta"
-          />
-        </section>
-      ) : (
-        <section style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '1.25rem',
-          marginBottom: '3rem'
+            <ActionCard
+              icon={<Briefcase size={26} />}
+              iconBg="rgba(16,185,129,0.15)"
+              iconColor="#10b981"
+              borderColor="#10b981"
+              title="Sou Profissional"
+              description="Cadastre seu perfil, defina suas especialidades e conquiste novos clientes."
+              href="/register-prestador"
+              btnColor="#10b981"
+              btnLabel="Criar perfil profissional"
+            />
+
+            <ActionCard
+              icon={<LogIn size={26} />}
+              iconBg="rgba(236,72,153,0.15)"
+              iconColor="#ec4899"
+              borderColor="#ec4899"
+              title="Já tenho conta"
+              description="Acesse sua conta para gerenciar solicitações, propostas e mensagens."
+              href="/login"
+              btnColor="#ec4899"
+              btnLabel="Entrar na conta"
+            />
+          </section>
+        )}
+      </main>
+
+      {/* ── RODAPÉ ───────────────────────────── */}
+      <footer style={{ borderTop: '1px solid #1e293b', padding: '1.25rem 1.5rem' }}>
+        <div style={{
+          maxWidth: '1080px', margin: '0 auto',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem',
         }}>
-
-          {/* Solicitante */}
-          <ActionCard
-            icon={<UserPlus size={28} />}
-            iconBg="rgba(59,130,246,0.15)"
-            iconColor="#60a5fa"
-            borderColor="#3b82f6"
-            title="Sou Cliente"
-            description="Publique sua necessidade e receba orçamentos de profissionais próximos a você."
-            href="/register-solicitante"
-            btnColor="#3b82f6"
-            btnLabel="Criar conta gratuita"
-          />
-
-          {/* Prestador */}
-          <ActionCard
-            icon={<Briefcase size={28} />}
-            iconBg="rgba(16,185,129,0.15)"
-            iconColor="#10b981"
-            borderColor="#10b981"
-            title="Sou Profissional"
-            description="Cadastre seu perfil, defina suas especialidades e conquiste novos clientes."
-            href="/register-prestador"
-            btnColor="#10b981"
-            btnLabel="Criar perfil profissional"
-          />
-
-          {/* Login */}
-          <ActionCard
-            icon={<LogIn size={28} />}
-            iconBg="rgba(236,72,153,0.15)"
-            iconColor="#ec4899"
-            borderColor="#ec4899"
-            title="Já tenho conta"
-            description="Acesse sua conta para gerenciar solicitações, propostas e mensagens."
-            href="/login"
-            btnColor="#ec4899"
-            btnLabel="Entrar na conta"
-          />
-        </section>
-      )}
-
-      {/* ── STATUS DA API ──────────────────────── */}
-      <section style={{
-        background: 'rgba(15,23,42,0.7)',
-        border: '1px solid #1e293b',
-        borderRadius: '16px',
-        padding: '1.5rem 2rem',
-        marginBottom: '1.5rem',
-        backdropFilter: 'blur(8px)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Server size={20} color="#60a5fa" />
-            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Status da API Backend</span>
-          </div>
-
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.35rem 0.9rem', borderRadius: '20px',
-            background: apiStatus === 'online' ? 'rgba(16,185,129,0.15)' : apiStatus === 'offline' ? 'rgba(239,68,68,0.15)' : 'rgba(148,163,184,0.15)',
-            color: apiStatus === 'online' ? '#34d399' : apiStatus === 'offline' ? '#f87171' : '#94a3b8',
-            fontWeight: 600, fontSize: '0.8rem'
+          <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+            ServiçoFácil · TCC Ciência da Computação · UNIP
+          </span>
+          <Link href="/status" style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+            color: '#64748b', fontSize: '0.8rem', textDecoration: 'none',
           }}>
-            <span style={{
-              width: '8px', height: '8px', borderRadius: '50%',
-              background: apiStatus === 'online' ? '#34d399' : apiStatus === 'offline' ? '#f87171' : '#94a3b8',
-              boxShadow: apiStatus === 'online' ? '0 0 6px #34d399' : 'none'
-            }} />
-            <Activity size={14} />
-            {apiStatus === 'online' ? 'ONLINE' : apiStatus === 'offline' ? 'OFFLINE' : 'VERIFICANDO...'}
-          </div>
+            <Activity size={13} /> Status do sistema
+          </Link>
         </div>
-
-        {apiStatus === 'online' && healthData && (
-          <div style={{
-            marginTop: '1rem', paddingTop: '1rem',
-            borderTop: '1px solid #1e293b',
-            display: 'flex', gap: '2rem', flexWrap: 'wrap'
-          }}>
-            {[
-              { label: 'SERVIÇO', value: healthData.service },
-              { label: 'VERSÃO', value: healthData.version },
-              { label: 'AMBIENTE', value: healthData.environment.toUpperCase() },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <div style={{ fontSize: '0.7rem', color: '#64748b', letterSpacing: '0.08em', marginBottom: '2px' }}>{label}</div>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#e2e8f0' }}>{value}</div>
-              </div>
-            ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', color: '#34d399', fontSize: '0.85rem' }}>
-              <CheckCircle2 size={16} /> Conexão com MySQL estabelecida
-            </div>
-          </div>
-        )}
-
-        {apiStatus === 'offline' && (
-          <p style={{ color: '#f87171', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-            ⚠️ Não foi possível conectar à API em <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px' }}>http://localhost:3001</code>. Verifique se o backend está rodando.
-          </p>
-        )}
-      </section>
-
-      {/* ── TECH STACK ──────────────────────────── */}
-      <section style={{
-        background: 'rgba(15,23,42,0.7)',
-        border: '1px solid #1e293b',
-        borderRadius: '16px',
-        padding: '1.5rem 2rem',
-        backdropFilter: 'blur(8px)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <Layers size={20} color="#10b981" />
-          <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Stack Tecnológica</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
-          {[
-            { name: 'Next.js 14', sub: 'App Router + React 18', color: '#60a5fa' },
-            { name: 'TypeScript 5', sub: 'Tipagem ponta a ponta', color: '#10b981' },
-            { name: 'Node.js + Express', sub: 'API REST & Middlewares', color: '#f59e0b' },
-            { name: 'Sequelize + MySQL', sub: 'ORM & Banco Relacional', color: '#a78bfa' },
-            { name: 'JWT + Bcrypt', sub: 'Autenticação segura', color: '#ec4899' },
-            { name: 'Docker Compose', sub: 'Conteinerização', color: '#38bdf8' },
-          ].map(({ name, sub, color }) => (
-            <div key={name} style={{
-              background: '#0f172a', border: '1px solid #1e293b',
-              borderRadius: '10px', padding: '0.85rem 1rem'
-            }}>
-              <div style={{ fontWeight: 700, color, fontSize: '0.9rem', marginBottom: '2px' }}>{name}</div>
-              <div style={{ color: '#64748b', fontSize: '0.78rem' }}>{sub}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-    </main>
+      </footer>
+    </div>
   );
 }
+
+const estiloLinkNav: React.CSSProperties = {
+  color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none',
+};
 
 /* ── Componente de Card de Ação (card inteiro clicável) ──────────────── */
 function ActionCard({
@@ -396,4 +295,3 @@ function ActionCard({
     </Link>
   );
 }
-

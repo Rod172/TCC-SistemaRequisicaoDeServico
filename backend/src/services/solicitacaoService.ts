@@ -10,7 +10,7 @@
 
 import { Op, col, fn } from 'sequelize';
 import sequelize from '../config/database';
-import { Solicitacao, Proposta, Usuario, PrestadorPerfil } from '../models';
+import { Solicitacao, Proposta, Usuario, PrestadorPerfil, AnexoSolicitacao } from '../models';
 import { STATUS_SOLICITACAO } from '../models/Solicitacao';
 import HttpError from '../utils/HttpError';
 
@@ -19,7 +19,68 @@ export interface ListarMinhasFiltros {
   busca?: string;
 }
 
+export interface CriarSolicitacaoDTO {
+  titulo: string;
+  descricao: string;
+  categoria?: string;
+  cidade?: string;
+  bairro?: string;
+  prazo_desejado_dias?: number;
+  orcamento_cliente?: number;
+}
+
+export interface ArquivoAnexo {
+  filename: string;
+  originalname: string;
+}
+
 export class SolicitacaoService {
+  /**
+   * Publica uma nova solicitação de serviço com status inicial `ABERTA` e, opcionalmente, até 5
+   * anexos (fotos/documentos) já enviados pelo `uploadAnexosMiddleware` (US05).
+   */
+  async criarSolicitacao(solicitanteId: string, dados: CriarSolicitacaoDTO, arquivos: ArquivoAnexo[]) {
+    const titulo = (dados.titulo || '').trim();
+    const descricao = (dados.descricao || '').trim();
+
+    if (titulo.length < 5) {
+      throw new HttpError(400, 'O título deve ter pelo menos 5 caracteres.');
+    }
+    if (descricao.length < 20) {
+      throw new HttpError(400, 'Descreva o problema/necessidade com pelo menos 20 caracteres.');
+    }
+
+    return sequelize.transaction(async (transaction) => {
+      const solicitacao = await Solicitacao.create(
+        {
+          solicitante_id: solicitanteId,
+          titulo,
+          descricao,
+          categoria: dados.categoria?.trim() || null,
+          cidade: dados.cidade?.trim() || null,
+          bairro: dados.bairro?.trim() || null,
+          prazo_desejado_dias: dados.prazo_desejado_dias || null,
+          orcamento_cliente: dados.orcamento_cliente || null,
+          status: 'ABERTA',
+        },
+        { transaction }
+      );
+
+      if (arquivos.length > 0) {
+        await AnexoSolicitacao.bulkCreate(
+          arquivos.map((arquivo) => ({
+            solicitacao_id: solicitacao.id,
+            url_arquivo: `/uploads/solicitacoes/${arquivo.filename}`,
+            nome_original: arquivo.originalname,
+          })),
+          { transaction }
+        );
+      }
+
+      return solicitacao.get({ plain: true });
+    });
+  }
+
   /**
    * Lista as solicitações do solicitante autenticado, com contagem de propostas recebidas (US06).
    */
@@ -65,8 +126,12 @@ export class SolicitacaoService {
   async buscarComPropostas(solicitanteId: string, solicitacaoId: string) {
     const solicitacao = await Solicitacao.findOne({
       where: { id: solicitacaoId, solicitante_id: solicitanteId },
-      attributes: ['id', 'titulo', 'descricao', 'status', 'created_at', 'updated_at'],
+      attributes: [
+        'id', 'titulo', 'descricao', 'categoria', 'cidade', 'bairro',
+        'orcamento_cliente', 'prazo_desejado_dias', 'status', 'created_at', 'updated_at',
+      ],
       include: [
+        { model: AnexoSolicitacao, as: 'anexos', attributes: ['id', 'url_arquivo', 'nome_original'] },
         {
           model: Proposta,
           as: 'propostas',

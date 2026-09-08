@@ -1,7 +1,7 @@
 /**
  * @file api.ts
  * @description Cliente HTTP Axios com interceptor de autenticação JWT e tipagem TypeScript.
- * 
+ *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Axios (^1.7.2): Cliente HTTP baseado em promises.
  *    Doc Oficial: https://axios-http.com/docs/intro

@@ -19,7 +19,92 @@ function responderErro(res: Response, err: any) {
   return res.status(500).json({ error: 'Internal Server Error', message: err.message });
 }
 
+function exigirSolicitante(req: Request, res: Response): boolean {
+  // ADMIN também tem acesso, para fins de suporte e teste da plataforma.
+  if (!['SOLICITANTE', 'ADMIN'].includes(req.user!.tipo_perfil)) {
+    res.status(403).json({ error: 'Forbidden', message: 'Apenas solicitantes podem publicar solicitações.' });
+    return false;
+  }
+  return true;
+}
+
 export class SolicitacaoController {
+  /**
+   * @openapi
+   * /solicitacoes:
+   *   post:
+   *     summary: Publica uma nova solicitação de serviço com status inicial ABERTA (US05)
+   *     tags:
+   *       - Minhas Solicitações
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - titulo
+   *               - descricao
+   *             properties:
+   *               titulo:
+   *                 type: string
+   *               descricao:
+   *                 type: string
+   *               categoria:
+   *                 type: string
+   *               cidade:
+   *                 type: string
+   *               bairro:
+   *                 type: string
+   *               prazo_desejado_dias:
+   *                 type: integer
+   *               orcamento_cliente:
+   *                 type: number
+   *               anexos:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                   format: binary
+   *     responses:
+   *       201:
+   *         description: Solicitação publicada com sucesso.
+   *       400:
+   *         description: Dados inválidos.
+   */
+  async criarSolicitacao(req: Request, res: Response): Promise<Response | void> {
+    if (!exigirSolicitante(req, res)) return;
+    try {
+      const solicitanteId = req.user!.id;
+      const arquivos = ((req.files as Express.Multer.File[]) || []).map((arquivo) => ({
+        filename: arquivo.filename,
+        originalname: arquivo.originalname,
+      }));
+
+      const solicitacao = await solicitacaoService.criarSolicitacao(
+        solicitanteId,
+        {
+          titulo: req.body.titulo,
+          descricao: req.body.descricao,
+          categoria: req.body.categoria,
+          cidade: req.body.cidade,
+          bairro: req.body.bairro,
+          prazo_desejado_dias: req.body.prazo_desejado_dias ? Number(req.body.prazo_desejado_dias) : undefined,
+          orcamento_cliente: req.body.orcamento_cliente ? Number(req.body.orcamento_cliente) : undefined,
+        },
+        arquivos
+      );
+
+      return res.status(201).json({
+        message: 'Solicitação publicada com sucesso!',
+        data: solicitacao,
+      });
+    } catch (err: any) {
+      return responderErro(res, err);
+    }
+  }
+
   /**
    * @openapi
    * /solicitacoes/minhas:

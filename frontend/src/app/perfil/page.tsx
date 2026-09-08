@@ -75,8 +75,14 @@ export default function PerfilPage() {
           telefone: dados.telefone || '',
           endereco: dados.endereco || '',
         });
-      } catch {
-        setErrorMsg('Não foi possível carregar os dados do seu perfil.');
+      } catch (err: any) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem('@ServicoFacil:token');
+          localStorage.removeItem('@ServicoFacil:user');
+          router.replace('/login');
+          return;
+        }
+        setErrorMsg(err.response?.data?.message || 'Não foi possível carregar os dados do seu perfil.');
       } finally {
         setCarregando(false);
       }
@@ -181,6 +187,24 @@ export default function PerfilPage() {
     return (
       <main style={{ maxWidth: '760px', margin: '4rem auto', padding: '0 1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
         Carregando seu perfil...
+      </main>
+    );
+  }
+
+  if (!perfil) {
+    return (
+      <main style={{ maxWidth: '760px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+          <ArrowLeft size={16} /> Voltar para a página inicial
+        </Link>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)',
+          color: '#fca5a5', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem',
+        }}>
+          <AlertCircle size={20} />
+          <span>{errorMsg || 'Não foi possível carregar os dados do seu perfil.'}</span>
+        </div>
       </main>
     );
   }

@@ -23,11 +23,14 @@ export interface UsuarioAttributes {
   termo_lgpd_aceito: boolean;
   termo_lgpd_aceito_em?: Date;
   ativo: boolean;
+  status_alterado_por?: string | null;
+  status_alterado_em?: Date | null;
   created_at?: Date;
   updated_at?: Date;
 }
 
-export interface UsuarioCreationAttributes extends Optional<UsuarioAttributes, 'id' | 'endereco' | 'foto_url' | 'termo_lgpd_aceito' | 'termo_lgpd_aceito_em' | 'ativo'> {}
+export interface UsuarioCreationAttributes
+  extends Optional<UsuarioAttributes, 'id' | 'endereco' | 'foto_url' | 'termo_lgpd_aceito' | 'termo_lgpd_aceito_em' | 'ativo' | 'status_alterado_por' | 'status_alterado_em'> {}
 
 export class Usuario extends Model<UsuarioAttributes, UsuarioCreationAttributes> implements UsuarioAttributes {
   public id!: string;
@@ -42,6 +45,8 @@ export class Usuario extends Model<UsuarioAttributes, UsuarioCreationAttributes>
   public termo_lgpd_aceito!: boolean;
   public termo_lgpd_aceito_em?: Date;
   public ativo!: boolean;
+  public status_alterado_por?: string | null;
+  public status_alterado_em?: Date | null;
 
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
@@ -105,6 +110,14 @@ Usuario.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    status_alterado_por: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    status_alterado_em: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

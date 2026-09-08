@@ -25,18 +25,32 @@ export interface SolicitacaoAttributes {
   solicitante_id: string;
   titulo: string;
   descricao: string;
+  categoria?: string | null;
+  cidade?: string | null;
+  bairro?: string | null;
+  orcamento_cliente?: number | null;
+  prazo_desejado_dias?: number | null;
   status: StatusSolicitacao;
   created_at?: Date;
   updated_at?: Date;
 }
 
-export interface SolicitacaoCreationAttributes extends Optional<SolicitacaoAttributes, 'id' | 'status'> {}
+export interface SolicitacaoCreationAttributes
+  extends Optional<
+    SolicitacaoAttributes,
+    'id' | 'status' | 'categoria' | 'cidade' | 'bairro' | 'orcamento_cliente' | 'prazo_desejado_dias'
+  > {}
 
 export class Solicitacao extends Model<SolicitacaoAttributes, SolicitacaoCreationAttributes> implements SolicitacaoAttributes {
   public id!: string;
   public solicitante_id!: string;
   public titulo!: string;
   public descricao!: string;
+  public categoria?: string | null;
+  public cidade?: string | null;
+  public bairro?: string | null;
+  public orcamento_cliente?: number | null;
+  public prazo_desejado_dias?: number | null;
   public status!: StatusSolicitacao;
 
   public readonly created_at!: Date;
@@ -62,6 +76,26 @@ Solicitacao.init(
     descricao: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    categoria: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    cidade: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    bairro: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    orcamento_cliente: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    prazo_desejado_dias: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
     },
     status: {
       type: DataTypes.ENUM(...STATUS_SOLICITACAO),

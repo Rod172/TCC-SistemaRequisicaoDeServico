@@ -22,6 +22,8 @@ import swaggerJsDoc from 'swagger-jsdoc';
 import authRoutes from './routes/authRoutes';
 import perfilRoutes from './routes/perfilRoutes';
 import solicitacaoRoutes from './routes/solicitacaoRoutes';
+import oportunidadeRoutes from './routes/oportunidadeRoutes';
+import adminRoutes from './routes/adminRoutes';
 
 const app = express();
 
@@ -83,6 +85,8 @@ app.get('/api/v1/health', (req: Request, res: Response) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/perfil', perfilRoutes);
 app.use('/api/v1/solicitacoes', solicitacaoRoutes);
+app.use('/api/v1/prestador', oportunidadeRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Middleware Global de Tratamento de Erros
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -18,15 +18,23 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Star, CheckCircle, XCircle, Handshake, AlertCircle, User,
+  ArrowLeft, Star, CheckCircle, XCircle, Handshake, AlertCircle, User, Paperclip, FileText,
 } from 'lucide-react';
 import api from '@/services/api';
+
+const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/api\/v1\/?$/, '');
 
 interface Prestador {
   id: string;
   nome: string;
   foto_url?: string | null;
   perfil_prestador?: { nota_media_reputacao: string; total_avaliacoes: number } | null;
+}
+
+interface Anexo {
+  id: string;
+  url_arquivo: string;
+  nome_original: string;
 }
 
 interface Proposta {
@@ -47,6 +55,7 @@ interface SolicitacaoDetalhe {
   titulo: string;
   descricao: string;
   status: string;
+  anexos?: Anexo[];
   propostas: Proposta[];
 }
 
@@ -95,6 +104,12 @@ export default function DetalhePropostasPage() {
       const response = await api.get(`/solicitacoes/minhas/${solicitacaoId}/propostas`);
       setSolicitacao(response.data.data);
     } catch (err: any) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('@ServicoFacil:token');
+        localStorage.removeItem('@ServicoFacil:user');
+        router.replace('/login');
+        return;
+      }
       setErro(err.response?.data?.message || 'Não foi possível carregar esta solicitação.');
     } finally {
       setCarregando(false);
@@ -205,6 +220,29 @@ export default function DetalhePropostasPage() {
           </span>
           <h1 style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{solicitacao.titulo}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '520px' }}>{solicitacao.descricao}</p>
+
+          {solicitacao.anexos && solicitacao.anexos.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.9rem' }}>
+              {solicitacao.anexos.map((anexo) => (
+                <a
+                  key={anexo.id}
+                  href={`${BACKEND_ORIGIN}${anexo.url_arquivo}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={anexo.nome_original}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                    padding: '0.35rem 0.7rem', borderRadius: '6px',
+                    background: '#0f172a', border: '1px solid #334155',
+                    color: '#94a3b8', fontSize: '0.78rem', textDecoration: 'none', maxWidth: '160px',
+                  }}
+                >
+                  {anexo.url_arquivo.endsWith('.pdf') ? <FileText size={13} /> : <Paperclip size={13} />}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexo.nome_original}</span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ textAlign: 'right' }}>
           <strong style={{ fontSize: '1.5rem' }}>{solicitacao.propostas.length}</strong>

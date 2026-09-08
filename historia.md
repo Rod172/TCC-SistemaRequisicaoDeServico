@@ -15,6 +15,7 @@
 - [Épico 7: Dashboards, Histórico e Métricas](#-épico-7-dashboards-histórico-e-métricas)
 - [Épico 8: Requisitos Não-Funcionais, Segurança e Usabilidade](#-épico-8-requisitos-não-funcionais-segurança-e-usabilidade)
 - [Épico 9: Engenharia de Software, Testes e Documentação de API](#-épico-9-engenharia-de-software-testes-e-documentação-de-api)
+- [Épico 10: Administração e Gestão da Plataforma](#-épico-10-administração-e-gestão-da-plataforma)
 - [Matriz de Priorização (MoSCoW)](#-matriz-de-priorização-moscow)
 
 ---
@@ -456,6 +457,27 @@
 
 ---
 
+## 🛡️ Épico 10: Administração e Gestão da Plataforma
+
+### US27 - Painel Administrativo de Usuários e Moderação
+**Como** um Administrador da plataforma  
+**Quero** visualizar, buscar e ativar/desativar usuários cadastrados, além de acompanhar as solicitações em andamento  
+**Para que** eu possa dar suporte, moderar o uso indevido da plataforma e garantir a conformidade com a LGPD.
+
+#### Critérios de Aceite:
+- [ ] Área administrativa acessível apenas pelo perfil `ADMIN` (bloqueio 403 para Solicitante e Prestador).
+- [ ] Listagem de todos os usuários com filtro por tipo de perfil (Solicitante/Prestador/Admin), status (ativo/inativo) e busca por nome ou e-mail.
+- [ ] Ação de ativar/desativar (suspender) a conta de um usuário.
+- [ ] Listagem de todas as solicitações da plataforma, independente do solicitante dono, com filtro por status, para fins de suporte e moderação.
+- [ ] Cada ação administrativa (ex.: desativar um usuário) registra quem executou e quando.
+
+#### Tarefas Técnicas:
+- **Backend (Node.js)**: Rotas protegidas em `/api/v1/admin` (middleware de checagem de `tipo_perfil = ADMIN`): `GET /api/v1/admin/usuarios` (lista/filtra), `PATCH /api/v1/admin/usuarios/:id/status` (ativa/desativa) e `GET /api/v1/admin/solicitacoes` (lista todas, independente de dono).
+- **Frontend (React)**: Painel `/admin` com tabela de usuários, filtros e ação rápida de ativar/desativar.
+- **Seeder**: Usuário `ADMIN` de demonstração para a banca acessar e testar o painel sem precisar cadastrar um manualmente.
+
+---
+
 ## 🛠️ Matriz de Priorização (MoSCoW)
 
 | Épico | História | Título da História | Prioridade (MoSCoW) | Estimativa (Story Points) |
@@ -486,3 +508,4 @@
 | **E9** | US24 | Documentação da API (Swagger) | Should Have | 5 |
 | **E9** | US25 | Migrações e Seeders (Sequelize CLI) | Must Have | 5 |
 | **E9** | US26 | Testes de Integração (Jest/Supertest) | Should Have | 5 |
+| **E10** | US27 | Painel Administrativo e Moderação | Should Have | 8 |
