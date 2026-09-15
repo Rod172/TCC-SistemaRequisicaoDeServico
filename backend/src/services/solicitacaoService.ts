@@ -1,7 +1,8 @@
 /**
  * @file solicitacaoService.ts
  * @description Serviço de regras de negócio do painel "Minhas Solicitações" (US06), comparação de
- * propostas (US11), aceite/recusa de proposta com contratação (US12) e renegociação de valor.
+ * propostas (US11), aceite/recusa de proposta com contratação (US12), renegociação de valor,
+ * cancelamento de solicitação (US07) e simulação de pagamento/custódia (US13).
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Sequelize ORM (^6.37.3): Consultas relacionais (`include`, `GROUP BY`) e transações atômicas.
@@ -10,9 +11,20 @@
 
 import { Op, col, fn } from 'sequelize';
 import sequelize from '../config/database';
-import { Solicitacao, Proposta, Usuario, PrestadorPerfil, AnexoSolicitacao } from '../models';
+import {
+  Solicitacao,
+  Proposta,
+  Usuario,
+  PrestadorPerfil,
+  AnexoSolicitacao,
+  Notificacao,
+  TransacaoCustodia,
+  PerguntaSolicitacao,
+} from '../models';
 import { STATUS_SOLICITACAO } from '../models/Solicitacao';
 import HttpError from '../utils/HttpError';
+import { emitirParaUsuario } from '../sockets/chatSocket';
+import preferenciaNotificacaoService from './preferenciaNotificacaoService';
 
 export interface ListarMinhasFiltros {
   status?: string;
@@ -120,18 +132,36 @@ export class SolicitacaoService {
   }
 
   /**
-   * Retorna uma solicitação do solicitante autenticado com todas as propostas recebidas,
-   * incluindo nome, foto e reputação do prestador para comparação (US11).
+   * Retorna uma solicitação com todas as propostas recebidas, incluindo nome, foto e reputação do
+   * prestador para comparação (US11). O `ADMIN` pode consultar qualquer solicitação, independente do
+   * dono, para fins de suporte e moderação (US27) — nesse caso as ações (aceitar/recusar/renegociar/
+   * cancelar/simular pagamento) continuam bloqueadas para quem não é o solicitante dono.
    */
-  async buscarComPropostas(solicitanteId: string, solicitacaoId: string) {
+  async buscarComPropostas(solicitanteId: string, solicitacaoId: string, comoAdmin = false) {
+    const where = comoAdmin ? { id: solicitacaoId } : { id: solicitacaoId, solicitante_id: solicitanteId };
+
     const solicitacao = await Solicitacao.findOne({
-      where: { id: solicitacaoId, solicitante_id: solicitanteId },
+      where,
       attributes: [
         'id', 'titulo', 'descricao', 'categoria', 'cidade', 'bairro',
-        'orcamento_cliente', 'prazo_desejado_dias', 'status', 'created_at', 'updated_at',
+        'orcamento_cliente', 'prazo_desejado_dias', 'status',
+        'motivo_cancelamento', 'cancelada_em', 'created_at', 'updated_at',
       ],
       include: [
         { model: AnexoSolicitacao, as: 'anexos', attributes: ['id', 'url_arquivo', 'nome_original'] },
+        {
+          model: PerguntaSolicitacao,
+          as: 'perguntas',
+          include: [{ model: Usuario, as: 'prestador', attributes: ['id', 'nome', 'foto_url'] }],
+          separate: true,
+          order: [['created_at', 'ASC']],
+        },
+        {
+          model: TransacaoCustodia,
+          as: 'transacao_custodia',
+          attributes: ['id', 'valor', 'status_pagamento', 'metodo_pagamento', 'referencia_simulada', 'retido_em'],
+          required: false,
+        },
         {
           model: Proposta,
           as: 'propostas',
@@ -144,7 +174,7 @@ export class SolicitacaoService {
                 {
                   model: PrestadorPerfil,
                   as: 'perfil_prestador',
-                  attributes: ['nota_media_reputacao', 'total_avaliacoes'],
+                  attributes: ['nota_media_reputacao', 'total_avaliacoes', 'descricao_bio', 'categorias'],
                   required: false,
                 },
               ],
@@ -164,7 +194,9 @@ export class SolicitacaoService {
 
   /**
    * Aceita ou recusa uma proposta (US12). Ao aceitar, rejeita as demais propostas concorrentes
-   * e move a solicitação para `CONTRATADA` dentro de uma única transação Sequelize.
+   * e move a solicitação para `CONTRATADA` dentro de uma única transação Sequelize. Notifica o(s)
+   * prestador(es) afetado(s) — aceita ou recusada, incluindo as recusas automáticas das concorrentes
+   * (US16).
    */
   async atualizarStatusProposta(
     solicitanteId: string,
@@ -190,6 +222,13 @@ export class SolicitacaoService {
 
     await sequelize.transaction(async (transaction) => {
       if (acao === 'ACEITAR') {
+        // Busca as concorrentes ANTES do update em massa, pra saber quem notificar da recusa.
+        const concorrentes = await Proposta.findAll({
+          where: { solicitacao_id: solicitacaoId, id: { [Op.ne]: proposta.id }, status: { [Op.ne]: 'ACEITA' } },
+          attributes: ['prestador_id'],
+          transaction,
+        });
+
         await proposta.update({ status: 'ACEITA' }, { transaction });
         await Proposta.update(
           { status: 'RECUSADA' },
@@ -203,14 +242,158 @@ export class SolicitacaoService {
           }
         );
         await solicitacao.update({ status: 'CONTRATADA' }, { transaction });
+
+        if (await preferenciaNotificacaoService.estaAtivado(proposta.prestador_id, 'PROPOSTA_ACEITA_RECUSADA')) {
+          const notifAceita = await Notificacao.create(
+            {
+              usuario_id: proposta.prestador_id,
+              titulo: 'Proposta aceita!',
+              mensagem: `Sua proposta para "${solicitacao.titulo}" foi aceita pelo cliente.`,
+              link_redirecionamento: `/oportunidades/${solicitacaoId}`,
+            },
+            { transaction }
+          );
+          emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notifAceita.get({ plain: true }));
+        }
+
+        if (concorrentes.length > 0) {
+          const concorrentesAtivos = await preferenciaNotificacaoService.filtrarAtivos(
+            concorrentes.map((c) => c.prestador_id),
+            'PROPOSTA_ACEITA_RECUSADA'
+          );
+          if (concorrentesAtivos.length > 0) {
+            await Notificacao.bulkCreate(
+              concorrentesAtivos.map((prestadorId) => ({
+                usuario_id: prestadorId,
+                titulo: 'Proposta recusada',
+                mensagem: `Sua proposta para "${solicitacao.titulo}" foi recusada — o cliente escolheu outro prestador.`,
+                link_redirecionamento: `/oportunidades/${solicitacaoId}`,
+              })),
+              { transaction }
+            );
+            concorrentesAtivos.forEach((prestadorId) => emitirParaUsuario(prestadorId, 'nova-notificacao', {}));
+          }
+        }
       } else {
         await proposta.update({ status: 'RECUSADA' }, { transaction });
+        if (await preferenciaNotificacaoService.estaAtivado(proposta.prestador_id, 'PROPOSTA_ACEITA_RECUSADA')) {
+          const notifRecusada = await Notificacao.create(
+            {
+              usuario_id: proposta.prestador_id,
+              titulo: 'Proposta recusada',
+              mensagem: `Sua proposta para "${solicitacao.titulo}" foi recusada.`,
+              link_redirecionamento: `/oportunidades/${solicitacaoId}`,
+            },
+            { transaction }
+          );
+          emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notifRecusada.get({ plain: true }));
+        }
       }
     });
 
     return {
       mensagem: acao === 'ACEITAR' ? 'Proposta aceita com sucesso.' : 'Proposta recusada com sucesso.',
     };
+  }
+
+  /**
+   * O Solicitante desfaz uma contratação já aceita, enquanto o serviço ainda não foi concluído (US34)
+   * — simétrico à desistência do prestador (US31), mas do outro lado: a proposta ACEITA volta pra
+   * `RECUSADA` (não pode reenviar) e a solicitação volta pra `EM_NEGOCIACAO`, reabrindo para novas
+   * propostas de outros prestadores. Existe porque, antes desta história, aceitar era irreversível e já
+   * recusava automaticamente as demais propostas concorrentes, sem chance de o solicitante voltar atrás.
+   */
+  async cancelarContratacao(solicitanteId: string, solicitacaoId: string) {
+    return sequelize.transaction(async (transaction) => {
+      const solicitacao = await Solicitacao.findOne({
+        where: { id: solicitacaoId, solicitante_id: solicitanteId, status: 'CONTRATADA' },
+        transaction,
+      });
+      if (!solicitacao) {
+        throw new HttpError(404, 'Solicitação não encontrada ou não está mais contratada.');
+      }
+
+      const proposta = await Proposta.findOne({
+        where: { solicitacao_id: solicitacaoId, status: 'ACEITA' },
+        transaction,
+      });
+      if (!proposta) {
+        throw new HttpError(404, 'Nenhuma proposta aceita encontrada para esta solicitação.');
+      }
+
+      await proposta.update({ status: 'RECUSADA' }, { transaction });
+      await solicitacao.update({ status: 'EM_NEGOCIACAO' }, { transaction });
+
+      if (await preferenciaNotificacaoService.estaAtivado(proposta.prestador_id, 'PROPOSTA_ACEITA_RECUSADA')) {
+        const notificacao = await Notificacao.create(
+          {
+            usuario_id: proposta.prestador_id,
+            titulo: 'Contratação cancelada',
+            mensagem: `O cliente cancelou a contratação de "${solicitacao.titulo}". A solicitação voltou a aceitar propostas.`,
+            link_redirecionamento: `/minhas-propostas`,
+          },
+          { transaction }
+        );
+        emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notificacao.get({ plain: true }));
+      }
+
+      return { mensagem: 'Contratação cancelada. A solicitação voltou a aceitar propostas.' };
+    });
+  }
+
+  /**
+   * Marca uma solicitação `CONTRATADA` como `CONCLUIDA` (US17) — tanto o Solicitante quanto o
+   * Prestador contratado podem confirmar. Libera o valor retido em custódia (US13), se houver, e
+   * abre caminho pro Solicitante avaliar o serviço (US18). Notifica o outro lado da confirmação.
+   */
+  async concluir(usuarioId: string, solicitacaoId: string) {
+    return sequelize.transaction(async (transaction) => {
+      const solicitacao = await Solicitacao.findOne({
+        where: { id: solicitacaoId, status: 'CONTRATADA' },
+        transaction,
+      });
+      if (!solicitacao) {
+        throw new HttpError(404, 'Solicitação não encontrada ou não está contratada.');
+      }
+
+      const proposta = await Proposta.findOne({
+        where: { solicitacao_id: solicitacaoId, status: 'ACEITA' },
+        transaction,
+      });
+      if (!proposta) {
+        throw new HttpError(404, 'Nenhuma proposta aceita encontrada para esta solicitação.');
+      }
+
+      const ehSolicitante = solicitacao.solicitante_id === usuarioId;
+      const ehPrestador = proposta.prestador_id === usuarioId;
+      if (!ehSolicitante && !ehPrestador) {
+        throw new HttpError(403, 'Você não participa desta contratação.');
+      }
+
+      await solicitacao.update({ status: 'CONCLUIDA' }, { transaction });
+
+      const transacao = await TransacaoCustodia.findOne({ where: { solicitacao_id: solicitacaoId }, transaction });
+      if (transacao && transacao.status_pagamento === 'RETIDO') {
+        await transacao.update({ status_pagamento: 'LIBERADO', liberado_em: new Date() }, { transaction });
+      }
+
+      const outroId = ehSolicitante ? proposta.prestador_id : solicitacao.solicitante_id;
+      const tipoEvento = ehSolicitante ? 'PROPOSTA_ACEITA_RECUSADA' : 'PROPOSTA_ACEITA_RECUSADA';
+      if (await preferenciaNotificacaoService.estaAtivado(outroId, tipoEvento)) {
+        const notificacao = await Notificacao.create(
+          {
+            usuario_id: outroId,
+            titulo: 'Serviço concluído',
+            mensagem: `"${solicitacao.titulo}" foi marcado como concluído.`,
+            link_redirecionamento: ehSolicitante ? '/minhas-propostas' : `/minhas-solicitacoes/${solicitacaoId}`,
+          },
+          { transaction }
+        );
+        emitirParaUsuario(outroId, 'nova-notificacao', notificacao.get({ plain: true }));
+      }
+
+      return { mensagem: 'Serviço marcado como concluído.' };
+    });
   }
 
   /**
@@ -260,6 +443,121 @@ export class SolicitacaoService {
     });
 
     return { mensagem: 'Contraproposta enviada. A proposta está em análise.' };
+  }
+
+  /**
+   * Cancela uma solicitação antes da contratação (US07). Permitido apenas em `ABERTA` ou
+   * `EM_NEGOCIACAO`; cria uma notificação interna para cada prestador que já enviou proposta.
+   */
+  async cancelarSolicitacao(solicitanteId: string, solicitacaoId: string, motivo: string) {
+    const motivoTratado = (motivo || '').trim();
+    if (motivoTratado.length < 5) {
+      throw new HttpError(400, 'Informe um motivo com pelo menos 5 caracteres.');
+    }
+
+    return sequelize.transaction(async (transaction) => {
+      const solicitacao = await Solicitacao.findOne({
+        where: { id: solicitacaoId, solicitante_id: solicitanteId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
+
+      if (!['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status)) {
+        throw new HttpError(409, 'Somente solicitações abertas ou em negociação podem ser canceladas.');
+      }
+
+      const propostas = await Proposta.findAll({
+        where: { solicitacao_id: solicitacaoId },
+        attributes: ['prestador_id'],
+        transaction,
+      });
+
+      await solicitacao.update(
+        { status: 'CANCELADA', motivo_cancelamento: motivoTratado, cancelada_em: new Date() },
+        { transaction }
+      );
+
+      const prestadoresUnicos = [...new Set(propostas.map((proposta) => proposta.prestador_id))];
+
+      if (prestadoresUnicos.length > 0) {
+        const prestadoresAtivos = await preferenciaNotificacaoService.filtrarAtivos(prestadoresUnicos, 'SOLICITACAO_CANCELADA');
+        if (prestadoresAtivos.length > 0) {
+          await Notificacao.bulkCreate(
+            prestadoresAtivos.map((prestadorId) => ({
+              usuario_id: prestadorId,
+              titulo: 'Solicitação cancelada',
+              mensagem: `A solicitação "${solicitacao.titulo}" foi cancelada. Motivo: ${motivoTratado}`,
+              link_redirecionamento: `/oportunidades/${solicitacao.id}`,
+            })),
+            { transaction }
+          );
+          prestadoresAtivos.forEach((prestadorId) => emitirParaUsuario(prestadorId, 'nova-notificacao', {}));
+        }
+      }
+
+      return {
+        mensagem: `Solicitação cancelada. ${prestadoresUnicos.length} prestador(es) notificado(s).`,
+      };
+    });
+  }
+
+  /**
+   * Simula o checkout/retenção do valor de uma proposta aceita em custódia (US13). Idempotente: se a
+   * solicitação já tiver uma transação de custódia, apenas a retorna. A liberação (US17) não é
+   * implementada aqui.
+   */
+  async simularPagamentoCustodia(
+    solicitanteId: string,
+    solicitacaoId: string,
+    metodoPagamento: 'CARTAO_TESTE' | 'PIX_TESTE'
+  ) {
+    if (!['CARTAO_TESTE', 'PIX_TESTE'].includes(metodoPagamento)) {
+      throw new HttpError(422, 'Método de pagamento simulado inválido.');
+    }
+
+    return sequelize.transaction(async (transaction) => {
+      const solicitacao = await Solicitacao.findOne({
+        where: { id: solicitacaoId, solicitante_id: solicitanteId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
+
+      if (solicitacao.status !== 'CONTRATADA') {
+        throw new HttpError(409, 'O pagamento só pode ser retido para uma solicitação contratada.');
+      }
+
+      const proposta = await Proposta.findOne({
+        where: { solicitacao_id: solicitacaoId, status: 'ACEITA' },
+        transaction,
+      });
+      if (!proposta) throw new HttpError(409, 'Nenhuma proposta aceita foi encontrada para esta solicitação.');
+
+      const existente = await TransacaoCustodia.findOne({
+        where: { solicitacao_id: solicitacaoId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (existente) {
+        return { mensagem: 'O valor desta proposta já está protegido.', dados: existente.get({ plain: true }) };
+      }
+
+      const referenciaSimulada = `SIM-${solicitacao.id}-${proposta.id}-${Date.now()}`;
+      const transacao = await TransacaoCustodia.create(
+        {
+          solicitacao_id: solicitacao.id,
+          proposta_id: proposta.id,
+          valor: proposta.valor,
+          metodo_pagamento: metodoPagamento,
+          referencia_simulada: referenciaSimulada,
+          retido_em: new Date(),
+        },
+        { transaction }
+      );
+
+      return { mensagem: 'Pagamento simulado e valor retido em custódia.', dados: transacao.get({ plain: true }) };
+    });
   }
 }
 

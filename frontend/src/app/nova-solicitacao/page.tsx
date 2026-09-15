@@ -151,7 +151,7 @@ export default function NovaSolicitacaoPage() {
           <input name="titulo" required minLength={5} value={formulario.titulo} onChange={alterarCampo} placeholder="Ex.: Instalação de 3 tomadas na cozinha" style={estiloInput} />
         </Campo>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="grid-2-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <Campo label="Categoria" icon={<Tag size={18} />}>
             <select name="categoria" value={formulario.categoria} onChange={alterarCampo} style={estiloInput}>
               <option value="">Selecione...</option>
@@ -163,7 +163,7 @@ export default function NovaSolicitacaoPage() {
           </Campo>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="grid-2-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <Campo label="Cidade" icon={<MapPin size={18} />}>
             <input name="cidade" value={formulario.cidade} onChange={alterarCampo} placeholder="Ex.: São Paulo" style={estiloInput} />
           </Campo>
@@ -180,10 +180,17 @@ export default function NovaSolicitacaoPage() {
           <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
             Descrição detalhada *
           </label>
+          <div style={{
+            background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: '8px',
+            padding: '0.6rem 0.8rem', marginBottom: '0.5rem', fontSize: '0.78rem', color: 'var(--text-secondary)',
+          }}>
+            Quanto mais completo, menos idas e vindas com o prestador. Tente responder: <strong>o que precisa ser feito</strong>,
+            {' '}<strong>desde quando</strong> é um problema, e <strong>algum detalhe que ajude a orçar</strong> (tamanho, quantidade, marca/modelo, se já tentou algo).
+          </div>
           <textarea
             name="descricao" required minLength={20} rows={5}
             value={formulario.descricao} onChange={alterarCampo}
-            placeholder="Descreva o problema ou necessidade com o máximo de detalhes possível."
+            placeholder="Ex.: A pia da cozinha está entupindo há 3 dias, mesmo depois de usar desentupidor. É um apartamento, o ralo fica embaixo da pia. Preciso resolver ainda essa semana."
             style={{ ...estiloInput, paddingLeft: '0.75rem', resize: 'vertical' }}
           />
         </div>

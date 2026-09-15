@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Search, Inbox, AlertCircle, ChevronRight, X, Plus } from 'lucide-react';
 import api from '@/services/api';
+import NotificationBell from '@/components/NotificationBell';
 
 interface SolicitacaoResumo {
   id: string;
@@ -114,13 +115,16 @@ export default function MinhasSolicitacoesPage() {
 
   return (
     <main style={{ maxWidth: '860px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
-      <Link href="/" style={{
-        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-        marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem',
-      }}>
-        <ArrowLeft size={16} />
-        Voltar para a página inicial
-      </Link>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <Link href="/" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+          color: 'var(--text-secondary)', fontSize: '0.9rem',
+        }}>
+          <ArrowLeft size={16} />
+          Voltar para a página inicial
+        </Link>
+        <NotificationBell />
+      </div>
 
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -132,7 +136,7 @@ export default function MinhasSolicitacoesPage() {
             Acompanhe o andamento dos seus pedidos e as propostas recebidas.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ textAlign: 'right' }}>
             <strong style={{ fontSize: '1.5rem' }}>{carregando ? '—' : solicitacoes.length}</strong>
             <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>

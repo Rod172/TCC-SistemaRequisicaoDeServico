@@ -3,7 +3,9 @@
 /**
  * @file login/page.tsx
  * @description Tela de Login de Usuários (Solicitantes e Prestadores) com autenticação JWT e validação no Next.js 14.
- * 
+ * Inclui um painel de "login rápido" com as contas de demonstração do seeder (US25), pra facilitar
+ * testar os três perfis (Solicitante/Prestador/Admin) sem digitar credenciais toda hora.
+ *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones para campos do formulário.
  *    Doc Oficial: https://lucide.dev/
@@ -16,8 +18,16 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogIn, Mail, Lock, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { LogIn, Mail, Lock, CheckCircle, AlertCircle, ArrowLeft, Zap, User, Briefcase, ShieldCheck, Wrench } from 'lucide-react';
 import api from '@/services/api';
+
+const CONTAS_DEMO = [
+  { rotulo: 'Solicitante', email: 'demo.solicitante@servicofacil.com', icone: <User size={16} />, cor: '#3b82f6' },
+  { rotulo: 'Prestador (Elétrica)', email: 'demo.prestador.eletrica@servicofacil.com', icone: <Briefcase size={16} />, cor: '#10b981' },
+  { rotulo: 'Prestador (Encanamento)', email: 'demo.prestador.encanamento@servicofacil.com', icone: <Wrench size={16} />, cor: '#10b981' },
+  { rotulo: 'Admin', email: 'demo.admin@servicofacil.com', icone: <ShieldCheck size={16} />, cor: '#8b5cf6' },
+];
+const SENHA_DEMO = 'Demo@123';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,6 +38,7 @@ export default function LoginPage() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -36,41 +47,41 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function efetuarLogin(email: string, senha: string) {
     setErrorMsg(null);
     setSuccessMsg(null);
-
-    if (!formData.email || !formData.senha) {
-      setErrorMsg('Por favor, preencha o e-mail e a senha.');
-      return;
-    }
-
-    setLoading(true);
-
     try {
-      const response = await api.post('/auth/login', {
-        email: formData.email,
-        senha: formData.senha,
-      });
-
+      const response = await api.post('/auth/login', { email, senha });
       const { token, usuario } = response.data.data;
 
       localStorage.setItem('@ServicoFacil:token', token);
       localStorage.setItem('@ServicoFacil:user', JSON.stringify(usuario));
 
       setSuccessMsg(`Bem-vindo(a) de volta, ${usuario.nome}! Redirecionando...`);
-
-      setTimeout(() => {
-        router.push('/');
-      }, 1500);
+      setTimeout(() => router.push('/'), 1200);
+      return true;
     } catch (err: any) {
-      const apiError = err.response?.data?.message || 'E-mail ou senha incorretos. Tente novamente.';
-      setErrorMsg(apiError);
-    } finally {
-      setLoading(false);
+      setErrorMsg(err.response?.data?.message || 'E-mail ou senha incorretos. Tente novamente.');
+      return false;
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.email || !formData.senha) {
+      setErrorMsg('Por favor, preencha o e-mail e a senha.');
+      return;
+    }
+    setLoading(true);
+    await efetuarLogin(formData.email, formData.senha);
+    setLoading(false);
   };
+
+  async function loginRapido(email: string) {
+    setLoadingDemo(email);
+    await efetuarLogin(email, SENHA_DEMO);
+    setLoadingDemo(null);
+  }
 
   return (
     <main style={{ maxWidth: '650px', margin: '2rem auto', padding: '0 1.5rem' }}>
@@ -90,7 +101,7 @@ export default function LoginPage() {
         background: 'var(--card-bg)',
         border: '1px solid var(--card-border)',
         borderRadius: 'var(--border-radius)',
-        padding: '2.5rem 2rem',
+        padding: 'clamp(1.25rem, 6vw, 2.5rem) clamp(1rem, 5vw, 2rem)',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -150,6 +161,37 @@ export default function LoginPage() {
             <span>{successMsg}</span>
           </div>
         )}
+
+        {/* ── Login rápido (contas de demonstração) ─────────── */}
+        <div style={{
+          background: '#0f172a', border: '1px solid #334155', borderRadius: '10px',
+          padding: '1rem 1.1rem', marginBottom: '1.75rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}>
+            <Zap size={14} color="#fbbf24" />
+            <strong style={{ fontSize: '0.82rem' }}>Login rápido</strong>
+            <span style={{ color: '#64748b', fontSize: '0.78rem' }}>— contas de demonstração, para testes</span>
+          </div>
+          <div className="grid-2-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            {CONTAS_DEMO.map((conta) => (
+              <button
+                key={conta.email}
+                type="button"
+                onClick={() => loginRapido(conta.email)}
+                disabled={loadingDemo !== null || loading}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.4rem',
+                  padding: '0.55rem 0.7rem', background: '#1e293b', border: `1px solid ${conta.cor}55`,
+                  borderRadius: '8px', color: conta.cor, fontSize: '0.8rem', fontWeight: 600,
+                  cursor: loadingDemo !== null || loading ? 'not-allowed' : 'pointer',
+                  opacity: loadingDemo && loadingDemo !== conta.email ? 0.5 : 1,
+                }}
+              >
+                {conta.icone} {loadingDemo === conta.email ? 'Entrando...' : conta.rotulo}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* E-mail */}

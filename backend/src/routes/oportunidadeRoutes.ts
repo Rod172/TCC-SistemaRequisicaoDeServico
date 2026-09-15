@@ -25,4 +25,10 @@ oportunidadeRoutes.get('/oportunidades/:id', optionalAuthMiddleware, (req, res) 
 // POST /api/v1/prestador/oportunidades/:id/propostas — Envio de proposta, exige login (US10)
 oportunidadeRoutes.post('/oportunidades/:id/propostas', authMiddleware, (req, res) => oportunidadeController.enviarProposta(req, res));
 
+// GET /api/v1/prestador/propostas — Painel "Minhas Propostas Enviadas", exige login (US28)
+oportunidadeRoutes.get('/propostas', authMiddleware, (req, res) => oportunidadeController.listarMinhasPropostas(req, res));
+
+// PATCH /api/v1/prestador/oportunidades/:id/desistir — Desistência do prestador contratado (US31)
+oportunidadeRoutes.patch('/oportunidades/:id/desistir', authMiddleware, (req, res) => oportunidadeController.desistirContratacao(req, res));
+
 export default oportunidadeRoutes;

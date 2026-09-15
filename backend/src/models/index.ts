@@ -12,6 +12,13 @@ import PrestadorPerfil from './PrestadorPerfil';
 import Solicitacao from './Solicitacao';
 import Proposta from './Proposta';
 import AnexoSolicitacao from './AnexoSolicitacao';
+import Notificacao from './Notificacao';
+import TransacaoCustodia from './TransacaoCustodia';
+import MensagemChat from './MensagemChat';
+import PerguntaSolicitacao from './PerguntaSolicitacao';
+import PreferenciaNotificacao from './PreferenciaNotificacao';
+import Denuncia from './Denuncia';
+import Avaliacao from './Avaliacao';
 
 // Associação 1:1 entre Usuario e PrestadorPerfil
 Usuario.hasOne(PrestadorPerfil, {
@@ -70,5 +77,176 @@ AnexoSolicitacao.belongsTo(Solicitacao, {
   as: 'solicitacao',
 });
 
-export { Usuario, PrestadorPerfil, Solicitacao, Proposta, AnexoSolicitacao };
-export default { Usuario, PrestadorPerfil, Solicitacao, Proposta, AnexoSolicitacao };
+// Associação 1:N entre Usuario e Notificacao (US07 - aviso de cancelamento aos prestadores)
+Usuario.hasMany(Notificacao, {
+  foreignKey: 'usuario_id',
+  as: 'notificacoes',
+});
+
+Notificacao.belongsTo(Usuario, {
+  foreignKey: 'usuario_id',
+  as: 'usuario',
+});
+
+// Associação 1:1 entre Solicitacao/Proposta e TransacaoCustodia (US13 - retenção simulada em escrow)
+Solicitacao.hasOne(TransacaoCustodia, {
+  foreignKey: 'solicitacao_id',
+  as: 'transacao_custodia',
+});
+
+TransacaoCustodia.belongsTo(Solicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'solicitacao',
+});
+
+Proposta.hasOne(TransacaoCustodia, {
+  foreignKey: 'proposta_id',
+  as: 'transacao_custodia',
+});
+
+TransacaoCustodia.belongsTo(Proposta, {
+  foreignKey: 'proposta_id',
+  as: 'proposta',
+});
+
+// Associação 1:N entre Solicitacao e MensagemChat (US14 - chat privado da contratação)
+Solicitacao.hasMany(MensagemChat, {
+  foreignKey: 'solicitacao_id',
+  as: 'mensagens_chat',
+  onDelete: 'CASCADE',
+});
+
+MensagemChat.belongsTo(Solicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'solicitacao',
+});
+
+// Associação 1:N entre Proposta e MensagemChat (US34 — chat por proposta, não mais só por solicitação,
+// pra permitir vários prestadores concorrentes conversando com o mesmo solicitante em salas separadas).
+Proposta.hasMany(MensagemChat, {
+  foreignKey: 'proposta_id',
+  as: 'mensagens_chat',
+  onDelete: 'CASCADE',
+});
+
+MensagemChat.belongsTo(Proposta, {
+  foreignKey: 'proposta_id',
+  as: 'proposta',
+});
+
+Usuario.hasMany(MensagemChat, {
+  foreignKey: 'emissor_id',
+  as: 'mensagens_enviadas',
+});
+
+MensagemChat.belongsTo(Usuario, {
+  foreignKey: 'emissor_id',
+  as: 'emissor',
+});
+
+// Associação 1:N entre Solicitacao e PerguntaSolicitacao (US29 - Q&A público na oportunidade)
+Solicitacao.hasMany(PerguntaSolicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'perguntas',
+  onDelete: 'CASCADE',
+});
+
+PerguntaSolicitacao.belongsTo(Solicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'solicitacao',
+});
+
+Usuario.hasMany(PerguntaSolicitacao, {
+  foreignKey: 'prestador_id',
+  as: 'perguntas_feitas',
+});
+
+PerguntaSolicitacao.belongsTo(Usuario, {
+  foreignKey: 'prestador_id',
+  as: 'prestador',
+});
+
+// Associação 1:N entre Usuario e PreferenciaNotificacao (US30 - configurações de notificação)
+Usuario.hasMany(PreferenciaNotificacao, {
+  foreignKey: 'usuario_id',
+  as: 'preferencias_notificacao',
+  onDelete: 'CASCADE',
+});
+
+PreferenciaNotificacao.belongsTo(Usuario, {
+  foreignKey: 'usuario_id',
+  as: 'usuario',
+});
+
+// Associações da Denuncia (US32 - moderação)
+Solicitacao.hasMany(Denuncia, {
+  foreignKey: 'solicitacao_id',
+  as: 'denuncias',
+  onDelete: 'CASCADE',
+});
+
+Denuncia.belongsTo(Solicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'solicitacao',
+});
+
+Usuario.hasMany(Denuncia, {
+  foreignKey: 'denunciante_id',
+  as: 'denuncias_feitas',
+});
+
+Denuncia.belongsTo(Usuario, {
+  foreignKey: 'denunciante_id',
+  as: 'denunciante',
+});
+
+// Associações da Avaliacao (US18 - avaliação de satisfação e reputação do prestador)
+Solicitacao.hasOne(Avaliacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'avaliacao',
+  onDelete: 'CASCADE',
+});
+
+Avaliacao.belongsTo(Solicitacao, {
+  foreignKey: 'solicitacao_id',
+  as: 'solicitacao',
+});
+
+Usuario.hasMany(Avaliacao, {
+  foreignKey: 'prestador_id',
+  as: 'avaliacoes_recebidas',
+});
+
+Avaliacao.belongsTo(Usuario, {
+  foreignKey: 'prestador_id',
+  as: 'prestador',
+});
+
+export {
+  Usuario,
+  PrestadorPerfil,
+  Solicitacao,
+  Proposta,
+  AnexoSolicitacao,
+  Notificacao,
+  TransacaoCustodia,
+  MensagemChat,
+  PerguntaSolicitacao,
+  PreferenciaNotificacao,
+  Denuncia,
+  Avaliacao,
+};
+export default {
+  Usuario,
+  PrestadorPerfil,
+  Solicitacao,
+  Proposta,
+  AnexoSolicitacao,
+  Notificacao,
+  TransacaoCustodia,
+  MensagemChat,
+  PerguntaSolicitacao,
+  PreferenciaNotificacao,
+  Denuncia,
+  Avaliacao,
+};

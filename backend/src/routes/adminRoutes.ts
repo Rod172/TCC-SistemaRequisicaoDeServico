@@ -26,4 +26,10 @@ adminRoutes.patch('/usuarios/:id/status', (req, res) => adminController.alterarS
 // GET /api/v1/admin/solicitacoes — Lista todas as solicitações da plataforma
 adminRoutes.get('/solicitacoes', (req, res) => adminController.listarSolicitacoes(req, res));
 
+// GET /api/v1/admin/denuncias — Lista todas as denúncias (US32)
+adminRoutes.get('/denuncias', (req, res) => adminController.listarDenuncias(req, res));
+
+// PATCH /api/v1/admin/denuncias/:id/resolver — Marca uma denúncia como resolvida (US32)
+adminRoutes.patch('/denuncias/:id/resolver', (req, res) => adminController.resolverDenuncia(req, res));
+
 export default adminRoutes;

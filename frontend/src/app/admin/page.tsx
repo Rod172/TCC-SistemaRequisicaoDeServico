@@ -19,11 +19,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ShieldCheck, Users, ClipboardList, Search,
-  UserCheck, UserX, AlertCircle, CheckCircle, LogOut,
+  UserCheck, UserX, AlertCircle, CheckCircle, LogOut, Flag, Check,
 } from 'lucide-react';
 import api from '@/services/api';
+import NotificationBell from '@/components/NotificationBell';
 
-type Aba = 'usuarios' | 'solicitacoes';
+type Aba = 'usuarios' | 'solicitacoes' | 'denuncias';
 
 interface UsuarioAdmin {
   id: string;
@@ -43,6 +44,15 @@ interface SolicitacaoAdmin {
   bairro: string | null;
   created_at: string;
   solicitante: { id: string; nome: string; email: string };
+}
+
+interface DenunciaAdmin {
+  id: string;
+  motivo: string;
+  status: 'PENDENTE' | 'RESOLVIDA';
+  createdAt: string;
+  solicitacao: { id: string; titulo: string; status: string };
+  denunciante: { id: string; nome: string; email: string };
 }
 
 const TIPO_LABEL: Record<string, string> = { SOLICITANTE: 'Solicitante', PRESTADOR: 'Prestador', ADMIN: 'Admin' };
@@ -76,6 +86,9 @@ export default function AdminPage() {
 
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAdmin[]>([]);
   const [filtroStatusSolicitacao, setFiltroStatusSolicitacao] = useState('');
+
+  const [denuncias, setDenuncias] = useState<DenunciaAdmin[]>([]);
+  const [resolvendoId, setResolvendoId] = useState<string | null>(null);
 
   function limparMensagens() {
     setErro('');
@@ -116,6 +129,17 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroStatusSolicitacao]);
 
+  const carregarDenuncias = useCallback(async () => {
+    limparMensagens();
+    try {
+      const response = await api.get('/admin/denuncias');
+      setDenuncias(response.data.data);
+    } catch (err: any) {
+      trataErro(err, 'Não foi possível carregar as denúncias.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem('@ServicoFacil:token');
     if (!token) {
@@ -136,8 +160,30 @@ export default function AdminPage() {
   useEffect(() => {
     if (!autorizado) return;
     if (abaAtiva === 'usuarios') carregarUsuarios();
-    else carregarSolicitacoes();
-  }, [autorizado, abaAtiva, carregarUsuarios, carregarSolicitacoes]);
+    else if (abaAtiva === 'solicitacoes') carregarSolicitacoes();
+    else carregarDenuncias();
+  }, [autorizado, abaAtiva, carregarUsuarios, carregarSolicitacoes, carregarDenuncias]);
+
+  // Busca as denúncias uma vez ao entrar no painel, só pro contador de pendentes na aba já aparecer
+  // certo mesmo antes do admin clicar nela.
+  useEffect(() => {
+    if (autorizado) carregarDenuncias();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autorizado]);
+
+  async function resolverDenuncia(denuncia: DenunciaAdmin) {
+    setResolvendoId(denuncia.id);
+    limparMensagens();
+    try {
+      const response = await api.patch(`/admin/denuncias/${denuncia.id}/resolver`);
+      setSucesso(response.data.mensagem);
+      setDenuncias((atual) => atual.map((d) => (d.id === denuncia.id ? { ...d, status: 'RESOLVIDA' } : d)));
+    } catch (err: any) {
+      trataErro(err, 'Não foi possível resolver a denúncia.');
+    } finally {
+      setResolvendoId(null);
+    }
+  }
 
   async function alterarStatus(usuario: UsuarioAdmin) {
     const acao = usuario.ativo ? 'desativar' : 'ativar';
@@ -168,12 +214,15 @@ export default function AdminPage() {
         <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           <ArrowLeft size={16} /> Voltar para a página inicial
         </Link>
-        <button onClick={() => { localStorage.removeItem('@ServicoFacil:token'); localStorage.removeItem('@ServicoFacil:user'); router.push('/'); }} style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'transparent',
-          border: '1px solid #334155', color: '#94a3b8', borderRadius: '8px', padding: '0.5rem 0.9rem', fontSize: '0.85rem', cursor: 'pointer',
-        }}>
-          <LogOut size={15} /> Sair
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <NotificationBell />
+          <button onClick={() => { localStorage.removeItem('@ServicoFacil:token'); localStorage.removeItem('@ServicoFacil:user'); router.push('/'); }} style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'transparent',
+            border: '1px solid #334155', color: '#94a3b8', borderRadius: '8px', padding: '0.5rem 0.9rem', fontSize: '0.85rem', cursor: 'pointer',
+          }}>
+            <LogOut size={15} /> Sair
+          </button>
+        </div>
       </div>
 
       <header style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -201,17 +250,18 @@ export default function AdminPage() {
       )}
 
       {/* ── Abas ─────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #334155', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #334155', marginBottom: '1.5rem', overflowX: 'auto' }}>
         {([
           { id: 'usuarios', label: 'Usuários', icon: <Users size={16} /> },
           { id: 'solicitacoes', label: 'Solicitações', icon: <ClipboardList size={16} /> },
+          { id: 'denuncias', label: 'Denúncias', icon: <Flag size={16} /> },
         ] as { id: Aba; label: string; icon: React.ReactNode }[]).map((aba) => (
           <button
             key={aba.id}
             onClick={() => { setAbaAtiva(aba.id); limparMensagens(); }}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-              background: 'transparent', border: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
+              background: 'transparent', border: 'none', whiteSpace: 'nowrap',
               borderBottom: abaAtiva === aba.id ? '2px solid #8b5cf6' : '2px solid transparent',
               color: abaAtiva === aba.id ? '#fff' : 'var(--text-secondary)',
               padding: '0.75rem 0.25rem', marginRight: '1.25rem',
@@ -219,6 +269,15 @@ export default function AdminPage() {
             }}
           >
             {aba.icon} {aba.label}
+            {aba.id === 'denuncias' && denuncias.filter((d) => d.status === 'PENDENTE').length > 0 && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                minWidth: '18px', height: '18px', borderRadius: '999px', background: '#ef4444',
+                color: '#fff', fontSize: '0.68rem', fontWeight: 700, padding: '0 4px',
+              }}>
+                {denuncias.filter((d) => d.status === 'PENDENTE').length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -324,10 +383,11 @@ export default function AdminPage() {
             {solicitacoes.map((s) => {
               const cor = STATUS_SOLICITACAO[s.status] || { label: s.status, bg: '#1e293b', fg: '#94a3b8' };
               return (
-                <div key={s.id} style={{
+                <Link key={s.id} href={`/minhas-solicitacoes/${s.id}`} style={{
                   background: 'var(--card-bg)', border: '1px solid var(--card-border)',
                   borderRadius: 'var(--border-radius)', padding: '1.1rem 1.25rem',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem',
+                  textDecoration: 'none', color: 'inherit', cursor: 'pointer',
                 }}>
                   <div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
@@ -340,7 +400,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{formatarData(s.created_at)}</span>
-                </div>
+                </Link>
               );
             })}
             {solicitacoes.length === 0 && (
@@ -353,6 +413,60 @@ export default function AdminPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* ── Aba Denúncias ─────────────────────── */}
+      {abaAtiva === 'denuncias' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {denuncias.map((d) => (
+            <div key={d.id} style={{
+              background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+              borderRadius: 'var(--border-radius)', padding: '1.1rem 1.25rem',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem',
+            }}>
+              <div style={{ flex: '1 1 320px' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{
+                    padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600,
+                    background: d.status === 'PENDENTE' ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+                    color: d.status === 'PENDENTE' ? '#f87171' : '#34d399',
+                  }}>
+                    {d.status === 'PENDENTE' ? 'Pendente' : 'Resolvida'}
+                  </span>
+                </div>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#e2e8f0' }}>{d.motivo}</p>
+                <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                  Denunciado por {d.denunciante.nome} ({d.denunciante.email}) · {formatarData(d.createdAt)}
+                </div>
+                <Link href={`/minhas-solicitacoes/${d.solicitacao.id}`} style={{ color: '#60a5fa', fontSize: '0.82rem', textDecoration: 'none' }}>
+                  Ver solicitação: {d.solicitacao.titulo}
+                </Link>
+              </div>
+              {d.status === 'PENDENTE' && (
+                <button
+                  onClick={() => resolverDenuncia(d)}
+                  disabled={resolvendoId === d.id}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                    padding: '0.4rem 0.8rem', borderRadius: '6px', border: 'none',
+                    background: 'rgba(16,185,129,0.15)', color: '#34d399',
+                    fontSize: '0.8rem', fontWeight: 600, cursor: resolvendoId === d.id ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <Check size={14} /> Marcar como resolvida
+                </button>
+              )}
+            </div>
+          ))}
+          {denuncias.length === 0 && (
+            <div style={{
+              textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-secondary)',
+              background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
+            }}>
+              Nenhuma denúncia registrada.
+            </div>
+          )}
+        </div>
       )}
     </main>
   );

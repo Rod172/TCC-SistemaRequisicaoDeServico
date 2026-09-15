@@ -34,4 +34,8 @@ perfilRoutes.put('/senha', (req, res) => perfilController.updateSenha(req, res))
 // DELETE /api/v1/perfil — Soft-delete da conta (conformidade LGPD)
 perfilRoutes.delete('/', (req, res) => perfilController.deletePerfil(req, res));
 
+// GET/PUT /api/v1/perfil/preferencias-notificacao — Configurações de notificação (US30)
+perfilRoutes.get('/preferencias-notificacao', (req, res) => perfilController.getPreferenciasNotificacao(req, res));
+perfilRoutes.put('/preferencias-notificacao', (req, res) => perfilController.putPreferenciasNotificacao(req, res));
+
 export default perfilRoutes;

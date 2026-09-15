@@ -10,6 +10,7 @@
 
 import { Request, Response } from 'express';
 import adminService from '../services/adminService';
+import denunciaService from '../services/denunciaService';
 import HttpError from '../utils/HttpError';
 
 function responderErro(res: Response, err: any) {
@@ -132,6 +133,58 @@ export class AdminController {
     try {
       const solicitacoes = await adminService.listarSolicitacoes({ status: req.query.status as string });
       return res.status(200).json({ data: solicitacoes });
+    } catch (err: any) {
+      return responderErro(res, err);
+    }
+  }
+
+  /**
+   * @openapi
+   * /admin/denuncias:
+   *   get:
+   *     summary: Lista todas as denúncias registradas na plataforma, pendentes primeiro (US32)
+   *     tags:
+   *       - Administração
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Lista de denúncias retornada com sucesso.
+   */
+  async listarDenuncias(req: Request, res: Response): Promise<Response> {
+    try {
+      const denuncias = await denunciaService.listarTodas();
+      return res.status(200).json({ data: denuncias });
+    } catch (err: any) {
+      return responderErro(res, err);
+    }
+  }
+
+  /**
+   * @openapi
+   * /admin/denuncias/{id}/resolver:
+   *   patch:
+   *     summary: Marca uma denúncia como resolvida (US32)
+   *     tags:
+   *       - Administração
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Denúncia marcada como resolvida.
+   *       404:
+   *         description: Denúncia não encontrada.
+   */
+  async resolverDenuncia(req: Request, res: Response): Promise<Response> {
+    try {
+      const resultado = await denunciaService.resolver(req.params.id);
+      return res.status(200).json(resultado);
     } catch (err: any) {
       return responderErro(res, err);
     }

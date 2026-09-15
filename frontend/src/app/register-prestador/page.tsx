@@ -13,6 +13,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Briefcase, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText, Wrench, CheckSquare, Square } from 'lucide-react';
 import api from '@/services/api';
 
@@ -28,6 +29,7 @@ const CATEGORIAS_DISPONIVEIS = [
 ];
 
 export default function RegisterPrestadorPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -97,21 +99,11 @@ export default function RegisterPrestadorPage() {
       };
 
       const response = await api.post('/auth/register/prestador', payload);
-      setSuccessMsg(response.data.message || 'Cadastro de Prestador realizado com sucesso!');
+      setSuccessMsg(`${response.data.message || 'Cadastro de Prestador realizado com sucesso!'} Redirecionando para o login...`);
 
-      // Limpa formulário
-      setFormData({
-        nome: '',
-        email: '',
-        cnpjCpf: '',
-        telefone: '',
-        endereco: '',
-        senha: '',
-        confirmarSenha: '',
-        descricaoBio: '',
-        termoLgpdAceito: false,
-      });
-      setCategoriasSelecionadas([]);
+      setTimeout(() => {
+        router.push('/login');
+      }, 1800);
     } catch (err: any) {
       const apiError = err.response?.data?.message || 'Ocorreu um erro ao cadastrar prestador.';
       setErrorMsg(apiError);
@@ -138,7 +130,7 @@ export default function RegisterPrestadorPage() {
         background: 'var(--card-bg)',
         border: '1px solid var(--card-border)',
         borderRadius: 'var(--border-radius)',
-        padding: '2.5rem 2rem',
+        padding: 'clamp(1.25rem, 6vw, 2.5rem) clamp(1rem, 5vw, 2rem)',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>

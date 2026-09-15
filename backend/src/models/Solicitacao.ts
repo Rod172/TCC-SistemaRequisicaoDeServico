@@ -31,6 +31,8 @@ export interface SolicitacaoAttributes {
   orcamento_cliente?: number | null;
   prazo_desejado_dias?: number | null;
   status: StatusSolicitacao;
+  motivo_cancelamento?: string | null;
+  cancelada_em?: Date | null;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -38,7 +40,15 @@ export interface SolicitacaoAttributes {
 export interface SolicitacaoCreationAttributes
   extends Optional<
     SolicitacaoAttributes,
-    'id' | 'status' | 'categoria' | 'cidade' | 'bairro' | 'orcamento_cliente' | 'prazo_desejado_dias'
+    | 'id'
+    | 'status'
+    | 'categoria'
+    | 'cidade'
+    | 'bairro'
+    | 'orcamento_cliente'
+    | 'prazo_desejado_dias'
+    | 'motivo_cancelamento'
+    | 'cancelada_em'
   > {}
 
 export class Solicitacao extends Model<SolicitacaoAttributes, SolicitacaoCreationAttributes> implements SolicitacaoAttributes {
@@ -52,6 +62,8 @@ export class Solicitacao extends Model<SolicitacaoAttributes, SolicitacaoCreatio
   public orcamento_cliente?: number | null;
   public prazo_desejado_dias?: number | null;
   public status!: StatusSolicitacao;
+  public motivo_cancelamento?: string | null;
+  public cancelada_em?: Date | null;
 
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
@@ -101,6 +113,14 @@ Solicitacao.init(
       type: DataTypes.ENUM(...STATUS_SOLICITACAO),
       allowNull: false,
       defaultValue: 'ABERTA',
+    },
+    motivo_cancelamento: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    cancelada_em: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

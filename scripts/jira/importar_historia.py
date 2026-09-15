@@ -70,7 +70,10 @@ def parsear_historia(codigo_us, texto_historia):
     como_quero_para = re.search(r"\*\*Como\*\*(.+?)\*\*Para que\*\*(.+?)\.", corpo, re.S)
     descricao_narrativa = corpo.split("#### Critérios de Aceite:")[0].strip()
 
-    criterios = re.findall(r"- \[ \] (.+)", corpo)
+    # Captura tanto "- [ ]" (pendente) quanto "- [x]" (concluído) — o estado vai junto pro Jira,
+    # marcado com (Concluído), pra descrição não perder os critérios já implementados.
+    criterios_brutos = re.findall(r"- \[( |x)\] (.+)", corpo)
+    criterios = [f"{texto} (Concluído)" if marca == "x" else texto for marca, texto in criterios_brutos]
     tarefas = re.findall(r"- \*\*(.+?)\*\*: (.+)", corpo)
 
     linha_moscow_m = re.search(rf"\| US{codigo_us[2:]} \|(.+)\|", texto_historia)
@@ -117,7 +120,9 @@ def buscar_epico_existente(creds, titulo_epico):
     GET /rest/api/2/search foi descontinuada pela Atlassian e retorna 410 Gone."""
     jql = f'project = {creds["project_key"]} AND issuetype = Epic AND summary ~ "{titulo_epico}"'
     try:
-        resultado = requisitar(creds, "POST", "/search/jql", {"jql": jql, "maxResults": 1}, versao="3")
+        # "fields" precisa ser pedido explicitamente: sem ele, esse endpoint devolve só {"id": ...},
+        # sem o "key" (diferente do formato do /rest/api/2/search antigo).
+        resultado = requisitar(creds, "POST", "/search/jql", {"jql": jql, "maxResults": 1, "fields": ["summary"]}, versao="3")
     except urllib.error.HTTPError:
         return None
     issues = resultado.get("issues", [])
@@ -134,6 +139,35 @@ def criar_epico(creds, titulo_epico):
     }
     criado = requisitar(creds, "POST", "/issue", corpo)
     return criado["key"]
+
+
+def buscar_historia_existente(creds, codigo_us):
+    """Busca uma História já criada pelo código (ex.: 'US27') no summary.
+
+    Usa o ID numérico do tipo de issue (10004), não o nome "História": este Jira tem DOIS tipos de
+    issue com esse mesmo nome (IDs diferentes, 10004 e 10008) — filtrar por nome deixa a busca
+    ambígua e o Jira retorna vazio silenciosamente, sem erro nenhum."""
+    jql = f'project = {creds["project_key"]} AND issuetype = 10004 AND summary ~ "{codigo_us}"'
+    try:
+        resultado = requisitar(creds, "POST", "/search/jql", {"jql": jql, "maxResults": 1, "fields": ["summary"]}, versao="3")
+    except urllib.error.HTTPError:
+        return None
+    issues = resultado.get("issues", [])
+    return issues[0]["key"] if issues else None
+
+
+def atualizar_historia(creds, issue_key, historia):
+    """Atualiza a descrição (critérios/tarefas) de uma História já existente, sem duplicar issue."""
+    corpo = {"fields": {"description": montar_descricao_jira(historia)}}
+    auth = base64.b64encode(f"{creds['email']}:{creds['api_token']}".encode()).decode()
+    url = f"{creds['base_url']}/rest/api/2/issue/{issue_key}"
+    req = urllib.request.Request(url, data=json.dumps(corpo).encode("utf-8"), method="PUT", headers={
+        "Authorization": f"Basic {auth}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    })
+    with urllib.request.urlopen(req):
+        pass
 
 
 def criar_historia(creds, epico_key, historia):
@@ -156,8 +190,25 @@ def criar_historia(creds, epico_key, historia):
 
 
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == "--atualizar":
+        # Modo atualização: sincroniza a descrição (critérios/tarefas) de Histórias JÁ IMPORTADAS
+        # pro Jira com o estado atual do historia.md, sem criar issue duplicada.
+        if len(sys.argv) < 3:
+            sys.exit("Uso: python3 importar_historia.py --atualizar US27 [US28 ...]")
+        creds = carregar_credenciais()
+        texto_historia = HISTORIA_MD.read_text(encoding="utf-8")
+        for codigo in sys.argv[2:]:
+            issue_key = buscar_historia_existente(creds, codigo)
+            if not issue_key:
+                print(f"  -> {codigo}: não encontrei uma História já importada no Jira, pulei (use o modo normal para criar).")
+                continue
+            historia = parsear_historia(codigo, texto_historia)
+            atualizar_historia(creds, issue_key, historia)
+            print(f"  -> [{issue_key}] {historia['codigo']} - {historia['titulo']}: descrição atualizada.")
+        return
+
     if len(sys.argv) < 3:
-        sys.exit('Uso: python3 importar_historia.py "Título do Épico" US27 [US28 ...]')
+        sys.exit('Uso: python3 importar_historia.py "Título do Épico" US27 [US28 ...]\n   ou: python3 importar_historia.py --atualizar US27 [US28 ...]')
 
     titulo_epico = sys.argv[1]
     codigos_us = sys.argv[2:]

@@ -104,9 +104,11 @@ export class OportunidadeController {
    *         description: Oportunidade aberta não encontrada.
    */
   async buscarOportunidade(req: Request, res: Response): Promise<Response | void> {
-    // Detalhe também é público — só "minha proposta"/"posso propor" dependem de estar logado.
+    // Detalhe também é público — só "minha proposta"/"posso propor" dependem de estar logado E de
+    // ser Prestador/Admin (um Solicitante logado navega igual a um visitante, pra esse efeito).
     try {
-      const dados = await oportunidadeService.buscarOportunidade(req.params.id, req.user?.id ?? null);
+      const souPrestador = !!req.user && ['PRESTADOR', 'ADMIN'].includes(req.user.tipo_perfil);
+      const dados = await oportunidadeService.buscarOportunidade(req.params.id, souPrestador ? req.user!.id : null);
       return res.status(200).json({ dados });
     } catch (err: any) {
       return responderErro(res, err);
@@ -160,6 +162,81 @@ export class OportunidadeController {
         mensagem: String(req.body.mensagem || ''),
       });
       return res.status(201).json(resultado);
+    } catch (err: any) {
+      return responderErro(res, err);
+    }
+  }
+
+  /**
+   * @openapi
+   * /prestador/propostas:
+   *   get:
+   *     summary: Lista todas as propostas enviadas pelo prestador autenticado (US28)
+   *     tags:
+   *       - Oportunidades (Prestador)
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *           enum: [ENVIADA, EM_ANALISE, ACEITA, RECUSADA]
+   *     responses:
+   *       200:
+   *         description: Propostas retornadas com sucesso.
+   *       403:
+   *         description: Apenas prestadores podem acessar este recurso.
+   */
+  async listarMinhasPropostas(req: Request, res: Response): Promise<Response | void> {
+    if (!exigirPrestador(req, res)) return;
+    try {
+      const dados = await oportunidadeService.listarMinhasPropostas(req.user!.id, req.query.status as string);
+      return res.status(200).json({ dados });
+    } catch (err: any) {
+      return responderErro(res, err);
+    }
+  }
+
+  /**
+   * @openapi
+   * /prestador/oportunidades/{id}/desistir:
+   *   patch:
+   *     summary: O prestador contratado desiste de uma solicitação já contratada (US31)
+   *     tags:
+   *       - Oportunidades (Prestador)
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - motivo
+   *             properties:
+   *               motivo:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Desistência registrada com sucesso.
+   *       403:
+   *         description: Você não é o prestador contratado desta solicitação.
+   *       409:
+   *         description: A solicitação não está contratada no momento.
+   */
+  async desistirContratacao(req: Request, res: Response): Promise<Response | void> {
+    if (!exigirPrestador(req, res)) return;
+    try {
+      const resultado = await oportunidadeService.desistirContratacao(req.params.id, req.user!.id, req.body.motivo);
+      return res.status(200).json(resultado);
     } catch (err: any) {
       return responderErro(res, err);
     }

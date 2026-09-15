@@ -14,6 +14,8 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
 import { Usuario, PrestadorPerfil } from '../models';
+import preferenciaNotificacaoService from '../services/preferenciaNotificacaoService';
+import HttpError from '../utils/HttpError';
 
 export class PerfilController {
 
@@ -259,6 +261,72 @@ export class PerfilController {
         message: 'Sua conta foi desativada com sucesso. Seus dados serão anonimizados em até 30 dias conforme a LGPD (Lei nº 13.709/2018).',
       });
     } catch (err: any) {
+      return res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    }
+  }
+
+  /**
+   * @openapi
+   * /perfil/preferencias-notificacao:
+   *   get:
+   *     summary: Lista as preferências de notificação do usuário autenticado, por tipo de evento (US30)
+   *     tags:
+   *       - Perfil
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Preferências retornadas com sucesso.
+   */
+  async getPreferenciasNotificacao(req: Request, res: Response): Promise<Response> {
+    try {
+      const dados = await preferenciaNotificacaoService.listarMinhas(req.user!.id);
+      return res.status(200).json({ data: dados });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    }
+  }
+
+  /**
+   * @openapi
+   * /perfil/preferencias-notificacao:
+   *   put:
+   *     summary: Atualiza as preferências de notificação do usuário autenticado (US30)
+   *     tags:
+   *       - Perfil
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - preferencias
+   *             properties:
+   *               preferencias:
+   *                 type: array
+   *                 items:
+   *                   type: object
+   *                   properties:
+   *                     tipo_evento:
+   *                       type: string
+   *                       enum: [NOVA_PROPOSTA, PROPOSTA_ACEITA_RECUSADA, NOVA_MENSAGEM_CHAT, SOLICITACAO_CANCELADA]
+   *                     ativo:
+   *                       type: boolean
+   *     responses:
+   *       200:
+   *         description: Preferências atualizadas com sucesso.
+   */
+  async putPreferenciasNotificacao(req: Request, res: Response): Promise<Response> {
+    try {
+      const dados = await preferenciaNotificacaoService.atualizar(req.user!.id, req.body.preferencias || []);
+      return res.status(200).json({ data: dados });
+    } catch (err: any) {
+      if (err instanceof HttpError) {
+        return res.status(err.status).json({ error: err.name, message: err.message });
+      }
       return res.status(500).json({ error: 'Internal Server Error', message: err.message });
     }
   }

@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   User, Phone, MapPin, Camera, Lock, ShieldAlert, CheckCircle,
-  AlertCircle, ArrowLeft, LogOut, Save, Trash2, KeyRound,
+  AlertCircle, ArrowLeft, LogOut, Save, Trash2, KeyRound, Settings,
 } from 'lucide-react';
 import api from '@/services/api';
 
@@ -232,8 +232,8 @@ export default function PerfilPage() {
       {/* ── Cabeçalho com Avatar ─────────────────────────── */}
       <div style={{
         background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-        borderRadius: 'var(--border-radius)', padding: '2rem',
-        display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem',
+        borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
+        display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap',
       }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
@@ -290,6 +290,11 @@ export default function PerfilPage() {
           }}>
             {perfil?.tipo_perfil === 'PRESTADOR' ? 'Prestador de Serviço' : perfil?.tipo_perfil === 'ADMIN' ? 'Administrador' : 'Solicitante'}
           </span>
+          <div>
+            <Link href="/configuracoes" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '0.6rem', color: '#60a5fa', fontSize: '0.8rem', textDecoration: 'none' }}>
+              <Settings size={13} /> Configurações de notificação
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -316,7 +321,7 @@ export default function PerfilPage() {
       )}
 
       {/* ── Abas ─────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #334155', marginBottom: '1.75rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #334155', marginBottom: '1.75rem', overflowX: 'auto' }}>
         {([
           { id: 'dados', label: 'Dados Pessoais', icon: <User size={16} /> },
           { id: 'senha', label: 'Alterar Senha', icon: <KeyRound size={16} /> },
@@ -326,8 +331,8 @@ export default function PerfilPage() {
             key={aba.id}
             onClick={() => { setAbaAtiva(aba.id); limparMensagens(); }}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-              background: 'transparent', border: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
+              background: 'transparent', border: 'none', whiteSpace: 'nowrap',
               borderBottom: abaAtiva === aba.id ? '2px solid #8b5cf6' : '2px solid transparent',
               color: abaAtiva === aba.id ? '#fff' : 'var(--text-secondary)',
               padding: '0.75rem 0.25rem', marginRight: '1.25rem',
@@ -343,7 +348,7 @@ export default function PerfilPage() {
       {abaAtiva === 'dados' && (
         <form onSubmit={handleSalvarDados} style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 'var(--border-radius)', padding: '2rem',
+          borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
           display: 'flex', flexDirection: 'column', gap: '1.25rem',
         }}>
           <Campo label="Nome completo" icon={<User size={18} />}>
@@ -386,7 +391,7 @@ export default function PerfilPage() {
       {abaAtiva === 'senha' && (
         <form onSubmit={handleAlterarSenha} style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 'var(--border-radius)', padding: '2rem',
+          borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
           display: 'flex', flexDirection: 'column', gap: '1.25rem',
         }}>
           <Campo label="Senha atual" icon={<Lock size={18} />}>
@@ -431,7 +436,7 @@ export default function PerfilPage() {
       {abaAtiva === 'privacidade' && (
         <div style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 'var(--border-radius)', padding: '2rem',
+          borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
         }}>
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <ShieldAlert size={22} color="#f87171" style={{ flexShrink: 0, marginTop: '2px' }} />

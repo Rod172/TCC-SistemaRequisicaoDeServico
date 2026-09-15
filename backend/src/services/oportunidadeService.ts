@@ -1,7 +1,7 @@
 /**
  * @file oportunidadeService.ts
  * @description Serviço de regras de negócio do feed de oportunidades do prestador (US08), visualização
- * detalhada (US09) e envio de proposta (US10).
+ * detalhada (US09) e envio de proposta (US10) — que também notifica o solicitante (US16).
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Sequelize ORM (^6.37.3): Consultas relacionais, `GROUP BY` e transações com lock de linha.
@@ -10,8 +10,10 @@
 
 import { Op } from 'sequelize';
 import sequelize from '../config/database';
-import { Solicitacao, Proposta, Usuario, AnexoSolicitacao } from '../models';
+import { Solicitacao, Proposta, Usuario, AnexoSolicitacao, Notificacao, PerguntaSolicitacao } from '../models';
 import HttpError from '../utils/HttpError';
+import { emitirParaUsuario } from '../sockets/chatSocket';
+import preferenciaNotificacaoService from './preferenciaNotificacaoService';
 
 export interface ListarOportunidadesFiltros {
   busca?: string;
@@ -98,11 +100,18 @@ export class OportunidadeService {
       where: { id: oportunidadeId },
       attributes: [
         'id', 'titulo', 'categoria', 'cidade', 'bairro', 'descricao',
-        'orcamento_cliente', 'prazo_desejado_dias', 'status', 'created_at',
+        'orcamento_cliente', 'prazo_desejado_dias', 'status', 'motivo_cancelamento', 'created_at',
       ],
       include: [
         { model: Usuario, as: 'solicitante', attributes: ['id', 'nome', 'foto_url'] },
         { model: AnexoSolicitacao, as: 'anexos', attributes: ['id', 'url_arquivo', 'nome_original'] },
+        {
+          model: PerguntaSolicitacao,
+          as: 'perguntas',
+          include: [{ model: Usuario, as: 'prestador', attributes: ['id', 'nome', 'foto_url'] }],
+          separate: true,
+          order: [['created_at', 'ASC']],
+        },
       ],
     });
 
@@ -119,15 +128,20 @@ export class OportunidadeService {
 
     return {
       ...oportunidade.get({ plain: true }),
-      pode_enviar_proposta: !!prestadorId && !minhaProposta && oportunidade.status === 'ABERTA',
+      // Precisa bater com o filtro de `enviarProposta` (ABERTA/EM_NEGOCIACAO) — senão a tela nega uma
+      // ação que o backend aceitaria de verdade.
+      pode_enviar_proposta: !!prestadorId && !minhaProposta && ['ABERTA', 'EM_NEGOCIACAO'].includes(oportunidade.status),
       minha_proposta: minhaProposta ? minhaProposta.get({ plain: true }) : null,
     };
   }
 
   /**
-   * Envia a proposta do prestador para uma oportunidade aberta (US10). Bloqueia o envio se a
-   * solicitação não estiver mais aberta ou se o prestador já tiver uma proposta ativa para ela,
-   * e move a solicitação para `EM_NEGOCIACAO` quando ainda estava `ABERTA`.
+   * Envia a proposta do prestador para uma oportunidade aberta OU em negociação (US10). Aceita
+   * propostas em `ABERTA` e `EM_NEGOCIACAO` — permite que vários prestadores comparem e disputem a
+   * mesma solicitação (necessário pra US11, Comparação de Propostas, fazer sentido); só bloqueia
+   * quando ela já foi `CONTRATADA`, `CONCLUIDA` ou `CANCELADA`. Bloqueia também se o prestador já
+   * tiver uma proposta ativa para ela, e move a solicitação para `EM_NEGOCIACAO` quando ainda estava
+   * `ABERTA` (idempotente se já estiver `EM_NEGOCIACAO`).
    */
   async enviarProposta(oportunidadeId: string, prestadorId: string, dados: EnviarPropostaDTO) {
     const { valor, prazo_dias, mensagem } = dados;
@@ -145,13 +159,13 @@ export class OportunidadeService {
     return sequelize.transaction(async (transaction) => {
       // Lock de linha: evita que duas propostas do mesmo prestador entrem na corrida em requisições simultâneas.
       const oportunidade = await Solicitacao.findOne({
-        where: { id: oportunidadeId, status: 'ABERTA' },
+        where: { id: oportunidadeId, status: { [Op.in]: ['ABERTA', 'EM_NEGOCIACAO'] } },
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
 
       if (!oportunidade) {
-        throw new HttpError(409, 'A oportunidade não está mais aberta para propostas.');
+        throw new HttpError(409, 'A oportunidade não aceita mais propostas (já foi contratada, concluída ou cancelada).');
       }
 
       const propostaExistente = await Proposta.findOne({
@@ -177,7 +191,94 @@ export class OportunidadeService {
 
       await oportunidade.update({ status: 'EM_NEGOCIACAO' }, { transaction });
 
+      const prestador = await Usuario.findByPk(prestadorId, { attributes: ['nome'], transaction });
+      if (await preferenciaNotificacaoService.estaAtivado(oportunidade.solicitante_id, 'NOVA_PROPOSTA')) {
+        const notificacao = await Notificacao.create(
+          {
+            usuario_id: oportunidade.solicitante_id,
+            titulo: 'Nova proposta recebida',
+            mensagem: `${prestador?.nome || 'Um prestador'} enviou uma proposta para "${oportunidade.titulo}".`,
+            link_redirecionamento: `/minhas-solicitacoes/${oportunidadeId}`,
+          },
+          { transaction }
+        );
+        emitirParaUsuario(oportunidade.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true }));
+      }
+
       return { mensagem: 'Proposta enviada ao cliente com sucesso.', dados: proposta.get({ plain: true }) };
+    });
+  }
+
+  /**
+   * Lista todas as propostas enviadas pelo prestador autenticado, com o título/status da solicitação
+   * correspondente (US28), mais recentes primeiro.
+   */
+  async listarMinhasPropostas(prestadorId: string, statusFiltro?: string) {
+    const status = (statusFiltro || '').trim().toUpperCase();
+    const where: Record<string, unknown> = { prestador_id: prestadorId };
+    if (status) {
+      if (!['ENVIADA', 'EM_ANALISE', 'ACEITA', 'RECUSADA'].includes(status)) {
+        throw new HttpError(400, 'Status inválido. Valores aceitos: ENVIADA, EM_ANALISE, ACEITA, RECUSADA.');
+      }
+      where.status = status;
+    }
+
+    const propostas = await Proposta.findAll({
+      where,
+      attributes: ['id', 'valor', 'prazo_dias', 'status', 'created_at'],
+      include: [{ model: Solicitacao, as: 'solicitacao', attributes: ['id', 'titulo', 'status'] }],
+      order: [['created_at', 'DESC']],
+    });
+
+    return propostas.map((p) => p.get({ plain: true }));
+  }
+
+  /**
+   * O prestador contratado desiste de uma solicitação já `CONTRATADA` (US31) — a proposta dele vira
+   * `RECUSADA` (não pode reenviar, a regra de "1 proposta ativa por prestador" da US10 já cobre isso)
+   * e a solicitação volta para `EM_NEGOCIACAO`, reabrindo para novas propostas de outros prestadores.
+   */
+  async desistirContratacao(solicitacaoId: string, prestadorId: string, motivo: string) {
+    const motivoTratado = (motivo || '').trim();
+    if (motivoTratado.length < 5) {
+      throw new HttpError(400, 'Informe um motivo com pelo menos 5 caracteres.');
+    }
+
+    return sequelize.transaction(async (transaction) => {
+      const solicitacao = await Solicitacao.findOne({
+        where: { id: solicitacaoId, status: 'CONTRATADA' },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!solicitacao) {
+        throw new HttpError(409, 'Esta solicitação não está contratada no momento (ou já mudou de status).');
+      }
+
+      const proposta = await Proposta.findOne({
+        where: { solicitacao_id: solicitacaoId, prestador_id: prestadorId, status: 'ACEITA' },
+        transaction,
+      });
+      if (!proposta) {
+        throw new HttpError(403, 'Você não é o prestador contratado desta solicitação.');
+      }
+
+      await proposta.update({ status: 'RECUSADA' }, { transaction });
+      await solicitacao.update({ status: 'EM_NEGOCIACAO' }, { transaction });
+
+      if (await preferenciaNotificacaoService.estaAtivado(solicitacao.solicitante_id, 'PROPOSTA_ACEITA_RECUSADA')) {
+        const notificacao = await Notificacao.create(
+          {
+            usuario_id: solicitacao.solicitante_id,
+            titulo: 'Prestador desistiu da contratação',
+            mensagem: `O prestador contratado para "${solicitacao.titulo}" desistiu. Motivo: ${motivoTratado}. A solicitação está aberta a novas propostas novamente.`,
+            link_redirecionamento: `/minhas-solicitacoes/${solicitacaoId}`,
+          },
+          { transaction }
+        );
+        emitirParaUsuario(solicitacao.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true }));
+      }
+
+      return { mensagem: 'Desistência registrada. O cliente foi notificado e a solicitação está aberta a novas propostas.' };
     });
   }
 }

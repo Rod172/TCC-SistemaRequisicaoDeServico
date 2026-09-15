@@ -24,6 +24,11 @@ import perfilRoutes from './routes/perfilRoutes';
 import solicitacaoRoutes from './routes/solicitacaoRoutes';
 import oportunidadeRoutes from './routes/oportunidadeRoutes';
 import adminRoutes from './routes/adminRoutes';
+import chatRoutes from './routes/chatRoutes';
+import notificacaoRoutes from './routes/notificacaoRoutes';
+import perguntaRoutes from './routes/perguntaRoutes';
+import denunciaRoutes from './routes/denunciaRoutes';
+import avaliacaoRoutes from './routes/avaliacaoRoutes';
 
 const app = express();
 
@@ -85,8 +90,13 @@ app.get('/api/v1/health', (req: Request, res: Response) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/perfil', perfilRoutes);
 app.use('/api/v1/solicitacoes', solicitacaoRoutes);
+app.use('/api/v1/propostas', chatRoutes);
+app.use('/api/v1/solicitacoes', perguntaRoutes);
+app.use('/api/v1/solicitacoes', denunciaRoutes);
+app.use('/api/v1/solicitacoes', avaliacaoRoutes);
 app.use('/api/v1/prestador', oportunidadeRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/notificacoes', notificacaoRoutes);
 
 // Middleware Global de Tratamento de Erros
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

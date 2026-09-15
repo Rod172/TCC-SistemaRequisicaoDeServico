@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Search, Inbox, AlertCircle, MapPin, ChevronRight, X } from 'lucide-react';
 import api from '@/services/api';
+import NotificationBell from '@/components/NotificationBell';
 
 interface Oportunidade {
   id: string;
@@ -59,6 +60,11 @@ export default function FeedOportunidadesPage() {
   const [locais, setLocais] = useState<Local[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [logado, setLogado] = useState(false);
+
+  useEffect(() => {
+    setLogado(!!localStorage.getItem('@ServicoFacil:token'));
+  }, []);
 
   // O feed é público (como um classificado): não exige login pra visualizar, só pra enviar proposta.
   useEffect(() => {
@@ -121,9 +127,12 @@ export default function FeedOportunidadesPage() {
 
   return (
     <main style={{ maxWidth: '960px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
-      <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-        <ArrowLeft size={16} /> Voltar para a página inicial
-      </Link>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          <ArrowLeft size={16} /> Voltar para a página inicial
+        </Link>
+        {logado && <NotificationBell />}
+      </div>
 
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
