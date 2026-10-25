@@ -52,6 +52,10 @@ function formatarData(iso: string) {
 }
 
 export default function MinhasSolicitacoesPage() {
+  return <React.Suspense fallback={<main role="status" style={{ padding: '2rem' }}>Carregando solicitações…</main>}><ConteudoMinhasSolicitacoes /></React.Suspense>;
+}
+
+function ConteudoMinhasSolicitacoes() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const buscaInicial = searchParams.get('busca') || '';

@@ -2,6 +2,9 @@
 
 > **Alinhamento com o TCC**: Esta especificação foi revisada e ajustada para refletir **100% do escopo do TCC** definido em `TCC.md` (Plataforma Bilateral de Intermediação de Serviços sob Demanda entre Solicitantes e Prestadores), utilizando a stack **Node.js (API REST com Sequelize)**, **React**, **MySQL**, **JWT** e **bcrypt**.
 
+
+> **Conferência de implementação — 25/10/2026:** os critérios foram confrontados com o código e os complementos foram implementados nas próprias histórias existentes. US19/US20/US21 receberam telas e endpoints; US01/US02 validação de documentos e foto no cadastro; US05 etapas de publicação; US10 validade comercial; US13 carteira simulada derivada da custódia; US22 proteção de login e validação de conta ativa; US24 contratos OpenAPI; US25 dados de demonstração; US26 testes reais com MySQL isolado. Os critérios e a numeração existentes foram preservados. Evidências e limites da verificação estão em `LOG_DESENVOLVIMENTO.md` e `STATUS_HISTORIAS.md`.
+
 ---
 
 ## 📌 Sumário de Épicos
@@ -28,11 +31,11 @@
 **Para que** eu possa publicar solicitações de serviços e receber propostas de prestadores.
 
 #### Critérios de Aceite:
-- [ ] Formulário deve coletar: Nome Completo, E-mail, CPF, Telefone/WhatsApp, Endereço e Senha.
-- [ ] O e-mail e o CPF devem ser únicos no banco de dados.
-- [ ] A senha deve ser criptografada com **bcrypt** (salt rounds mínimo 10).
-- [ ] Atribuição automática do perfil `SOLICITANTE`.
-- [ ] Termo de consentimento explícito para tratamento de dados (conformidade LGPD).
+- [x] Formulário deve coletar: Nome Completo, E-mail, CPF, Telefone/WhatsApp, Endereço e Senha.
+- [x] O e-mail e o CPF devem ser únicos no banco de dados.
+- [x] A senha deve ser criptografada com **bcrypt** (salt rounds mínimo 10).
+- [x] Atribuição automática do perfil `SOLICITANTE`.
+- [x] Termo de consentimento explícito para tratamento de dados (conformidade LGPD).
 
 #### Tarefas Técnicas:
 - **BD**: Tabela `usuarios` (`id`, `nome`, `email`, `cpf`, `telefone`, `endereco`, `senha_hash`, `tipo_perfil`, `ativo`, `criado_em`).
@@ -48,9 +51,9 @@
 **Para que** eu possa visualizar solicitações e enviar propostas a potenciais clientes.
 
 #### Critérios de Aceite:
-- [ ] Formulário deve coletar: Nome/Razão Social, E-mail, CPF/CNPJ, Telefone, Categorias de Atuação, Descrição Profissional e Foto de Perfil.
-- [ ] Atribuição do perfil `PRESTADOR`.
-- [ ] Armazenamento da senha com **bcrypt**.
+- [x] Formulário deve coletar: Nome/Razão Social, E-mail, CPF/CNPJ, Telefone, Categorias de Atuação, Descrição Profissional e Foto de Perfil.
+- [x] Atribuição do perfil `PRESTADOR`.
+- [x] Armazenamento da senha com **bcrypt**.
 
 #### Tarefas Técnicas:
 - **BD**: Tabela `prestadores_perfil` (`id`, `usuario_id`, `cnpj_cpf`, `descricao_bio`, `categorias_ids`, `nota_media_reputacao`).
@@ -65,9 +68,9 @@
 **Para que** eu possa acessar os recursos protegidos da plataforma.
 
 #### Critérios de Aceite:
-- [ ] Autenticação válida retorna token de acesso **JWT (JSON Web Token)** com payload contendo `id`, `email` e `tipo_perfil`.
-- [ ] O token JWT deve ser incluído no cabeçalho `Authorization: Bearer <token>` nas requisições protegidas.
-- [ ] Tratar erros de credenciais inválidas de forma genérica ("E-mail ou senha incorretos").
+- [x] Autenticação válida retorna token de acesso **JWT (JSON Web Token)** com payload contendo `id`, `email` e `tipo_perfil`.
+- [x] O token JWT deve ser incluído no cabeçalho `Authorization: Bearer <token>` nas requisições protegidas.
+- [x] Tratar erros de credenciais inválidas de forma genérica ("E-mail ou senha incorretos").
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoint `POST /api/v1/auth/login` utilizando a biblioteca `jsonwebtoken` e `bcrypt.compare`.
@@ -82,9 +85,9 @@
 **Para que** minhas informações se mantenham atualizadas e eu exerça meus direitos sob a LGPD.
 
 #### Critérios de Aceite:
-- [ ] Exibição e atualização de Nome, Telefone, Endereço e Foto de Perfil.
-- [ ] Opção de alterar a senha confirmando a senha antiga.
-- [ ] Botão de "Solicitar exclusão da conta/dados" (Soft delete ou anonimização conforme LGPD).
+- [x] Exibição e atualização de Nome, Telefone, Endereço e Foto de Perfil.
+- [x] Opção de alterar a senha confirmando a senha antiga.
+- [x] Botão de "Solicitar exclusão da conta/dados" (Soft delete ou anonimização conforme LGPD).
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoints `GET /api/v1/perfil` e `PUT /api/v1/perfil`.
@@ -100,9 +103,9 @@
 **Para que** prestadores possam visualizar a demanda e me enviar propostas.
 
 #### Critérios de Aceite:
-- [ ] Formulário solicitando: Título, Categoria do Serviço, Descrição detalhada do problema/necessidade, Localização/Bairro, Prazo estimado desejado.
-- [ ] Opção de anexar fotos/documentos do problema (até 5 arquivos, máx 10MB cada).
-- [ ] Status inicial da solicitação definido automaticamente como `ABERTA`.
+- [x] Formulário solicitando: Título, Categoria do Serviço, Descrição detalhada do problema/necessidade, Localização/Bairro, Prazo estimado desejado.
+- [x] Opção de anexar fotos/documentos do problema (até 5 arquivos, máx 10MB cada).
+- [x] Status inicial da solicitação definido automaticamente como `ABERTA`.
 
 #### Tarefas Técnicas:
 - **BD**: Tabela `solicitacoes` (`id`, `solicitante_id`, `categoria_id`, `titulo`, `descricao`, `cidade_bairro`, `status`, `criado_em`).
@@ -119,9 +122,9 @@
 **Para que** eu acompanhe o número de propostas recebidas e o andamento de cada serviço.
 
 #### Critérios de Aceite:
-- [ ] Listagem de solicitações com indicador visual de status: `ABERTA`, `EM_NEGOCIACAO`, `CONTRATADA`, `CONCLUIDA`, `CANCELADA`.
-- [ ] Exibição da quantidade de propostas recebidas por solicitação.
-- [ ] Filtro por status e busca por palavra-chave do título.
+- [x] Listagem de solicitações com indicador visual de status: `ABERTA`, `EM_NEGOCIACAO`, `CONTRATADA`, `CONCLUIDA`, `CANCELADA`.
+- [x] Exibição da quantidade de propostas recebidas por solicitação.
+- [x] Filtro por status e busca por palavra-chave do título.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoint `GET /api/v1/solicitacoes/minhas` (com count de propostas via Sequelize `GROUP BY`).
@@ -169,9 +172,9 @@
 **Para que** eu encontre trabalhos compatíveis com minhas habilidades e região.
 
 #### Critérios de Aceite:
-- [ ] Exibir apenas solicitações com status `ABERTA`.
-- [ ] Filtros por Categoria de Serviço, Cidade/Bairro e ordenação por mais recentes.
-- [ ] Exibição resumida: Título, Categoria, Bairro, Data de publicação e prévia da descrição.
+- [x] Exibir apenas solicitações com status `ABERTA`.
+- [x] Filtros por Categoria de Serviço, Cidade/Bairro e ordenação por mais recentes.
+- [x] Exibição resumida: Título, Categoria, Bairro, Data de publicação e prévia da descrição.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoint `GET /api/v1/prestador/oportunidades` com filtros de busca SQL.
@@ -185,9 +188,9 @@
 **Para que** eu avalie a complexidade, veja fotos do problema e decida se enviarei uma proposta.
 
 #### Critérios de Aceite:
-- [ ] Exibir descrição completa, fotos/anexos e localização aproximada.
-- [ ] Exibir se o prestador logado já enviou proposta para aquela solicitação.
-- [ ] Botão de ação "Enviar Proposta".
+- [x] Exibir descrição completa, fotos/anexos e localização aproximada.
+- [x] Exibir se o prestador logado já enviou proposta para aquela solicitação.
+- [x] Botão de ação "Enviar Proposta".
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoint `GET /api/v1/solicitacoes/:id`.
@@ -220,9 +223,9 @@
 **Para que** o cliente avalie meu orçamento e condições de atendimento.
 
 #### Critérios de Aceite:
-- [ ] Formulário de proposta com: Valor Total (R$), Prazo Estimado de Execução (em dias/horas), Descrição das Condições/Metodologia e Validade da Proposta.
-- [ ] Permitir apenas 1 proposta ativa por prestador para cada solicitação.
-- [ ] O envio altera o status da solicitação para `EM_NEGOCIACAO` (se ainda estiver `ABERTA`).
+- [x] Formulário de proposta com: Valor Total (R$), Prazo Estimado de Execução (em dias/horas), Descrição das Condições/Metodologia e Validade da Proposta.
+- [x] Permitir apenas 1 proposta ativa por prestador para cada solicitação.
+- [x] O envio altera o status da solicitação para `EM_NEGOCIACAO` (se ainda estiver `ABERTA`).
 
 #### Tarefas Técnicas:
 - **BD**: Tabela `propostas` (`id`, `solicitacao_id`, `prestador_id`, `valor`, `prazo_dias`, `descricao`, `status` [PENDENTE/ACEITA/REJEITADA], `criado_em`).
@@ -238,9 +241,9 @@
 **Para que** eu tome a decisão de contratação com base em preço, prazo e reputação do prestador.
 
 #### Critérios de Aceite:
-- [ ] Tabela ou Grid comparativo listando todas as propostas recebidas.
-- [ ] Exibir para cada proposta: Nome e Avatar do Prestador, Nota de Reputação (Estrelas), Valor R$, Prazo estimado e Descrição da Proposta.
-- [ ] Link para visualizar o perfil completo do prestador e avaliações de outros clientes.
+- [x] Tabela ou Grid comparativo listando todas as propostas recebidas.
+- [x] Exibir para cada proposta: Nome e Avatar do Prestador, Nota de Reputação (Estrelas), Valor R$, Prazo estimado e Descrição da Proposta.
+- [x] Link para visualizar o perfil completo do prestador e avaliações de outros clientes.
 - [x] Exibir também a biografia/descrição do prestador e as categorias em que atua, para o solicitante decidir com mais contexto do que só preço e nota.
 
 #### Tarefas Técnicas:
@@ -256,8 +259,8 @@
 **Para que** o acordo de contratação seja formalizado e o serviço seja executado.
 
 #### Critérios de Aceite:
-- [ ] Botão "Aceitar Proposta" na proposta escolhida com confirmação.
-- [ ] Ao aceitar:
+- [x] Botão "Aceitar Proposta" na proposta escolhida com confirmação.
+- [x] Ao aceitar:
   - A proposta escolhida muda para status `ACEITA`.
   - As demais propostas daquela solicitação mudam automaticamente para `REJEITADA`.
   - A solicitação muda o status para `CONTRATADA`.
@@ -277,7 +280,7 @@
 
 #### Critérios de Aceite:
 - [x] Ao aceitar a proposta, simular checkout/pagamento em status `RETIDO_EM_CUSTODIA`.
-- [ ] O valor só é liberado para a carteira do prestador após a confirmação de conclusão do serviço (`US17`). *(depende da US17, ainda não implementada)*
+- [x] O valor só é liberado para a carteira do prestador após a confirmação de conclusão do serviço (`US17`).
 
 #### Tarefas Técnicas:
 - **BD**: Tabela `transacoes_custodia` (`id`, `solicitacao_id`, `proposta_id`, `valor`, `status_pagamento` [RETIDO/LIBERADO/REEMBOLSADO]).
@@ -450,8 +453,8 @@
 **Para que** eu possa verificar sua reputação e histórico de serviços realizados antes de contratá-lo.
 
 #### Critérios de Aceite:
-- [ ] Exibir: Nome, Foto, Biografia/Descrição, Categorias em que atua, Nota Média geral (ex: 4.8 / 5.0) e Total de Serviços Concluídos.
-- [ ] Listagem de comentários e notas deixados por clientes anteriores.
+- [x] Exibir: Nome, Foto, Biografia/Descrição, Categorias em que atua, Nota Média geral (ex: 4.8 / 5.0) e Total de Serviços Concluídos.
+- [x] Listagem de comentários e notas deixados por clientes anteriores.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoint `GET /api/v1/prestadores/:id/perfil-publico`.
@@ -467,7 +470,7 @@
 **Para que** eu gerencie minhas solicitações ativas e serviços contratados.
 
 #### Critérios de Aceite:
-- [ ] Cards numéricos: Serviços Abertos, Propostas Recebidas Pendentes de Análise, Serviços em Andamento e Serviços Concluídos.
+- [x] Cards numéricos: Serviços Abertos, Propostas Recebidas Pendentes de Análise, Serviços em Andamento e Serviços Concluídos.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoint `GET /api/v1/dashboards/solicitante`.
@@ -481,7 +484,7 @@
 **Para que** eu acompanhe minhas vendas e meu índice de aceitação de orçamentos.
 
 #### Critérios de Aceite:
-- [ ] Cards: Propostas Enviadas no Mês, Propostas Aceitas (Serviços Ganhos), Taxa de Conversão %, Nota Atual de Reputação.
+- [x] Cards: Propostas Enviadas no Mês, Propostas Aceitas (Serviços Ganhos), Taxa de Conversão %, Nota Atual de Reputação.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Endpoint `GET /api/v1/dashboards/prestador`.
@@ -497,10 +500,10 @@
 **Para que** a aplicação seja confiável e atenda a boas práticas de segurança.
 
 #### Critérios de Aceite:
-- [ ] Senhas nunca devem ser salvas em texto puro (Uso estrito de **bcrypt**).
-- [ ] Rotas protegidas exigem token **JWT** válido no header.
-- [ ] Proteção contra SQL Injection assegurada pelo uso de consultas parametrizadas do **Sequelize ORM**.
-- [ ] Proteção contra ataques de força bruta no login (Rate limiting via `express-rate-limit`).
+- [x] Senhas nunca devem ser salvas em texto puro (Uso estrito de **bcrypt**).
+- [x] Rotas protegidas exigem token **JWT** válido no header.
+- [x] Proteção contra SQL Injection assegurada pelo uso de consultas parametrizadas do **Sequelize ORM**.
+- [x] Proteção contra ataques de força bruta no login (Rate limiting via `express-rate-limit`).
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Configuração de middlewares de segurança (`helmet`, `cors`, `express-rate-limit`, `jsonwebtoken`).
@@ -513,9 +516,9 @@
 **Para que** eu execute minhas tarefas de forma simples e rápida sem erros.
 
 #### Critérios de Aceite:
-- [ ] Interface 100% responsiva (Mobile-first ou adaptável).
-- [ ] Aplicação das 10 Heurísticas de Nielsen (Visibilidade do status, Prevenção de erros, Consistência).
-- [ ] Feedback visual claro para todas as ações do usuário (Spinners de carregamento, Toast de sucesso/erro).
+- [x] Interface 100% responsiva (Mobile-first ou adaptável).
+- [x] Aplicação das 10 Heurísticas de Nielsen (Visibilidade do status, Prevenção de erros, Consistência).
+- [x] Feedback visual claro para todas as ações do usuário (Spinners de carregamento, Toast de sucesso/erro).
 
 #### Tarefas Técnicas:
 - **Frontend (React)**: Componentização modular, CSS responsivo e sistema de feedback (`react-toastify` / Notificações).
@@ -530,8 +533,8 @@
 **Para que** os endpoints desenvolvidos em Node.js possam ser testados e validados facilmente pela banca.
 
 #### Critérios de Aceite:
-- [ ] Rota `/api-docs` exibindo a interface do Swagger UI.
-- [ ] Mapeamento dos schemas de entrada/saída (DTOs) e respostas de erro HTTP (200, 400, 401, 404, 500).
+- [x] Rota `/api-docs` exibindo a interface do Swagger UI.
+- [x] Mapeamento dos schemas de entrada/saída (DTOs) e respostas de erro HTTP (200, 400, 401, 404, 500).
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Configuração das bibliotecas `swagger-ui-express` e `swagger-jsdoc`.
@@ -544,8 +547,8 @@
 **Para que** a plataforma possa ser demonstrada em funcionamento completo durante a apresentação.
 
 #### Critérios de Aceite:
-- [ ] Arquivos de *Migration* cobrindo todas as tabelas do sistema.
-- [ ] Arquivos de *Seeder* contendo usuários fictícios (clientes e prestadores), solicitações e propostas já enviadas para testes de bancadas.
+- [x] Arquivos de *Migration* cobrindo todas as tabelas do sistema.
+- [x] Arquivos de *Seeder* contendo usuários fictícios (clientes e prestadores), solicitações e propostas já enviadas para testes de bancadas.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Criação de scripts `npm run db:migrate` e `npm run db:seed` via `sequelize-cli`.
@@ -559,8 +562,8 @@
 **Para que** a estabilidade e a qualidade do código sejam garantidas.
 
 #### Critérios de Aceite:
-- [ ] Testes automatizados das rotas críticas (Login, Registro, Abertura de Solicitação e Aceite de Proposta).
-- [ ] Relatório de execução sem falhas.
+- [x] Testes automatizados das rotas críticas (Login, Registro, Abertura de Solicitação e Aceite de Proposta).
+- [x] Relatório de execução sem falhas.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Implementação de testes de integração utilizando **Jest** e **Supertest**.
@@ -575,12 +578,12 @@
 **Para que** eu possa dar suporte, moderar o uso indevido da plataforma e garantir a conformidade com a LGPD.
 
 #### Critérios de Aceite:
-- [ ] Área administrativa acessível apenas pelo perfil `ADMIN` (bloqueio 403 para Solicitante e Prestador).
-- [ ] Listagem de todos os usuários com filtro por tipo de perfil (Solicitante/Prestador/Admin), status (ativo/inativo) e busca por nome ou e-mail.
-- [ ] Ação de ativar/desativar (suspender) a conta de um usuário.
-- [ ] Listagem de todas as solicitações da plataforma, independente do solicitante dono, com filtro por status, para fins de suporte e moderação.
+- [x] Área administrativa acessível apenas pelo perfil `ADMIN` (bloqueio 403 para Solicitante e Prestador).
+- [x] Listagem de todos os usuários com filtro por tipo de perfil (Solicitante/Prestador/Admin), status (ativo/inativo) e busca por nome ou e-mail.
+- [x] Ação de ativar/desativar (suspender) a conta de um usuário.
+- [x] Listagem de todas as solicitações da plataforma, independente do solicitante dono, com filtro por status, para fins de suporte e moderação.
 - [x] A partir da listagem, o admin consegue abrir o detalhe completo de qualquer solicitação (descrição, anexos, propostas recebidas), em modo somente leitura — sem poder agir em nome do solicitante dono (cancelar, aceitar/recusar proposta, simular pagamento continuam bloqueados pra quem não é o dono real). *(adicionado em 13/09/2026, extensão natural do item de listagem acima)*
-- [ ] Cada ação administrativa (ex.: desativar um usuário) registra quem executou e quando.
+- [x] Cada ação administrativa (ex.: desativar um usuário) registra quem executou e quando.
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Rotas protegidas em `/api/v1/admin` (middleware de checagem de `tipo_perfil = ADMIN`): `GET /api/v1/admin/usuarios` (lista/filtra), `PATCH /api/v1/admin/usuarios/:id/status` (ativa/desativa) e `GET /api/v1/admin/solicitacoes` (lista todas, independente de dono). `GET /api/v1/solicitacoes/minhas/:id/propostas` passou a aceitar o `ADMIN` (parâmetro `comoAdmin` no service, ignorando o filtro de dono) para viabilizar o detalhe somente-leitura.

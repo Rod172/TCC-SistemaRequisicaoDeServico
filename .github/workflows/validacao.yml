@@ -1,0 +1,57 @@
+# GitHub Actions: validação automatizada da US26 antes de integrar alterações.
+# Documentação: https://docs.github.com/pt/actions
+# actions/checkout: https://github.com/actions/checkout
+# actions/setup-node: https://github.com/actions/setup-node
+name: Validação da aplicação
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tcc_servico_facil_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_NAME_TEST: tcc_servico_facil_test
+      DB_HOST_TEST: 127.0.0.1
+      DB_PORT_TEST: 3306
+      DB_USER_TEST: root
+      DB_PASSWORD_TEST: root
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Instalar dependências do backend
+        run: npm ci
+        working-directory: backend
+      - name: Testar backend e contratos
+        run: npm test
+        working-directory: backend
+      - name: Instalar dependências do frontend
+        run: npm ci
+        working-directory: frontend
+      - name: Verificar TypeScript do frontend
+        run: npx tsc --noEmit
+        working-directory: frontend
+      - name: Compilar frontend
+        run: npm run build
+        working-directory: frontend

@@ -8,7 +8,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "db:migrate": "npx sequelize-cli db:migrate",
-    "db:seed": "npx sequelize-cli db:seed:all"
+    "db:seed": "npx sequelize-cli db:seed:all",
+    "test": "npm run build && jest --runInBand",
+    "test:unit": "npm run build && jest --selectProjects unitarios --runInBand",
+    "test:integration": "npm run build && jest --selectProjects integracao --runInBand"
   },
   "keywords": [
     "tcc",
@@ -27,6 +30,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "8.7.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.3.0",
@@ -45,7 +49,9 @@
     "@types/node": "^20.12.12",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
+    "jest": "30.5.2",
     "sequelize-cli": "^6.6.2",
+    "supertest": "7.3.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
   }

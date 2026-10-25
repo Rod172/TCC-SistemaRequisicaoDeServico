@@ -8,6 +8,8 @@
  */
 
 import { Request, Response } from 'express';
+// Node.js nativo: remoção de uploads sem cadastro persistido. https://nodejs.org/api/fs.html
+import { unlink } from 'fs/promises';
 import authService from '../services/authService';
 
 export class AuthController {
@@ -81,7 +83,7 @@ export class AuthController {
         telefone,
         endereco,
         senha,
-        termo_lgpd_aceito: Boolean(termo_lgpd_aceito),
+        termo_lgpd_aceito: termo_lgpd_aceito === true,
       });
 
       return res.status(201).json({
@@ -93,7 +95,7 @@ export class AuthController {
       if (errorMessage.includes('já está cadastrado')) {
         return res.status(409).json({ error: 'Conflict', message: errorMessage });
       }
-      if (errorMessage.includes('LGPD')) {
+      if (error.status === 400 || errorMessage.includes('LGPD')) {
         return res.status(400).json({ error: 'Bad Request', message: errorMessage });
       }
 
@@ -155,6 +157,30 @@ export class AuthController {
    *               termo_lgpd_aceito:
    *                 type: boolean
    *                 example: true
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required: [nome, email, cnpj_cpf, telefone, senha, categorias, termo_lgpd_aceito]
+   *             properties:
+   *               nome: { type: string }
+   *               email: { type: string, format: email }
+   *               cnpj_cpf: { type: string }
+   *               telefone: { type: string }
+   *               endereco: { type: string }
+   *               senha: { type: string, format: password }
+   *               descricao_bio: { type: string }
+   *               categorias:
+   *                 type: string
+   *                 description: Array JSON de categorias, serializado como texto.
+   *                 example: '["ELETRICA","REFRIGERACAO"]'
+   *               termo_lgpd_aceito:
+   *                 type: string
+   *                 enum: ['true']
+   *                 description: Consentimento explícito; false e outros valores são rejeitados.
+   *               foto:
+   *                 type: string
+   *                 format: binary
+   *                 description: Foto opcional JPEG, PNG ou WEBP, de até 5 MB.
    *     responses:
    *       201:
    *         description: Prestador cadastrado com sucesso.
@@ -166,8 +192,28 @@ export class AuthController {
    *         description: Erro interno no servidor.
    */
   async registerPrestador(req: Request, res: Response): Promise<Response> {
+    let cadastroConcluido = false;
     try {
       const { nome, email, cnpj_cpf, telefone, endereco, senha, descricao_bio, categorias, termo_lgpd_aceito } = req.body;
+
+      let categoriasTratadas: unknown = categorias;
+      if (req.is('multipart/form-data') && typeof categorias === 'string') {
+        try {
+          categoriasTratadas = JSON.parse(categorias);
+        } catch {
+          return res.status(400).json({ error: 'Bad Request', message: 'O campo categorias deve conter um array JSON válido.' });
+        }
+      }
+      if (!Array.isArray(categoriasTratadas) || categoriasTratadas.length === 0 ||
+          categoriasTratadas.some(categoria => typeof categoria !== 'string' || !categoria.trim())) {
+        return res.status(400).json({ error: 'Bad Request', message: 'Informe ao menos uma categoria de atuação profissional válida.' });
+      }
+      // JSON exige booleano; somente o multipart também aceita a representação textual exata.
+      const consentimentoAceito = termo_lgpd_aceito === true ||
+        (Boolean(req.is('multipart/form-data')) && termo_lgpd_aceito === 'true');
+      if (!consentimentoAceito) {
+        return res.status(400).json({ error: 'Bad Request', message: 'É obrigatório aceitar o termo de consentimento da LGPD para se cadastrar.' });
+      }
 
       if (!nome || !email || !cnpj_cpf || !telefone || !senha) {
         return res.status(400).json({
@@ -176,7 +222,9 @@ export class AuthController {
         });
       }
 
-      const usuario = await authService.registerPrestador({
+      // Contrato de integração: o serviço deve persistir foto_url no Usuario.create da transação.
+      // Nunca aceitar foto_url enviada no corpo; o caminho provém exclusivamente do upload validado.
+      const dadosCadastro = {
         nome,
         email,
         cnpj_cpf,
@@ -184,9 +232,12 @@ export class AuthController {
         endereco,
         senha,
         descricao_bio,
-        categorias,
-        termo_lgpd_aceito: Boolean(termo_lgpd_aceito),
-      });
+        categorias: categoriasTratadas as string[],
+        termo_lgpd_aceito: consentimentoAceito,
+        foto_url: req.file ? `/uploads/perfil/${req.file.filename}` : undefined,
+      };
+      const usuario = await authService.registerPrestador(dadosCadastro);
+      cadastroConcluido = true;
 
       return res.status(201).json({
         message: 'Prestador de serviço cadastrado com sucesso!',
@@ -194,6 +245,9 @@ export class AuthController {
       });
     } catch (error: any) {
       const errorMessage = error.message || 'Erro ao realizar cadastro do prestador.';
+      if (error.status === 400) {
+        return res.status(400).json({ error: 'Bad Request', message: errorMessage });
+      }
       if (errorMessage.includes('já está cadastrado')) {
         return res.status(409).json({ error: 'Conflict', message: errorMessage });
       }
@@ -205,6 +259,16 @@ export class AuthController {
         error: 'Internal Server Error',
         message: errorMessage,
       });
+    } finally {
+      if (!cadastroConcluido && req.file) {
+        try {
+          await unlink(req.file.path);
+        } catch (erroLimpeza: unknown) {
+          if ((erroLimpeza as NodeJS.ErrnoException).code !== 'ENOENT') {
+            console.error('Não foi possível remover a foto de um cadastro de prestador não concluído.');
+          }
+        }
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 /**
  * @file 20260901000001-demo-solicitacoes.js
  * @description Seeder de demonstração para a banca do TCC: cria 1 solicitante, 2 prestadores, 1 admin e
- * solicitações em estágios diferentes (ABERTA com propostas para comparar, EM_NEGOCIACAO com
+ * solicitações em estágios diferentes (EM_NEGOCIACAO com propostas para comparar, EM_NEGOCIACAO com
  * contraproposta e CONTRATADA já aceita), cobrindo US06, US08-US12 sem depender de cadastro manual.
  *
  * BIBLIOTECAS UTILIZADAS:
@@ -36,6 +36,7 @@ module.exports = {
   up: async (queryInterface) => {
     const senhaHash = await bcrypt.hash(SENHA_DEMO, 10);
     const agora = new Date();
+    const validadeAte = new Date(agora.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     await queryInterface.bulkInsert('usuarios', [
       {
@@ -104,8 +105,8 @@ module.exports = {
         cnpj_cpf: '00000000002',
         descricao_bio: 'Eletricista com 10 anos de experiência em instalações residenciais.',
         categorias: JSON.stringify(['Elétrica']),
-        nota_media_reputacao: 4.8,
-        total_avaliacoes: 23,
+        nota_media_reputacao: 0,
+        total_avaliacoes: 0,
         created_at: agora,
         updated_at: agora,
       },
@@ -115,8 +116,8 @@ module.exports = {
         cnpj_cpf: '00000000003',
         descricao_bio: 'Encanadora especializada em reparos hidráulicos residenciais e comerciais.',
         categorias: JSON.stringify(['Encanamento']),
-        nota_media_reputacao: 4.2,
-        total_avaliacoes: 11,
+        nota_media_reputacao: 0,
+        total_avaliacoes: 0,
         created_at: agora,
         updated_at: agora,
       },
@@ -132,7 +133,7 @@ module.exports = {
         cidade: 'São Paulo',
         bairro: 'Pinheiros',
         orcamento_cliente: 300.0,
-        status: 'ABERTA',
+        status: 'EM_NEGOCIACAO',
         created_at: agora,
         updated_at: agora,
       },
@@ -178,7 +179,7 @@ module.exports = {
     ]);
 
     await queryInterface.bulkInsert('propostas', [
-      // Solicitação ABERTA: 2 propostas concorrentes, para demonstrar a comparação (US11).
+      // Solicitação EM_NEGOCIACAO: 2 propostas concorrentes para comparação (US11).
       {
         id: crypto.randomUUID(),
         solicitacao_id: IDS.solicitacaoAberta,
@@ -186,6 +187,7 @@ module.exports = {
         valor: 280.0,
         prazo_dias: 2,
         mensagem: 'Consigo fazer amanhã mesmo, material incluso no valor.',
+        validade_ate: validadeAte,
         status: 'ENVIADA',
         created_at: agora,
         updated_at: agora,
@@ -197,6 +199,7 @@ module.exports = {
         valor: 250.0,
         prazo_dias: 4,
         mensagem: 'Posso fazer na próxima semana, valor sem material.',
+        validade_ate: validadeAte,
         status: 'ENVIADA',
         created_at: agora,
         updated_at: agora,
@@ -209,6 +212,7 @@ module.exports = {
         valor: 320.0,
         prazo_dias: 1,
         mensagem: 'Valor cobre peças e mão de obra, visita em até 24h.',
+        validade_ate: validadeAte,
         status: 'EM_ANALISE',
         valor_contraproposta: 260.0,
         mensagem_contraproposta: 'Consigo pagar até R$260, o serviço é simples.',
@@ -224,6 +228,7 @@ module.exports = {
         valor: 450.0,
         prazo_dias: 3,
         mensagem: 'Revisão completa com laudo técnico incluso.',
+        validade_ate: validadeAte,
         status: 'ACEITA',
         created_at: agora,
         updated_at: agora,
@@ -235,6 +240,7 @@ module.exports = {
         valor: 480.0,
         prazo_dias: 5,
         mensagem: 'Revisão com garantia de 6 meses.',
+        validade_ate: validadeAte,
         status: 'RECUSADA',
         created_at: agora,
         updated_at: agora,

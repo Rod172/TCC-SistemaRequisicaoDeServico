@@ -20,6 +20,7 @@ export interface PropostaAttributes {
   prestador_id: string;
   valor: number;
   prazo_dias: number;
+  validade_ate: Date;
   mensagem: string;
   status: StatusProposta;
   valor_contraproposta?: number | null;
@@ -30,7 +31,7 @@ export interface PropostaAttributes {
 }
 
 export interface PropostaCreationAttributes
-  extends Optional<PropostaAttributes, 'id' | 'status' | 'valor_contraproposta' | 'mensagem_contraproposta' | 'contraproposta_em'> {}
+  extends Optional<PropostaAttributes, 'id' | 'status' | 'validade_ate' | 'valor_contraproposta' | 'mensagem_contraproposta' | 'contraproposta_em'> {}
 
 export class Proposta extends Model<PropostaAttributes, PropostaCreationAttributes> implements PropostaAttributes {
   public id!: string;
@@ -38,6 +39,7 @@ export class Proposta extends Model<PropostaAttributes, PropostaCreationAttribut
   public prestador_id!: string;
   public valor!: number;
   public prazo_dias!: number;
+  public validade_ate!: Date;
   public mensagem!: string;
   public status!: StatusProposta;
   public valor_contraproposta?: number | null;
@@ -72,6 +74,12 @@ Proposta.init(
     prazo_dias: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
+    },
+    validade_ate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      // Compatibilidade com criações pelo modelo que ainda não informem a validade comercial.
+      defaultValue: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
     mensagem: {
       type: DataTypes.TEXT,

@@ -41,6 +41,20 @@ button {
   font-family: inherit;
 }
 
+/* US23: foco visível para navegação por teclado em todas as telas. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ── Responsividade mobile ─────────────────────────────
    O layout do app é feito com estilos inline por componente (não há um design
    system/CSS Modules central), então as regras abaixo cobrem os pontos comuns

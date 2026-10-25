@@ -19,6 +19,7 @@ import PerguntaSolicitacao from './PerguntaSolicitacao';
 import PreferenciaNotificacao from './PreferenciaNotificacao';
 import Denuncia from './Denuncia';
 import Avaliacao from './Avaliacao';
+import RegistroAdministrativo from './RegistroAdministrativo';
 
 // Associação 1:1 entre Usuario e PrestadorPerfil
 Usuario.hasOne(PrestadorPerfil, {
@@ -235,6 +236,7 @@ export {
   PreferenciaNotificacao,
   Denuncia,
   Avaliacao,
+  RegistroAdministrativo,
 };
 export default {
   Usuario,
@@ -249,4 +251,5 @@ export default {
   PreferenciaNotificacao,
   Denuncia,
   Avaliacao,
+  RegistroAdministrativo,
 };

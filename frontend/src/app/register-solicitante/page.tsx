@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText } from 'lucide-react';
 import api from '@/services/api';
+import { normalizarDocumento, validarCPF } from '@/utils/documento';
 
 export default function RegisterSolicitantePage() {
   const router = useRouter();
@@ -47,6 +48,12 @@ export default function RegisterSolicitantePage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    // Impede o envio de CPF inválido antes de iniciar a requisição de cadastro.
+    if (!validarCPF(formData.cpf)) {
+      setErrorMsg('CPF inválido. Confira os 11 dígitos e tente novamente.');
+      return;
+    }
+
     // Validações no cliente
     if (formData.senha !== formData.confirmarSenha) {
       setErrorMsg('As senhas digitadas não coincidem.');
@@ -64,7 +71,7 @@ export default function RegisterSolicitantePage() {
       const payload = {
         nome: formData.nome,
         email: formData.email,
-        cpf: formData.cpf,
+        cpf: normalizarDocumento(formData.cpf),
         telefone: formData.telefone,
         endereco: formData.endereco,
         senha: formData.senha,

@@ -49,6 +49,10 @@ function formatarData(iso: string) {
 }
 
 export default function FeedOportunidadesPage() {
+  return <React.Suspense fallback={<main role="status" style={{ padding: '2rem' }}>Carregando oportunidades…</main>}><ConteudoOportunidades /></React.Suspense>;
+}
+
+function ConteudoOportunidades() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filtrosDaUrl = { ...FILTROS_INICIAIS, busca: searchParams.get('busca') || '' };

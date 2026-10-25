@@ -13,6 +13,7 @@ import { Request } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import HttpError from '../utils/HttpError';
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/chat');
 
@@ -26,7 +27,8 @@ const TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024; // 10 MB
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
-    const extensao = path.extname(file.originalname).toLowerCase();
+    // A extensão acompanha o tipo permitido, não o nome fornecido pelo usuário.
+    const extensao = ({ 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'application/pdf': '.pdf' } as Record<string, string>)[file.mimetype];
     const nomeUnico = `${crypto.randomUUID()}${extensao}`;
     cb(null, nomeUnico);
   },
@@ -34,7 +36,7 @@ const storage = multer.diskStorage({
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   if (!TIPOS_PERMITIDOS.includes(file.mimetype)) {
-    return cb(new Error('Formato de arquivo inválido. Envie imagens (JPEG, PNG, WEBP) ou PDF.'));
+    return cb(new HttpError(400, 'Formato de arquivo inválido. Envie imagens (JPEG, PNG, WEBP) ou PDF.'));
   }
   cb(null, true);
 };

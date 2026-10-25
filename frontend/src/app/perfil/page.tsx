@@ -447,8 +447,8 @@ export default function PerfilPage() {
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
                 Em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), você pode
                 solicitar a desativação da sua conta a qualquer momento. Seus dados serão desativados
-                imediatamente (você não conseguirá mais fazer login) e anonimizados conforme a política
-                de retenção da plataforma. Esta ação não pode ser desfeita pelo próprio usuário.
+                imediatamente (você não conseguirá mais fazer login). O histórico dos serviços permanece
+                registrado. Esta ação não pode ser desfeita pelo próprio usuário.
               </p>
             </div>
           </div>

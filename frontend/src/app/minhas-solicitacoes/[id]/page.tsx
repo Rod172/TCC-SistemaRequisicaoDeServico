@@ -48,6 +48,7 @@ interface Proposta {
   id: string;
   valor: string;
   prazo_dias: number;
+  validade_ate: string;
   mensagem: string;
   status: 'ENVIADA' | 'EM_ANALISE' | 'ACEITA' | 'RECUSADA';
   valor_contraproposta: string | null;
@@ -123,6 +124,12 @@ export default function DetalhePropostasPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const solicitacaoId = params.id;
+
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(intervalo);
+  }, []);
 
   const [solicitacao, setSolicitacao] = useState<SolicitacaoDetalhe | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -212,7 +219,15 @@ export default function DetalhePropostasPage() {
       const response = await api.patch(`/solicitacoes/minhas/${solicitacaoId}/propostas/${proposta.id}/status`, { acao });
       setSucesso(response.data.mensagem);
       await carregar();
+      if (acao === 'ACEITAR') {
+        setChatPropostaId(null);
+        setPagando(true);
+      }
     } catch (err: any) {
+      if (err.response?.status === 409) {
+        await carregar();
+        setChatPropostaId(null);
+      }
       setErro(err.response?.data?.message || 'Não foi possível atualizar a proposta.');
     } finally {
       setProcessandoId(null);
@@ -294,6 +309,10 @@ export default function DetalhePropostasPage() {
       setRenegociandoId(null);
       await carregar();
     } catch (err: any) {
+      if (err.response?.status === 409) {
+        await carregar();
+        setRenegociandoId(null);
+      }
       setErro(err.response?.data?.message || 'Não foi possível enviar a contraproposta.');
     } finally {
       setProcessandoId(null);
@@ -571,7 +590,7 @@ export default function DetalhePropostasPage() {
           background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
           padding: '1.25rem', marginBottom: '1.5rem',
         }}>
-          {solicitacao.transacao_custodia ? (
+          {solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <ShieldCheck size={24} color="#34d399" />
               <div>
@@ -798,6 +817,7 @@ export default function DetalhePropostasPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {solicitacao.propostas.map((proposta) => {
+          const expirada = !(new Date(proposta.validade_ate).getTime() > agora);
           const podeAlterar = !['ACEITA', 'RECUSADA'].includes(proposta.status)
             && !['CONTRATADA', 'CONCLUIDA', 'CANCELADA'].includes(solicitacao.status);
           const cor = STATUS_PROPOSTA[proposta.status];
@@ -825,7 +845,9 @@ export default function DetalhePropostasPage() {
                   </div>
                   <div>
                     <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Proposta de</span>
-                    <strong style={{ fontSize: '1rem' }}>{proposta.prestador.nome}</strong>
+                    <Link href={`/prestadores/${proposta.prestador.id}`} style={{ fontSize: '1rem', fontWeight: 700 }}>
+                      {proposta.prestador.nome} · Ver perfil
+                    </Link>
                     {nota > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
                         <Star size={13} color="#fbbf24" fill="#fbbf24" />
@@ -885,10 +907,20 @@ export default function DetalhePropostasPage() {
                   <strong style={{ fontSize: '1.1rem' }}>{proposta.prazo_dias} dias</strong>
                 </div>
                 <div>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Validade comercial até</span>
+                  <strong>{new Date(proposta.validade_ate).toLocaleString('pt-BR')}</strong>
+                </div>
+                <div>
                   <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Recebida em</span>
                   <strong style={{ fontSize: '1.1rem' }}>{formatarData(proposta.createdAt)}</strong>
                 </div>
               </div>
+
+              {expirada && ['ENVIADA', 'EM_ANALISE'].includes(proposta.status) && (
+                <p role="status" style={{ color: '#fbbf24', fontSize: '0.85rem' }}>
+                  Proposta expirada. O aceite e a renegociação estão bloqueados; ainda é possível recusá-la.
+                </p>
+              )}
 
               {proposta.valor_contraproposta !== null && (
                 <div style={{
@@ -920,14 +952,16 @@ export default function DetalhePropostasPage() {
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => alterarStatus(proposta, 'ACEITAR')}
-                    disabled={processandoId === proposta.id}
+                    disabled={processandoId === proposta.id || expirada}
+                    title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
                     style={{ ...botaoBase, background: '#10b981' }}
                   >
                     <CheckCircle size={15} /> Aceitar proposta
                   </button>
                   <button
                     onClick={() => abrirRenegociacao(proposta)}
-                    disabled={processandoId === proposta.id}
+                    disabled={processandoId === proposta.id || expirada}
+                    title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
                     style={{ ...botaoBase, background: 'transparent', border: '1px solid #8b5cf6', color: '#a78bfa' }}
                   >
                     <Handshake size={15} /> Renegociar valor
@@ -972,7 +1006,7 @@ export default function DetalhePropostasPage() {
                       />
                     </label>
                   </div>
-                  <button type="submit" disabled={processandoId === proposta.id} style={{ ...botaoBase, background: '#8b5cf6' }}>
+                  <button type="submit" disabled={processandoId === proposta.id || expirada} style={{ ...botaoBase, background: '#8b5cf6' }}>
                     {processandoId === proposta.id ? 'Enviando...' : 'Enviar contraproposta'}
                   </button>
                 </form>
@@ -992,8 +1026,12 @@ export default function DetalhePropostasPage() {
             aberto={!!chatPropostaId}
             onClose={() => setChatPropostaId(null)}
             statusProposta={propostaDoChat?.status}
-            onAceitar={propostaDoChat ? () => alterarStatus(propostaDoChat, 'ACEITAR') : undefined}
-            onRecusar={propostaDoChat ? () => alterarStatus(propostaDoChat, 'RECUSAR') : undefined}
+            onAceitar={propostaDoChat && new Date(propostaDoChat.validade_ate).getTime() > agora
+              && ['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status)
+              ? () => alterarStatus(propostaDoChat, 'ACEITAR') : undefined}
+            onRecusar={propostaDoChat
+              && ['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status)
+              ? () => alterarStatus(propostaDoChat, 'RECUSAR') : undefined}
             decidindo={processandoId === chatPropostaId}
           />
         );

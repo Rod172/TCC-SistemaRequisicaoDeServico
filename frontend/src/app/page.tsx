@@ -133,6 +133,7 @@ export default function Home() {
               <>
                 {/* Qualquer perfil logado pode publicar/ver suas próprias solicitações (US33 — o Prestador também pode contratar serviços). */}
                 <Link href="/minhas-solicitacoes" style={estiloLinkNav}>Minhas Solicitações</Link>
+                <Link href="/dashboard" style={estiloLinkNav}>Meu painel</Link>
                 {(usuarioLogado.tipo_perfil === 'PRESTADOR' || isAdmin) && (
                   <>
                     <Link href="/oportunidades" style={estiloLinkNav}>Oportunidades</Link>

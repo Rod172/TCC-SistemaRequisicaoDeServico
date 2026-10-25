@@ -38,6 +38,7 @@ interface MinhaProposta {
   id: string;
   valor: string;
   prazo_dias: number;
+  validade_ate: string;
   mensagem: string;
   status: string;
   created_at: string;
@@ -89,7 +90,7 @@ function formatarData(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const PROPOSTA_INICIAL = { valor: '', prazo_dias: '', mensagem: '' };
+const PROPOSTA_INICIAL = { valor: '', prazo_dias: '', validade_dias: '7', mensagem: '' };
 
 const STATUS_SOLICITACAO: Record<string, { label: string; bg: string; fg: string }> = {
   ABERTA: { label: 'Aberta', bg: 'rgba(59,130,246,0.15)', fg: '#60a5fa' },
@@ -102,6 +103,12 @@ const STATUS_SOLICITACAO: Record<string, { label: string; bg: string; fg: string
 export default function OportunidadeDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(intervalo);
+  }, []);
 
   const [oportunidade, setOportunidade] = useState<Oportunidade | null>(null);
   const [formulario, setFormulario] = useState(PROPOSTA_INICIAL);
@@ -190,12 +197,14 @@ export default function OportunidadeDetalhePage() {
       const response = await api.post(`/prestador/oportunidades/${params.id}/propostas`, {
         valor: Number(formulario.valor),
         prazo_dias: Number(formulario.prazo_dias),
+        validade_dias: Number(formulario.validade_dias),
         mensagem: formulario.mensagem.trim(),
       });
       setOportunidade((atual) => (atual ? { ...atual, pode_enviar_proposta: false, minha_proposta: response.data.dados } : atual));
       setFormulario(PROPOSTA_INICIAL);
       setSucesso(response.data.mensagem);
     } catch (err: any) {
+      if (err.response?.status === 409) await carregar();
       setErro(err.response?.data?.message || 'Não foi possível enviar sua proposta.');
     } finally {
       setEnviando(false);
@@ -484,6 +493,14 @@ export default function OportunidadeDetalhePage() {
                   <span style={{ color: '#64748b' }}>Enviada em</span> <strong>{formatarData(proposta.created_at)}</strong>
                 </div>
               </div>
+              <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                Validade comercial até {new Date(proposta.validade_ate).toLocaleString('pt-BR')}.
+              </p>
+              {['ENVIADA', 'EM_ANALISE'].includes(proposta.status) && !(new Date(proposta.validade_ate).getTime() > agora) && (
+                <p role="status" style={{ color: '#fbbf24', fontSize: '0.85rem' }}>
+                  Proposta expirada. O cliente não pode aceitar nem renegociar esta proposta.
+                </p>
+              )}
               <p style={{ color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{proposta.mensagem}</p>
 
               {/* Chat liberado desde o envio da proposta (US34) — não é mais preciso esperar o aceite
@@ -569,7 +586,7 @@ export default function OportunidadeDetalhePage() {
                   )}
                 </div>
               ) : (
-                <small style={{ color: '#64748b' }}>O cliente poderá analisar, aceitar, recusar ou enviar uma contraproposta.</small>
+                <small style={{ color: '#64748b' }}>{!(new Date(proposta.validade_ate).getTime() > agora) ? 'A validade comercial expirou; aceite e renegociação estão bloqueados.' : 'O cliente poderá analisar, aceitar, recusar ou enviar uma contraproposta.'}</small>
               )}
             </div>
           ) : !logado ? (
@@ -627,6 +644,12 @@ export default function OportunidadeDetalhePage() {
                     <input type="number" name="prazo_dias" min="1" max="3650" step="1" required value={formulario.prazo_dias} onChange={alterarCampo} placeholder="5" style={campoInput} />
                   </label>
                 </div>
+
+                <label style={{ fontSize: '0.85rem' }}>
+                  <span style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Validade comercial (dias)</span>
+                  <input type="number" name="validade_dias" min="1" max="365" step="1" required value={formulario.validade_dias} onChange={alterarCampo} style={campoInput} />
+                  <small style={{ color: '#94a3b8' }}>Período para aceitar ou renegociar a proposta, contado do envio. Não é o prazo de execução.</small>
+                </label>
 
                 <label style={{ fontSize: '0.85rem' }}>
                   <span style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Mensagem para o cliente</span>

@@ -9,9 +9,11 @@
  *    Doc Oficial: https://lucide.dev/
  * 2. Next.js (^14.2.3): Framework React com App Router.
  *    Doc Oficial: https://nextjs.org/docs
+ * 3. React (^18.3.1): Estado e ciclo de vida da prévia da foto. https://react.dev/reference/react
+ * 4. Axios (^1.7.2): Envio multipart pelo serviço api. https://axios-http.com/docs/multipart
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Briefcase, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText, Wrench, CheckSquare, Square } from 'lucide-react';
@@ -46,6 +48,32 @@ export default function RegisterPrestadorPage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [foto, setFoto] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [erroFoto, setErroFoto] = useState<string | null>(null);
+  const fotoInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!foto) { setFotoPreview(null); return; }
+    const url = URL.createObjectURL(foto);
+    setFotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [foto]);
+
+  const validarFoto = (arquivo: File): string | null => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(arquivo.type)) return 'Envie uma foto JPEG, PNG ou WEBP.';
+    if (arquivo.size > 5 * 1024 * 1024) return 'A foto deve ter no máximo 5 MB.';
+    if (!arquivo.size) return 'A foto selecionada está vazia.';
+    return null;
+  };
+
+  const handleFoto = (evento: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = evento.target.files?.[0];
+    const erro = arquivo ? validarFoto(arquivo) : null;
+    setErroFoto(erro);
+    setFoto(arquivo && !erro ? arquivo : null);
+    if (erro) evento.target.value = '';
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -67,6 +95,12 @@ export default function RegisterPrestadorPage() {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    if (foto && validarFoto(foto)) {
+      setErrorMsg(validarFoto(foto));
+      return;
+    }
+    setErroFoto(null);
 
     if (formData.senha !== formData.confirmarSenha) {
       setErrorMsg('As senhas digitadas não coincidem.');
@@ -98,7 +132,15 @@ export default function RegisterPrestadorPage() {
         termo_lgpd_aceito: formData.termoLgpdAceito,
       };
 
-      const response = await api.post('/auth/register/prestador', payload);
+      const multipart = new FormData();
+      Object.entries(payload).forEach(([campo, valor]) => {
+        multipart.append(campo, Array.isArray(valor) ? JSON.stringify(valor) : String(valor));
+      });
+      if (foto) multipart.append('foto', foto);
+      const response = await api.post('/auth/register/prestador', multipart, {
+        // O navegador define o boundary multipart; remove o padrão application/json do cliente.
+        headers: { 'Content-Type': undefined },
+      });
       setSuccessMsg(`${response.data.message || 'Cadastro de Prestador realizado com sucesso!'} Redirecionando para o login...`);
 
       setTimeout(() => {
@@ -192,6 +234,16 @@ export default function RegisterPrestadorPage() {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <label htmlFor="foto-prestador" style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>Foto de perfil (opcional)</label>
+            <p id="ajuda-foto-prestador" style={{ fontSize: '.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>JPEG, PNG ou WEBP, até 5 MB. A foto aparecerá no seu perfil público.</p>
+            <input ref={fotoInput} id="foto-prestador" name="foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFoto} disabled={loading} aria-describedby="ajuda-foto-prestador erro-foto-prestador" aria-invalid={Boolean(erroFoto)} style={{ width: '100%', minWidth: 0 }} />
+            {erroFoto && <p id="erro-foto-prestador" role="alert" style={{ color: '#fca5a5', marginTop: 8 }}>{erroFoto}</p>}
+            {fotoPreview && <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginTop: 12 }}>
+              <img src={fotoPreview} alt="Prévia da foto de perfil selecionada" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%' }} />
+              <button type="button" disabled={loading} onClick={() => { setFoto(null); setErroFoto(null); if (fotoInput.current) fotoInput.current.value = ''; }} style={{ padding: '.65rem 1rem', background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: 8, cursor: 'pointer' }}>Remover foto</button>
+            </div>}
+          </div>
           {/* Nome ou Razão Social */}
           <div>
             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>

@@ -12,7 +12,7 @@ Em estrito cumprimento à **Regra 2**, a tabela abaixo mapeia todas as bibliotec
 
 | Biblioteca | Versão | Propósito / Finalidade no Projeto | Referência Oficial / Link |
 |---|---|---|---|
-| **Express.js** | `^4.19.2` | Framework web para criação de rotas, middlewares e API REST | [expressjs.com](https://expressjs.com/pt-br/) |
+| **Express.js** | `^4.19.2` (resolvida `4.22.3`) | Framework web para criação de rotas, middlewares e API REST | [expressjs.com](https://expressjs.com/pt-br/) |
 | **TypeScript** | `^5.4.5` | Superconjunto tipado de JavaScript para segurança em tempo de compilação | [typescriptlang.org](https://www.typescriptlang.org/) |
 | **ts-node-dev** | `^2.0.0` | Servidor de desenvolvimento Node.js com suporte e live reload para TypeScript | [github.com/wclr/ts-node-dev](https://github.com/wclr/ts-node-dev) |
 | **Sequelize ORM** | `^6.37.3` | Mapeamento Objeto-Relacional (ORM) para o banco de dados MySQL | [sequelize.org](https://sequelize.org/docs/v6/) |
@@ -25,10 +25,14 @@ Em estrito cumprimento à **Regra 2**, a tabela abaixo mapeia todas as bibliotec
 | **swagger-ui-express** | `^5.0.1` | Interface gráfica interativa para documentação da API REST | [swagger.io](https://swagger.io/tools/swagger-ui/) |
 | **swagger-jsdoc** | `^6.2.8` | Gerador de especificação OpenAPI 3.0 via comentários JSDoc | [github.com/Sknfy/swagger-jsdoc](https://github.com/Sknfy/swagger-jsdoc) |
 | **Sequelize CLI** | `^6.6.2` | Ferramenta de linha de comando para automação de Migrations/Seeders | [github.com/sequelize/cli](https://github.com/sequelize/cli) |
-| **Multer** | `^2.3.0` | Middleware Express para parsing de `multipart/form-data` e upload em disco da foto de perfil (US04) | [github.com/expressjs/multer](https://github.com/expressjs/multer) |
+| **Multer** | `^2.3.0` (resolvida `2.5.0`) | Middleware Express para parsing de `multipart/form-data` e upload em disco da foto de perfil (US04) | [github.com/expressjs/multer](https://github.com/expressjs/multer) |
 | **@types/jsonwebtoken** | `^9.0.10` | Definições de tipos TypeScript para a biblioteca `jsonwebtoken` | [npmjs.com/package/@types/jsonwebtoken](https://www.npmjs.com/package/@types/jsonwebtoken) |
 | **@types/multer** | `^2.2.0` | Definições de tipos TypeScript para a biblioteca `multer` | [npmjs.com/package/@types/multer](https://www.npmjs.com/package/@types/multer) |
 | **Socket.io** | `^4.8.3` | Servidor WebSocket para o chat privado em tempo real (US14) | [socket.io](https://socket.io/docs/v4/) |
+
+| **express-rate-limit** | `8.7.1` | Limita tentativas de autenticação por IP, US22 | [Documentação oficial](https://express-rate-limit.mintlify.app/reference/configuration) |
+| **Jest** | `30.5.2` | Testes unitários e integração, projetos separados com banco exclusivo, US26 | [Documentação oficial](https://jestjs.io/docs/getting-started) |
+| **Supertest** | `7.3.1` | Requisições aos endpoints reais Express sem servidor externo, US26 | [Documentação oficial](https://github.com/forwardemail/supertest) |
 
 ### 🎨 Frontend (Next.js 14 / React com TypeScript)
 
@@ -431,3 +435,59 @@ Em estrito cumprimento à **Regra 2**, a tabela abaixo mapeia todas as bibliotec
 - **Banco de Dados**: Migration [`20260901000001-create-usuarios.js`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/migrations/20260901000001-create-usuarios.js).
 - **Backend**: Model [`Usuario.ts`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/models/Usuario.ts), [`authService.ts`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/services/authService.ts) e [`authController.ts`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/controllers/authController.ts).
 - **Frontend**: Tela em [`frontend/src/app/register-solicitante/page.tsx`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/frontend/src/app/register-solicitante/page.tsx).
+
+
+### US26 — Integração real da API com MySQL isolado (25/10/2026)
+
+- Implementados 19 casos Jest/Supertest sobre o app real: registro/login, hash de senha, credenciais inválidas, papéis, criação, concorrência de propostas, proprietário, aceite único/repetição e simultâneo, chat privado, conclusão e avaliação única, privacidade do dashboard e perfil público.
+- Arquivos criados nesta etapa: `backend/jest.config.cjs`, `backend/tests/fluxos.integracao.test.js`, `backend/tests/ambiente.cjs`, `backend/tests/preparar-banco.cjs`, `backend/tests/sequelize-test.cjs`, `backend/tests/perfil-publico.test.js` e `backend/tests/LEIA-ME.md`.
+- Banco explicitamente configurado com `DB_NAME_TEST=tcc_servico_facil_test`. Antes dos imports, o setup força `NODE_ENV=test`, `DB_NAME=DB_NAME_TEST`, credenciais de teste e segredo JWT próprio; rejeita nomes sem sufixo `_test`. Migrations reais pelo Sequelize CLI `--env test`, sem seeds ou servidor HTTP externo. Limpeza restrita aos IDs das fixtures, sem truncar tabelas ou remover bancos.
+- Jest separado em projetos `unitarios` e `integracao`; o primeiro funciona sem MySQL. A suíte de perfil público já existente, escrita em node:test, roda em subprocesso por uma ponte Jest.
+- Validação: `npm run build` concluído; `DB_NAME_TEST=tcc_servico_facil_test npx jest --runInBand` no Node 22.23.2: **7 suítes, 75 testes aprovados**, incluindo 19 de integração (o teste ponte também executa os casos nativos de perfil). Migrations aplicadas somente no banco de teste.
+- Identificado durante leitura risco de duas propostas aceitas e repetição do aceite. As regressões passaram após as correções paralelas da máquina de estados; esta etapa não alterou services ou package.json. Fixtures passaram a gerar CPFs válidos para acompanhar a validação de cadastro integrada em paralelo.
+
+| Biblioteca/API | Versão instalada | Propósito nesta etapa | Documentação oficial |
+| --- | --- | --- | --- |
+| Jest | 30.5.2 | Executor, hooks e asserções dos testes de integração e configuração por projetos | https://jestjs.io/docs/getting-started |
+| Supertest | 7.3.1 | Requisições às rotas do app Express em memória | https://github.com/forwardemail/supertest |
+| mysql2 | 3.23.4 | Conexão para criação segura do banco de teste (dependência já existente; consultar lock para versão vigente) | https://sidorares.github.io/node-mysql2/docs |
+| Sequelize CLI | 6.6.5 | Execução das migrations reais no ambiente test | https://sequelize.org/docs/v6/other-topics/migrations/ |
+
+
+## 25/10/2026 — Conferência e implementação das histórias pendentes
+
+### Escopo e decisões
+
+Conferido `historia.md` contra os modelos, endpoints e telas. US19, US20 e US21 não tinham implementação; US01/US02/US05/US10/US13/US22/US24/US25/US26/US27 tinham critérios pendentes apesar de funcionalidades parcialmente existentes. Os complementos permanecem cobertos pelas histórias originais, com critérios e numeração preservados. A tabela `STATUS_HISTORIAS.md` registra a evidência por história. As 34 descrições foram sincronizadas com sucesso pelo script `importar_historia.py --atualizar`; o conector Atlassian exige reautenticação, mas o script existente funcionou. Nenhum token foi incluído nas alterações.
+
+### Funcionalidades e arquivos
+
+- **US19:** `prestadorPublicoService`, controller e routes; página `prestadores/[id]`; projeção pública explícita, paginação limitada e reputação a partir de avaliações reais. Link na comparação de propostas.
+- **US20/US21/US13:** `dashboardService`, controller e routes; página `dashboard` e atalho na home. Indicadores isolados por usuário, mês de São Paulo, conversão calculada no mesmo conjunto e carteira simulada derivada dos estados RETIDO/LIBERADO, sem crédito duplicado. Reembolsos não compõem o saldo.
+- **US01/US02:** validadores de CPF/CNPJ numéricos no backend/frontend; normalização e prevenção de duplicidade por pontuação; senha com limite compatível com bcrypt; consentimento estrito. Cadastro profissional com foto opcional multipart, mantendo JSON compatível; arquivo removido quando o cadastro falha. Migration `20261025000001` normaliza legados e aborta diante de colisões sem expor dados.
+- **US05:** formulário em três etapas, dados preservados, navegação de volta, anexos e revisão antes de publicar. Rótulos associados aos campos e navegação por teclado no seletor de anexos.
+- **US10:** migration `20261025000002`, modelo Proposta, services/controller e detalhes dos dois perfis incluem validade comercial distinta do prazo de execução, de 1 a 365 dias (padrão 7). Propostas expiradas não podem ser aceitas/renegociadas, mas podem ser recusadas, inclusive pelo chat.
+- **US12/US13/US17/US18/US31/US34:** transições com lock na solicitação antes das dependências; impede dois aceites, aceite de recusada e ações incompatíveis após contratação. Reembolso/retenção de nova contratação coerentes; retorno da custódia recarregado do banco; avaliação e reputação atômicas, serializadas por perfil. Eventos socket emitidos após commit nas transições corrigidas. Checkout exibido após o aceite e custódia reembolsada não é apresentada como protegida.
+- **US22:** `loginRateLimiter`, configuração JWT compartilhada e autenticação obrigatória/opcional/socket com conta ativa e perfil atual. Segredo público removido do fallback; inicialização valida a configuração. `.env.example` e Docker Compose corrigidos. Uploads usam extensão correspondente ao MIME permitido e erros de arquivo retornam 400. Atualizações compatíveis no lockfile reduziram o relatório de 11 avisos (incluindo um crítico) para dois moderados transitivos do Sequelize/uuid; não foi aplicado downgrade incompatível do ORM.
+- **US23:** foco visível e respeito à redução de movimento; suspensão React nas páginas com `useSearchParams` para permitir build de produção. Removida promessa de anonimização automática em 30 dias, que não correspondia ao soft-delete implementado.
+- **US24:** `config/openapi.ts`, `app.ts` e testes: 45 operações com contratos de entrada/saída e erros aplicáveis, autenticação Bearer e `$ref` válidos, geração em `src` e `dist`, JSON em `/api-docs.json`.
+- **US25:** seed original ajustado para status coerente, documentos sem pontuação, reputação inicial real e validade. Novo seed `20261025000001-demo-fluxo-completo.js` idempotente, com serviços concluídos/avaliações/custódia/chat/perguntas/denúncia, preservando contas e preferências anteriores.
+- **US26:** configuração Jest, preparação segura de MySQL `_test`, testes de integração e isolados em `backend/tests`; workflow `.github/workflows/validacao.yml` executa testes e build em PRs. README e instruções de teste atualizados.
+- **US27:** migration `20261025000003`, modelo RegistroAdministrativo e exportação em `models/index.ts`; alteração de status e resolução de denúncia registram autor, alvo, data e estados na mesma transação. A repetição sem mudança não duplica o registro; falha na auditoria desfaz a ação.
+
+### Referências da automação
+
+| Componente | Versão | Propósito | Documentação oficial |
+|---|---|---|---|
+| GitHub Actions | Serviço | Executar validação em pull requests | https://docs.github.com/pt/actions |
+| actions/checkout | v4 | Obter os arquivos da revisão | https://github.com/actions/checkout |
+| actions/setup-node | v4 | Preparar Node.js 22 e cache npm | https://github.com/actions/setup-node |
+| MySQL | 8.0 | Persistência de integração isolada no CI | https://dev.mysql.com/doc/refman/8.0/en/ |
+
+### Validações
+
+- Backend e frontend compilados com TypeScript; build de produção Next.js concluído após corrigir as fronteiras Suspense das listagens.
+- Migrações novas aplicadas no banco de desenvolvimento e no banco de testes, sem recriação de dados do usuário.
+- Integração usa as rotas reais, JWT e MySQL separado; cobre propostas simultâneas, estados inválidos, custódia/reembolso/recontratação, avaliação única/média, isolamento de conversas/indicadores, foto e consentimento, seeds reversíveis e auditoria transacional. A limpeza das fixtures administrativas exige retirar primeiro o vínculo de último administrador nas próprias contas de teste.
+- Navegação manual: login de demonstração, formulário da descrição até a revisão sem publicar fixture no banco de desenvolvimento, painel e perfil público. Conferência em viewport de 390 × 844; painel e revisão adaptados ao celular. Isso não substitui avaliação com usuários nem teste em dispositivos físicos.
+- Resultado final: **11 suítes e 193 testes aprovados**, incluindo integração MySQL, sem falhas. `npm run build` do frontend concluído; `git diff --check` sem erros. Migrations de 25/10/2026 aplicadas com sucesso. Trabalho preparado na branch `historias-pendentes` para integração por PR.
