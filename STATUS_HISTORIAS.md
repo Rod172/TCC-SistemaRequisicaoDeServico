@@ -52,3 +52,11 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 - A auditoria de dependências do backend ficou com dois avisos moderados ligados a `uuid` transitivo do Sequelize. A atualização automática proposta faria downgrade incompatível do ORM; essa troca não foi aplicada.
 
 Validação final: **11 suítes e 193 testes aprovados**, além do build de produção do frontend e verificação do diff.
+
+
+## Leitura conjunta das histórias e termos legados
+
+- **US14 e US34:** o critério original da US14 menciona conversa após aceite. A US34, criada e autorizada posteriormente, substitui essa restrição: o chat é privado por proposta desde o envio. A exclusividade dos dois participantes permanece. A marca de implementação da US14 deve ser lida com essa revisão, e não como restauração da restrição antiga.
+- **US10/US12:** o backlog usa os termos genéricos PENDENTE/REJEITADA em algumas tarefas. Os estados persistidos atuais são ENVIADA/EM_ANALISE/ACEITA/RECUSADA; pendência corresponde aos dois primeiros e rejeição corresponde a RECUSADA. Os contratos OpenAPI documentam os nomes efetivamente aceitos.
+- **US13/US17:** o aceite abre o checkout simulado; a retenção ocorre somente quando o solicitante confirma o checkout. O saldo simulado disponível só inclui custódias LIBERADO após a conclusão. O pagamento não é realizado automaticamente em nome do usuário.
+- As rotas históricas sugeridas nas tarefas técnicas podem diferir dos caminhos implementados; o inventário vigente está em `/api-docs.json`. O texto dos critérios originais foi preservado, com essas correspondências explícitas para a leitura do backlog.
