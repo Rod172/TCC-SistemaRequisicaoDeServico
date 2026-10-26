@@ -294,6 +294,7 @@ export default function PerfilPage() {
             <Link href="/configuracoes" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '0.6rem', color: '#60a5fa', fontSize: '0.8rem', textDecoration: 'none' }}>
               <Settings size={13} /> Configurações de notificação
             </Link>
+      <Link href="/privacidade" style={{ display: 'inline-block', margin: '1rem 0' }}>Central de Privacidade e registros do cadastro</Link>
           </div>
         </div>
       </div>
@@ -442,13 +443,12 @@ export default function PerfilPage() {
             <ShieldAlert size={22} color="#f87171" style={{ flexShrink: 0, marginTop: '2px' }} />
             <div>
               <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Exclusão de conta e dados pessoais
+                Desativação da conta e direitos sobre seus dados
               </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), você pode
-                solicitar a desativação da sua conta a qualquer momento. Seus dados serão desativados
-                imediatamente (você não conseguirá mais fazer login). O histórico dos serviços permanece
-                registrado. Esta ação não pode ser desfeita pelo próprio usuário.
+                Desativar a conta bloqueia seu acesso e preserva o histórico. Essa ação não exclui nem
+                anonimiza seus dados e não pode ser desfeita pelo próprio usuário. Para solicitar acesso,
+                correção ou análise de exclusão dos dados, utilize a Central de Privacidade.
               </p>
             </div>
           </div>
@@ -459,7 +459,7 @@ export default function PerfilPage() {
               onClick={() => setConfirmarExclusao(true)}
               style={{ ...estiloBotao, background: 'transparent', border: '1px solid var(--danger-color)', color: '#f87171' }}
             >
-              <Trash2 size={16} /> Solicitar exclusão da conta
+              <Trash2 size={16} /> Desativar minha conta
             </button>
           ) : (
             <div style={{
@@ -476,7 +476,7 @@ export default function PerfilPage() {
                   disabled={excluindo}
                   style={{ ...estiloBotao, background: 'var(--danger-color)' }}
                 >
-                  <Trash2 size={16} /> {excluindo ? 'Excluindo...' : 'Sim, excluir minha conta'}
+                  <Trash2 size={16} /> {excluindo ? 'Desativando...' : 'Sim, desativar minha conta'}
                 </button>
                 <button
                   type="button"

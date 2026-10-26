@@ -22,6 +22,9 @@ export interface UsuarioAttributes {
   tipo_perfil: 'SOLICITANTE' | 'PRESTADOR' | 'ADMIN';
   termo_lgpd_aceito: boolean;
   termo_lgpd_aceito_em?: Date;
+  termos_uso_versao?: string | null;
+  privacidade_versao?: string | null;
+  documentos_aceitos_em?: Date | null;
   ativo: boolean;
   status_alterado_por?: string | null;
   status_alterado_em?: Date | null;
@@ -44,6 +47,9 @@ export class Usuario extends Model<UsuarioAttributes, UsuarioCreationAttributes>
   public tipo_perfil!: 'SOLICITANTE' | 'PRESTADOR' | 'ADMIN';
   public termo_lgpd_aceito!: boolean;
   public termo_lgpd_aceito_em?: Date;
+  public termos_uso_versao?: string | null;
+  public privacidade_versao?: string | null;
+  public documentos_aceitos_em?: Date | null;
   public ativo!: boolean;
   public status_alterado_por?: string | null;
   public status_alterado_em?: Date | null;
@@ -106,6 +112,9 @@ Usuario.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    termos_uso_versao: { type: DataTypes.STRING(40), allowNull: true },
+    privacidade_versao: { type: DataTypes.STRING(40), allowNull: true },
+    documentos_aceitos_em: { type: DataTypes.DATE, allowNull: true },
     ativo: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

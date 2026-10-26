@@ -39,6 +39,7 @@ const datas = { created_at: dataHora, updated_at: dataHora, createdAt: dataHora,
 // Projeções explícitas selecionam created_at; instâncias completas também podem serializar createdAt.
 const usuario = objeto({ id: uuid, nome: texto, email: { type: 'string', format: 'email' }, cpf: texto,
   telefone: texto, endereco: nulo(texto), foto_url: nulo(texto), tipo_perfil: tipoPerfil,
+  termos_uso_versao: nulo(texto), privacidade_versao: nulo(texto), documentos_aceitos_em: nulo(dataHora),
   termo_lgpd_aceito: booleano, termo_lgpd_aceito_em: nulo(dataHora), ativo: booleano,
   status_alterado_por: nulo(uuid), status_alterado_em: nulo(dataHora), ...datas },
   ['id', 'nome', 'email', 'cpf', 'telefone', 'tipo_perfil', 'termo_lgpd_aceito', 'ativo']);
@@ -74,23 +75,32 @@ const resumoProposta = escolher(proposta, ['id', 'valor', 'prazo_dias', 'validad
 const cadastro = { nome: { type: 'string', minLength: 1, maxLength: 150 }, email: { type: 'string', format: 'email', maxLength: 150 },
   telefone: { type: 'string', minLength: 1, maxLength: 20 }, endereco: { type: 'string', maxLength: 255 },
   senha: { type: 'string', format: 'password', writeOnly: true, minLength: 8, description: 'No mínimo 8 caracteres e no máximo 72 bytes UTF-8 (limite bcrypt).' },
-  termo_lgpd_aceito: { type: 'boolean', enum: [true] } };
+  termos_uso_aceitos: { type: 'boolean', enum: [true] }, privacidade_ciente: { type: 'boolean', enum: [true] },
+  termos_uso_versao: texto, privacidade_versao: texto,
+  termo_lgpd_aceito: { type: 'boolean', enum: [true], deprecated: true, description: 'Campo legado de compatibilidade; não autoriza tratamento genérico.' } };
 const evento = { type: 'string', enum: ['NOVA_PROPOSTA', 'PROPOSTA_ACEITA_RECUSADA', 'NOVA_MENSAGEM_CHAT', 'SOLICITACAO_CANCELADA'] };
 const binario = { type: 'string', format: 'binary' };
 
 export const schemas: Record<string, Schema> = {
+  DocumentosLegaisDTO: objeto({ versao_termos: texto, versao_privacidade: texto, publicado_em: texto, responsavel: texto, email_privacidade: texto, termos_url: texto, privacidade_url: texto }),
+  PedidoPrivacidadeDTO: objeto({ id: uuid, usuario_id: uuid, tipo: { type: 'string', enum: ['ACESSO','CORRECAO','EXCLUSAO','INFORMACAO','REVOGACAO'] }, descricao: texto, status: { type: 'string', enum: ['PENDENTE','RESPONDIDA'] }, resposta: nulo(texto), respondida_por: nulo(uuid), respondida_em: nulo(dataHora), createdAt: dataHora, updatedAt: dataHora }),
+  CriarPedidoPrivacidadeDTO: objeto({ tipo: { type: 'string', enum: ['ACESSO','CORRECAO','EXCLUSAO','INFORMACAO','REVOGACAO'] }, descricao: { type: 'string', minLength: 10, maxLength: 2000 } }),
+  ResponderPrivacidadeDTO: objeto({ resposta: { type: 'string', minLength: 10, maxLength: 2000 } }),
+  CentralPrivacidadeDTO: objeto({ aceite: objeto({ termos_uso_versao: nulo(texto), privacidade_versao: nulo(texto), documentos_aceitos_em: nulo(dataHora) }), solicitacoes: lista(ref('PedidoPrivacidadeDTO')) }),
+  PedidoPrivacidadeAdminDTO: objeto({ id: uuid, usuario_id: uuid, tipo: texto, descricao: texto, status: texto, resposta: nulo(texto), respondida_por: nulo(uuid), respondida_em: nulo(dataHora), createdAt: dataHora, updatedAt: dataHora, titular: escolher(usuario,['id','nome','email']) }),
   ResponderContrapropostaDTO: objeto({ acao: { type: 'string', enum: ['ACEITAR', 'RECUSAR'] } }),
   Erro: objeto({ error: texto, message: texto }, ['message']),
   Mensagem: objeto({ mensagem: texto }), MensagemCadastro: objeto({ message: texto }),
   UsuarioDTO: usuario, PerfilPrestadorDTO: perfil,
   UsuarioComPerfilDTO: objeto({ ...usuario.properties, perfil_prestador: nulo(perfil) }, usuario.required),
-  CadastroSolicitanteDTO: objeto({ ...cadastro, cpf: { type: 'string', description: 'CPF válido, com ou sem pontuação; persistido somente com dígitos.' } }, ['nome', 'email', 'cpf', 'telefone', 'senha', 'termo_lgpd_aceito']),
+  CadastroSolicitanteDTO: objeto({ ...cadastro, cpf: { type: 'string', description: 'CPF válido, com ou sem pontuação; persistido somente com dígitos.' } }, ['nome', 'email', 'cpf', 'telefone', 'senha', 'termos_uso_aceitos', 'privacidade_ciente', 'termos_uso_versao', 'privacidade_versao']),
   CadastroPrestadorDTO: objeto({ ...cadastro, cnpj_cpf: { type: 'string', description: 'CPF ou CNPJ válido, com ou sem pontuação; persistido somente com dígitos.' }, descricao_bio: texto, categorias: { ...lista({ type: 'string', minLength: 1 }), minItems: 1 } },
-    ['nome', 'email', 'cnpj_cpf', 'telefone', 'senha', 'categorias', 'termo_lgpd_aceito']),
+    ['nome', 'email', 'cnpj_cpf', 'telefone', 'senha', 'categorias', 'termos_uso_aceitos', 'privacidade_ciente', 'termos_uso_versao', 'privacidade_versao']),
   CadastroPrestadorMultipartDTO: objeto({ ...cadastro, cnpj_cpf: texto, descricao_bio: texto,
     categorias: { type: 'string', description: 'Array JSON serializado de categorias não vazias.', example: '["ELETRICA"]' },
-    termo_lgpd_aceito: { type: 'string', enum: ['true'] }, foto: { ...binario, description: 'Foto opcional JPEG, PNG ou WEBP; até 5 MB.' } },
-    ['nome', 'email', 'cnpj_cpf', 'telefone', 'senha', 'categorias', 'termo_lgpd_aceito']),
+    termos_uso_aceitos: { type: 'string', enum: ['true'] }, privacidade_ciente: { type: 'string', enum: ['true'] },
+    termo_lgpd_aceito: { type: 'string', enum: ['true'], deprecated: true }, foto: { ...binario, description: 'Foto opcional JPEG, PNG ou WEBP; até 5 MB.' } },
+    ['nome', 'email', 'cnpj_cpf', 'telefone', 'senha', 'categorias', 'termos_uso_aceitos', 'privacidade_ciente', 'termos_uso_versao', 'privacidade_versao']),
   LoginDTO: objeto({ email: { type: 'string', format: 'email' }, senha: { type: 'string', format: 'password', writeOnly: true } }),
   AutenticacaoDTO: objeto({ token: texto, usuario: ref('UsuarioComPerfilDTO') }),
   AtualizarPerfilDTO: objeto({ nome: texto, telefone: texto, endereco: texto }, []),
@@ -153,6 +163,11 @@ const resultado = (campo: string, schema: Schema, mensagem = 'mensagem'): Schema
 const query = (nome: string, schema: Schema = texto): Schema => ({ in: 'query', name: nome, schema });
 // Apenas contratos específicos: nenhuma resposta de sucesso é preenchida com objeto genérico.
 const contratos: Record<string, Contrato> = {
+  'GET /legal/documentos': { publico: true, saida: envelope('data', ref('DocumentosLegaisDTO')), resumo: 'Versões e contato dos documentos legais vigentes (US40)' },
+  'GET /privacidade/minha-central': { saida: envelope('data', ref('CentralPrivacidadeDTO')), erros: [404], resumo: 'Registro de aceite e protocolos do próprio titular' },
+  'POST /privacidade/solicitacoes': { erros: [404,409], entrada: 'CriarPedidoPrivacidadeDTO', status: 201, saida: envelope('data', ref('PedidoPrivacidadeDTO')), resumo: 'Registra pedido para análise manual, sem exclusão automática' },
+  'GET /admin/privacidade': { saida: objeto({ data: lista(ref('PedidoPrivacidadeAdminDTO')), paginacao: objeto({ pagina: inteiro, total: inteiro, total_paginas: inteiro }) }), parametros: [query('pagina', {type: 'integer', minimum: 1, maximum: 100000})], erros: [400,403], resumo: 'Administração lista protocolos paginados, pendentes primeiro' },
+  'PATCH /admin/privacidade/{id}/resposta': { entrada: 'ResponderPrivacidadeDTO', saida: envelope('data', ref('PedidoPrivacidadeDTO')), erros: [403,404,409], resumo: 'Registra resposta administrativa única e auditável' },
   'GET /health': { publico: true, saida: ref('SaudeDTO'), resumo: 'Verifica a disponibilidade da API' },
   'POST /auth/register/solicitante': { publico: true, status: 201, entrada: 'CadastroSolicitanteDTO', saida: resultado('data', ref('UsuarioDTO'), 'message'), erros: [400, 409] },
   'POST /auth/register/prestador': { publico: true, status: 201, entrada: 'CadastroPrestadorDTO', entradaMultipart: 'CadastroPrestadorMultipartDTO', saida: resultado('data', ref('UsuarioComPerfilDTO'), 'message'), erros: [400, 409] },

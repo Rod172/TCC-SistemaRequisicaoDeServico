@@ -18,6 +18,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Briefcase, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText, Wrench, CheckSquare, Square } from 'lucide-react';
 import api from '@/services/api';
+import AceiteDocumentos from '@/components/AceiteDocumentos';
+import documentos from '@/conteudo/documentos-legais.json';
 
 const CATEGORIAS_DISPONIVEIS = [
   { id: 'ELETRICA', label: 'Elétrica & Iluminação' },
@@ -31,6 +33,7 @@ const CATEGORIAS_DISPONIVEIS = [
 ];
 
 export default function RegisterPrestadorPage() {
+  const [privacidadeCiente, setPrivacidadeCiente] = useState(false);
   const router = useRouter();
   const [formData, setFormData] = useState({
     nome: '',
@@ -112,8 +115,8 @@ export default function RegisterPrestadorPage() {
       return;
     }
 
-    if (!formData.termoLgpdAceito) {
-      setErrorMsg('É necessário aceitar os termos de consentimento da LGPD para prosseguir.');
+    if (!formData.termoLgpdAceito || !privacidadeCiente) {
+      setErrorMsg('Aceite os Termos de Uso e confirme a leitura da Política de Privacidade para prosseguir.');
       return;
     }
 
@@ -129,7 +132,10 @@ export default function RegisterPrestadorPage() {
         senha: formData.senha,
         descricao_bio: formData.descricaoBio,
         categorias: categoriasSelecionadas,
-        termo_lgpd_aceito: formData.termoLgpdAceito,
+        termos_uso_aceitos: formData.termoLgpdAceito,
+        privacidade_ciente: privacidadeCiente,
+        termos_uso_versao: documentos.versao_termos,
+        privacidade_versao: documentos.versao_privacidade,
       };
 
       const multipart = new FormData();
@@ -505,28 +511,9 @@ export default function RegisterPrestadorPage() {
           </div>
 
           {/* Checkbox Termo LGPD */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.75rem',
-            background: '#0f172a',
-            padding: '1rem',
-            borderRadius: '8px',
-            border: '1px solid #334155',
-            marginTop: '0.5rem'
-          }}>
-            <input
-              type="checkbox"
-              id="termoLgpdAceito"
-              name="termoLgpdAceito"
-              checked={formData.termoLgpdAceito}
-              onChange={handleChange}
-              style={{ marginTop: '0.2rem', cursor: 'pointer', width: '18px', height: '18px' }}
-            />
-            <label htmlFor="termoLgpdAceito" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer', lineHeight: 1.4 }}>
-              Concordo com o tratamento dos meus dados cadastrais e profissionais para divulgação de perfil e intermediação de propostas, em conformidade com a <strong>LGPD (Lei nº 13.709/2018)</strong>. *
-            </label>
-          </div>
+          <AceiteDocumentos termos={formData.termoLgpdAceito} ciencia={privacidadeCiente}
+              alterarTermos={valor => setFormData(prev => ({ ...prev, termoLgpdAceito: valor }))}
+              alterarCiencia={setPrivacidadeCiente} />
 
           {/* Botão de Submissão */}
           <button

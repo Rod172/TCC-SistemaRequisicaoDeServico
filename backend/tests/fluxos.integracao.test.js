@@ -18,6 +18,7 @@ const usuariosCriados = [];
 const solicitacoesCriadas = [];
 const fotosCriadas = new Set();
 const diretorioFotos = path.resolve(__dirname, '../uploads/perfil');
+const aceiteDocumentos = { termos_uso_aceitos: true, privacidade_ciente: true, termos_uso_versao: '2026-10-26.1', privacidade_versao: '2026-10-26.1' };
 const senha = 'IntegracaoSegura123!';
 const propostaValida = { valor: 250.50, prazo_dias: 3, mensagem: 'Execução completa com material e garantia.' };
 let dono, outro, prestador, concorrente, terceiroPrestador;
@@ -43,7 +44,7 @@ async function cadastrar(tipo) {
  const documento = cpfValido();
  const resposta = await request(app).post(`/api/v1/auth/register/${tipo}`).send({
   nome: 'Pessoa de integração US26', email, senha, telefone: '16999999999',
-  cpf: documento, cnpj_cpf: documento, categorias: ['ELETRICA'], termo_lgpd_aceito: true,
+  cpf: documento, cnpj_cpf: documento, categorias: ['ELETRICA'], termo_lgpd_aceito: true, ...aceiteDocumentos,
  });
  if (resposta.body.data?.id) usuariosCriados.push(resposta.body.data.id);
  if (resposta.status !== 201) throw new Error(`Pré-condição HTTP ${resposta.status}: ${JSON.stringify(resposta.body)}`);
@@ -131,7 +132,7 @@ describe('US26 — autenticação real e autorização', () => {
  ])('cadastro de solicitante com %s retorna 400 sem persistir usuário', async (_caso, alteracoes, mensagemEsperada) => {
   const dados = {
    nome: 'Solicitante de integração US26', email: `cadastro-invalido-${randomUUID()}@example.test`,
-   cpf: cpfValido(), telefone: '16999999999', senha, termo_lgpd_aceito: true,
+   cpf: cpfValido(), telefone: '16999999999', senha, termo_lgpd_aceito: true, ...aceiteDocumentos,
    ...alteracoes,
   };
   const resposta = await request(app).post('/api/v1/auth/register/solicitante').send(dados);
@@ -144,7 +145,7 @@ describe('US26 — autenticação real e autorização', () => {
  });
  test('não permite novo cadastro com o mesmo e-mail', async () => {
   await request(app).post('/api/v1/auth/register/solicitante').send({
-   nome: 'Duplicado', email: dono.email, cpf: dono.cpf, telefone: '16999999999', senha, termo_lgpd_aceito: true,
+   nome: 'Duplicado', email: dono.email, cpf: dono.cpf, telefone: '16999999999', senha, termo_lgpd_aceito: true, ...aceiteDocumentos,
   }).expect(409);
   expect(await Usuario.count({ where: { email: dono.email } })).toBe(1);
  });
@@ -479,7 +480,9 @@ function cadastroMultipart(email, consentimento = 'true', categorias = '["ELETRI
  return request(app).post('/api/v1/auth/register/prestador')
   .field('nome', 'Prestador de integração com foto').field('email', email)
   .field('cnpj_cpf', cpfValido()).field('telefone', '16999999999').field('senha', senha)
-  .field('categorias', categorias).field('termo_lgpd_aceito', consentimento);
+  .field('categorias', categorias).field('termo_lgpd_aceito', consentimento)
+  .field('termos_uso_aceitos', 'true').field('privacidade_ciente','true')
+  .field('termos_uso_versao','2026-10-26.1').field('privacidade_versao','2026-10-26.1');
 }
 async function arquivosDeFoto() {
  return (await fs.readdir(diretorioFotos)).sort();

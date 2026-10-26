@@ -72,3 +72,12 @@ Consulte `VERIFICACAO_FLUXOS.md` para os passos realmente executados e os limite
 ### Complemento de 26/10/2026 — pagamentos e fluxos pendentes
 
 Checkout da US13 apresenta resumo antes da confirmação e mantém comprovante após liberação/reembolso. Cartão e PIX simulados, carteira antes/depois, desistência, dashboard do solicitante, notificação/navegação, persistência de preferências, edição de perfil com restauração, cadastros dos dois perfis e suspensão/reativação de conta fictícia foram exercitados pela interface. Denúncia fictícia resolvida por admin; detalhes de terceiros permanecem somente leitura. Consulte a matriz datada em `VERIFICACAO_FLUXOS.md` para passos, valores e limites. Conferência de largura em 14 páginas a 390px, administração a 390px e checkout a 320px. Resultado técnico: 200 testes e build aprovados. A simulação acadêmica não realiza pagamentos reais.
+
+
+## US40 — Documentos e atendimento de privacidade (26/10/2026)
+
+Implementada nesta branch separada: documentos públicos e por versão, contato responsável autorizado, links globais/cadastro, dois sinais distintos, validação das versões no backend, registro com data do servidor sem aceite retroativo, central do titular e atendimento administrativo paginado com resposta única. Perfil distingue desativação de exclusão. Jira: TCC-53, épico TCC-3.
+
+Validação nesta branch: 13 suítes e 238 testes aprovados, build frontend aprovado, migration e seed aplicados. Documentos, protocolo/resposta e versões legadas conferidos na interface; layout em 390px. Detalhes, limites e fontes oficiais em `docs/PRIVACIDADE.md`. A implementação de documentos e canal não é certificação de conformidade integral, nem acrescenta exclusão automática ou proteção individual aos links de arquivos.
+
+US37–US39 e alterações visuais em andamento na pasta principal não foram incorporadas nem alteradas por esta etapa. A numeração US40 foi reservada após conferir esse backlog paralelo.

@@ -1,3 +1,4 @@
+import SolicitacaoPrivacidade from './SolicitacaoPrivacidade';
 /**
  * @file index.ts
  * @description Ponto de entrada centralizado para modelos e associações relacionais do Sequelize ORM.
@@ -237,6 +238,7 @@ export {
   Denuncia,
   Avaliacao,
   RegistroAdministrativo,
+  SolicitacaoPrivacidade,
 };
 export default {
   Usuario,
@@ -252,4 +254,5 @@ export default {
   Denuncia,
   Avaliacao,
   RegistroAdministrativo,
+  SolicitacaoPrivacidade,
 };

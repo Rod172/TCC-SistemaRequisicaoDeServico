@@ -109,7 +109,7 @@ test('a especificação completa é válida em OpenAPI 3.0', async () => {
 });
 
 test.each(operacoes)('%s %s tem segurança resolvida, parâmetros de caminho e schemas concretos', (metodo, rota, operacao) => {
-  const publico = ['/health', '/auth/register/solicitante', '/auth/register/prestador', '/auth/login',
+  const publico = ['/legal/documentos', '/health', '/auth/register/solicitante', '/auth/register/prestador', '/auth/login',
     '/prestador/oportunidades', '/prestador/oportunidades/{id}', '/prestadores/{id}/perfil-publico'].includes(rota);
   expect(operacao.security).toEqual(publico ? [] : [{ bearerAuth: [] }]);
   for (const requisito of operacao.security) for (const nome of Object.keys(requisito)) {

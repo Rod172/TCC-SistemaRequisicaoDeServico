@@ -237,6 +237,7 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>Painel Administrativo</h1>
+      <Link href="/admin/privacidade">Atendimento de privacidade</Link>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Gestão de usuários e visão geral das solicitações da plataforma.</p>
         </div>
       </header>

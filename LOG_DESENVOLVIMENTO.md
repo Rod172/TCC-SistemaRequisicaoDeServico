@@ -560,3 +560,49 @@ Nenhuma biblioteca ou API externa nova adicionada. Reutilizadas as dependências
 | React | 18.3.1 | Apresentação dos estados de pagamento e associação acessível dos campos via useId | https://react.dev/reference/react/useId |
 | Jest | 30.5.2 | Regressão de integridade do pagamento | https://jestjs.io/docs/api |
 | Supertest | 7.3.1 | Teste da rota real de custódia | https://github.com/forwardemail/supertest |
+
+
+## 26/10/2026 — US40 / TCC-53: documentos legais, aceite e canal de privacidade
+
+### Escopo e isolamento
+
+- História criada no backlog antes da implementação e importada pelo script para TCC-53, vinculada ao épico original TCC-3. Preservados os critérios das histórias anteriores e a numeração US37–US39 presente no trabalho paralelo da pasta principal.
+- Trabalho isolado no worktree `TCC-SistemaRequisicaoDeServico-privacidade`, branch `termos-privacidade-lgpd`, a partir de `415b844`. A tentativa de worktree gerenciado esbarrou na propriedade do caminho UNC; foi usado o Git nativo no WSL, sem alterar configurações globais de segurança. Alterações visuais não commitadas da pasta principal foram preservadas.
+- Prévia isolada em frontend 3002/API 3003, banco de desenvolvimento existente; testes em banco separado `tcc_servico_facil_privacidade_test`. Dependências/configurações locais reutilizadas por links ignorados, sem commitar credenciais. `.gitignore` contempla links locais de node_modules e cache Python.
+
+### Implementação
+
+- Termos e Política públicos, com versão/data, sumário, referências oficiais e contato informado e autorizado pelo usuário: Rodrigo Fernando Melo Dias da Silva / rodrigogofernandomelo15@gmail.com. Telefone não publicado. Referência de versão inicial `2026-10-26.1`, arquivo de publicação preservado e rotas por versão; mapa de publicações e manifestos sincronizados por teste.
+- Rodapé legal global e links nos cadastros abertos em nova aba, sem perder o preenchimento. Dois sinais inicialmente desmarcados: aceite dos Termos e ciência da Política. Nenhum consentimento genérico para todo tratamento. O cliente atual deixa de enviar o booleano legado; a API valida sinais estritos e versões atuais, gerando data no servidor.
+- Migration aditiva de versões/data e tabela de protocolos. Campos legados preservados, sem backfill de versão ou novo aceite de conta anterior. Seed fictício idempotente e reversível para a demonstração.
+- Services/controllers/routes em camadas; metadados públicos, central isolada pelo JWT, validações de descrição/tipo e até cinco pendentes, caixa administrativa paginada, resposta única com lock, autor/data do servidor e proteção por ADMIN. Nenhum envio automático de e-mail ou exclusão de dados.
+- Perfil passa a dizer “Desativar minha conta”, explicando preservação de histórico e encaminhando pedidos de acesso/correção/exclusão à central. Documentos descrevem sessão local, dados necessários, perfis públicos, anexos por links diretos, contas demo compartilhadas, infraestrutura e retenção manual efetiva, sem prometer anonimização ou pagamento real.
+- OpenAPI: cinco novas operações, DTOs do cadastro e registros atualizados, total de 51 operações documentadas nesta branch. `docs/PRIVACIDADE.md` registra contratos, publicação de versões, migração, operação e limitações antes de uso real.
+
+### Arquivos
+
+Novos: config/serviço de documentos, migration, modelo/serviço/controller/routes de privacidade, seed demonstrativo, testes documentosLegais/privacidade; componentes DocumentoLegal/RodapeLegal/AceiteDocumentos/CentralPrivacidade e CSS Module; páginas termos/política/central/administração e rotas por versão; conteúdo legal JSON versionado e guia técnico. Alterados app/modelos/auth/OpenAPI, fixtures de cadastro e inventário de rotas dos testes; layout/cadastros/perfil/admin; historia, status e este log.
+
+### Validação
+
+- 13 suítes e 238 testes aprovados no MySQL isolado, incluindo rejeição de versões/sinais ausentes/coagidos, cadastros sem campo genérico legado, data de servidor, isolamento de titulares, conta antiga sem versão, respostas concorrentes, paginação e limite de pendentes. Backend TypeScript compilado e build de produção Next.js aprovado.
+- Migration aplicada no desenvolvimento e nos testes; seed demonstrativo aplicado sem sobrescrever dados existentes. Não houve recriação de banco do usuário.
+- Interface: documentos e contato acessíveis sem login; sinais de cadastro desmarcados; central da conta demo mostrou versão desconhecida; protocolo fictício `b5e02ba2-0c8f-4156-ba3f-99a96ca2749a` registrado e respondido pelo admin, com resposta/data visíveis ao titular. Não houve exclusão de dados nem envio de mensagem ao contato externo. Novo aceite positivo validado na API, não realizado novamente pela interface.
+- Conferência em 390×844 dos documentos, cadastros e central; caixa administrativa e paginação também sem transbordamento. Links com contraste ajustado localmente, sem alterar a identidade visual paralela. Diff sem erros. Fontes oficiais e limites jurídicos/operacionais discriminados no guia.
+
+### Referências e dependências reutilizadas
+
+Nenhuma biblioteca nova adicionada.
+
+| Biblioteca/API | Versão | Propósito | Documentação oficial |
+|---|---|---|---|
+| Express | 4.22.3 | Novas rotas e contratos autenticados | https://expressjs.com/pt-br/4x/api.html |
+| Sequelize | 6.37.8 | Modelo, migração, paginação e transações/locks | https://sequelize.org/docs/v6/ |
+| Sequelize CLI | 6.6.5 | Migration e seed demonstrativo | https://sequelize.org/docs/v6/other-topics/migrations/ |
+| React | 18.3.1 | Aceites controlados e central de atendimento | https://react.dev/reference/react |
+| Next.js | 14.2.35 | Documentos públicos/versionados, CSS Modules e links | https://nextjs.org/docs/14 |
+| Axios | 1.19.0 | Cliente centralizado com JWT para protocolos | https://axios-http.com/docs/intro |
+| Jest | 30.5.2 | Testes de validação/contratos e integração | https://jestjs.io/docs/api |
+| Supertest | 7.3.1 | Rotas reais na integração isolada | https://github.com/forwardemail/supertest |
+| LGPD | Lei 13.709/2018, texto compilado consultado em 26/10/2026 | Transparência, finalidade, fundamentos e direitos | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm |
+| ANPD | Orientação consultada em 26/10/2026 | Direitos e canais do titular | https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados/direito-dos-titulares |

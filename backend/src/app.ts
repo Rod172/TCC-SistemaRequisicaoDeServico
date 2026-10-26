@@ -36,6 +36,8 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import HttpError from './utils/HttpError';
 import multer from 'multer';
 
+import privacidadeRoutes from './routes/privacidadeRoutes';
+
 const app = express();
 
 // Middlewares Globais de Segurança e Parse
@@ -73,6 +75,7 @@ app.get('/api/v1/health', (req: Request, res: Response) => {
 });
 
 // Registro dos Módulos de Rotas da Aplicação
+app.use('/api/v1', privacidadeRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/perfil', perfilRoutes);
 app.use('/api/v1/solicitacoes', solicitacaoRoutes);
