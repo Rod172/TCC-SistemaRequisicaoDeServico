@@ -104,7 +104,7 @@ export default function NotificationBell() {
     <div ref={containerRef} style={{ position: 'relative' }}>
       <button
         onClick={() => setAberto((v) => !v)}
-        title="Notificações"
+        aria-label="Notificações" title="Notificações"
         style={{
           position: 'relative', background: 'transparent', border: 'none', color: '#94a3b8',
           cursor: 'pointer', display: 'flex', padding: '4px',

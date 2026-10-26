@@ -8,6 +8,7 @@
  */
 
 import './globals.css';
+import RodapeLegal from '@/components/RodapeLegal';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>{children}<RodapeLegal /></body>
     </html>
   );
 }

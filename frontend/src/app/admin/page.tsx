@@ -22,6 +22,7 @@ import {
   UserCheck, UserX, AlertCircle, CheckCircle, LogOut, Flag, Check,
 } from 'lucide-react';
 import api from '@/services/api';
+import useConfirmacao from '@/components/useConfirmacao';
 import NotificationBell from '@/components/NotificationBell';
 
 type Aba = 'usuarios' | 'solicitacoes' | 'denuncias';
@@ -32,7 +33,7 @@ interface UsuarioAdmin {
   email: string;
   tipo_perfil: 'SOLICITANTE' | 'PRESTADOR' | 'ADMIN';
   ativo: boolean;
-  created_at: string;
+  createdAt: string;
 }
 
 interface SolicitacaoAdmin {
@@ -70,6 +71,7 @@ function formatarData(iso: string) {
 }
 
 export default function AdminPage() {
+  const { confirmar, dialogo } = useConfirmacao();
   const router = useRouter();
 
   const [abaAtiva, setAbaAtiva] = useState<Aba>('usuarios');
@@ -187,7 +189,7 @@ export default function AdminPage() {
 
   async function alterarStatus(usuario: UsuarioAdmin) {
     const acao = usuario.ativo ? 'desativar' : 'ativar';
-    if (!window.confirm(`Deseja realmente ${acao} a conta de ${usuario.nome}?`)) return;
+    if (!await confirmar({ mensagem: `Deseja realmente ${acao} a conta de ${usuario.nome}?` })) return;
 
     setProcessandoId(usuario.id);
     limparMensagens();
@@ -210,6 +212,7 @@ export default function AdminPage() {
 
   return (
     <main style={{ maxWidth: '1000px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+      {dialogo}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           <ArrowLeft size={16} /> Voltar para a página inicial
@@ -234,6 +237,7 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>Painel Administrativo</h1>
+      <Link href="/admin/privacidade">Atendimento de privacidade</Link>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Gestão de usuários e visão geral das solicitações da plataforma.</p>
         </div>
       </header>
@@ -336,7 +340,7 @@ export default function AdminPage() {
                           {u.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
-                      <td style={{ ...estiloTd, color: '#64748b' }}>{formatarData(u.created_at)}</td>
+                      <td style={{ ...estiloTd, color: '#64748b' }}>{formatarData(u.createdAt)}</td>
                       <td style={estiloTd}>
                         <button
                           onClick={() => alterarStatus(u)}

@@ -18,7 +18,7 @@
 
 import { Server as HttpServer } from 'http';
 import { Server as SocketIoServer, Socket } from 'socket.io';
-import jwt from 'jsonwebtoken';
+import { authenticateToken, getJwtSecret } from '../config/jwt';
 import { UserPayload } from '../middlewares/authMiddleware';
 import chatService from '../services/chatService';
 
@@ -33,21 +33,21 @@ function nomeSalaUsuario(usuarioId: string) {
 }
 
 export function initChatSocket(httpServer: HttpServer): SocketIoServer {
+  getJwtSecret();
   io = new SocketIoServer(httpServer, {
     cors: { origin: '*' },
   });
 
   // Autentica a conexão usando o mesmo JWT emitido pelo login REST (US03).
-  io.use((socket: Socket, next) => {
+  io.use(async (socket: Socket, next) => {
     const token = socket.handshake.auth?.token;
-    const secret = process.env.JWT_SECRET || 'tcc_secret_key_super_segura_2026';
 
-    if (!token) {
+    if (typeof token !== 'string' || !token) {
       return next(new Error('Token de autenticação não fornecido.'));
     }
 
     try {
-      const usuario = jwt.verify(token, secret) as UserPayload;
+      const usuario = await authenticateToken(token);
       socket.data.usuario = usuario;
       return next();
     } catch {
@@ -66,6 +66,7 @@ export function initChatSocket(httpServer: HttpServer): SocketIoServer {
     // o chat alheio. Desde a US34 o parâmetro é o id da PROPOSTA, não mais da solicitação.
     socket.on('entrar-sala', async (propostaId: string) => {
       try {
+        socket.data.usuario = await authenticateToken(socket.handshake.auth.token);
         await chatService.verificarParticipante(propostaId, usuario.id);
         socket.join(nomeSala(propostaId));
       } catch {

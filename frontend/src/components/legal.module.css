@@ -1,0 +1,4 @@
+/* Next.js 14 CSS Modules: links legíveis sem alterar a identidade visual em paralelo.
+ * https://nextjs.org/docs/14/app/building-your-application/styling/css-modules */
+.conteudo a { color: var(--link-color, #93c5fd); text-decoration: underline; text-underline-offset: .15em; }
+.conteudo ul { padding-left: 1.25rem; }

@@ -12,7 +12,7 @@ Em estrito cumprimento à **Regra 2**, a tabela abaixo mapeia todas as bibliotec
 
 | Biblioteca | Versão | Propósito / Finalidade no Projeto | Referência Oficial / Link |
 |---|---|---|---|
-| **Express.js** | `^4.19.2` | Framework web para criação de rotas, middlewares e API REST | [expressjs.com](https://expressjs.com/pt-br/) |
+| **Express.js** | `^4.19.2` (resolvida `4.22.3`) | Framework web para criação de rotas, middlewares e API REST | [expressjs.com](https://expressjs.com/pt-br/) |
 | **TypeScript** | `^5.4.5` | Superconjunto tipado de JavaScript para segurança em tempo de compilação | [typescriptlang.org](https://www.typescriptlang.org/) |
 | **ts-node-dev** | `^2.0.0` | Servidor de desenvolvimento Node.js com suporte e live reload para TypeScript | [github.com/wclr/ts-node-dev](https://github.com/wclr/ts-node-dev) |
 | **Sequelize ORM** | `^6.37.3` | Mapeamento Objeto-Relacional (ORM) para o banco de dados MySQL | [sequelize.org](https://sequelize.org/docs/v6/) |
@@ -25,10 +25,14 @@ Em estrito cumprimento à **Regra 2**, a tabela abaixo mapeia todas as bibliotec
 | **swagger-ui-express** | `^5.0.1` | Interface gráfica interativa para documentação da API REST | [swagger.io](https://swagger.io/tools/swagger-ui/) |
 | **swagger-jsdoc** | `^6.2.8` | Gerador de especificação OpenAPI 3.0 via comentários JSDoc | [github.com/Sknfy/swagger-jsdoc](https://github.com/Sknfy/swagger-jsdoc) |
 | **Sequelize CLI** | `^6.6.2` | Ferramenta de linha de comando para automação de Migrations/Seeders | [github.com/sequelize/cli](https://github.com/sequelize/cli) |
-| **Multer** | `^2.3.0` | Middleware Express para parsing de `multipart/form-data` e upload em disco da foto de perfil (US04) | [github.com/expressjs/multer](https://github.com/expressjs/multer) |
+| **Multer** | `^2.3.0` (resolvida `2.5.0`) | Middleware Express para parsing de `multipart/form-data` e upload em disco da foto de perfil (US04) | [github.com/expressjs/multer](https://github.com/expressjs/multer) |
 | **@types/jsonwebtoken** | `^9.0.10` | Definições de tipos TypeScript para a biblioteca `jsonwebtoken` | [npmjs.com/package/@types/jsonwebtoken](https://www.npmjs.com/package/@types/jsonwebtoken) |
 | **@types/multer** | `^2.2.0` | Definições de tipos TypeScript para a biblioteca `multer` | [npmjs.com/package/@types/multer](https://www.npmjs.com/package/@types/multer) |
 | **Socket.io** | `^4.8.3` | Servidor WebSocket para o chat privado em tempo real (US14) | [socket.io](https://socket.io/docs/v4/) |
+
+| **express-rate-limit** | `8.7.1` | Limita tentativas de autenticação por IP, US22 | [Documentação oficial](https://express-rate-limit.mintlify.app/reference/configuration) |
+| **Jest** | `30.5.2` | Testes unitários e integração, projetos separados com banco exclusivo, US26 | [Documentação oficial](https://jestjs.io/docs/getting-started) |
+| **Supertest** | `7.3.1` | Requisições aos endpoints reais Express sem servidor externo, US26 | [Documentação oficial](https://github.com/forwardemail/supertest) |
 
 ### 🎨 Frontend (Next.js 14 / React com TypeScript)
 
@@ -431,3 +435,174 @@ Em estrito cumprimento à **Regra 2**, a tabela abaixo mapeia todas as bibliotec
 - **Banco de Dados**: Migration [`20260901000001-create-usuarios.js`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/migrations/20260901000001-create-usuarios.js).
 - **Backend**: Model [`Usuario.ts`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/models/Usuario.ts), [`authService.ts`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/services/authService.ts) e [`authController.ts`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/backend/src/controllers/authController.ts).
 - **Frontend**: Tela em [`frontend/src/app/register-solicitante/page.tsx`](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/frontend/src/app/register-solicitante/page.tsx).
+
+
+### US26 — Integração real da API com MySQL isolado (25/10/2026)
+
+- Implementados 19 casos Jest/Supertest sobre o app real: registro/login, hash de senha, credenciais inválidas, papéis, criação, concorrência de propostas, proprietário, aceite único/repetição e simultâneo, chat privado, conclusão e avaliação única, privacidade do dashboard e perfil público.
+- Arquivos criados nesta etapa: `backend/jest.config.cjs`, `backend/tests/fluxos.integracao.test.js`, `backend/tests/ambiente.cjs`, `backend/tests/preparar-banco.cjs`, `backend/tests/sequelize-test.cjs`, `backend/tests/perfil-publico.test.js` e `backend/tests/LEIA-ME.md`.
+- Banco explicitamente configurado com `DB_NAME_TEST=tcc_servico_facil_test`. Antes dos imports, o setup força `NODE_ENV=test`, `DB_NAME=DB_NAME_TEST`, credenciais de teste e segredo JWT próprio; rejeita nomes sem sufixo `_test`. Migrations reais pelo Sequelize CLI `--env test`, sem seeds ou servidor HTTP externo. Limpeza restrita aos IDs das fixtures, sem truncar tabelas ou remover bancos.
+- Jest separado em projetos `unitarios` e `integracao`; o primeiro funciona sem MySQL. A suíte de perfil público já existente, escrita em node:test, roda em subprocesso por uma ponte Jest.
+- Validação: `npm run build` concluído; `DB_NAME_TEST=tcc_servico_facil_test npx jest --runInBand` no Node 22.23.2: **7 suítes, 75 testes aprovados**, incluindo 19 de integração (o teste ponte também executa os casos nativos de perfil). Migrations aplicadas somente no banco de teste.
+- Identificado durante leitura risco de duas propostas aceitas e repetição do aceite. As regressões passaram após as correções paralelas da máquina de estados; esta etapa não alterou services ou package.json. Fixtures passaram a gerar CPFs válidos para acompanhar a validação de cadastro integrada em paralelo.
+
+| Biblioteca/API | Versão instalada | Propósito nesta etapa | Documentação oficial |
+| --- | --- | --- | --- |
+| Jest | 30.5.2 | Executor, hooks e asserções dos testes de integração e configuração por projetos | https://jestjs.io/docs/getting-started |
+| Supertest | 7.3.1 | Requisições às rotas do app Express em memória | https://github.com/forwardemail/supertest |
+| mysql2 | 3.23.4 | Conexão para criação segura do banco de teste (dependência já existente; consultar lock para versão vigente) | https://sidorares.github.io/node-mysql2/docs |
+| Sequelize CLI | 6.6.5 | Execução das migrations reais no ambiente test | https://sequelize.org/docs/v6/other-topics/migrations/ |
+
+
+## 25/10/2026 — Conferência e implementação das histórias pendentes
+
+### Escopo e decisões
+
+Conferido `historia.md` contra os modelos, endpoints e telas. US19, US20 e US21 não tinham implementação; US01/US02/US05/US10/US13/US22/US24/US25/US26/US27 tinham critérios pendentes apesar de funcionalidades parcialmente existentes. Os complementos permanecem cobertos pelas histórias originais, com critérios e numeração preservados. A tabela `STATUS_HISTORIAS.md` registra a evidência por história. As 34 descrições foram sincronizadas com sucesso pelo script `importar_historia.py --atualizar`; o conector Atlassian exige reautenticação, mas o script existente funcionou. Nenhum token foi incluído nas alterações.
+
+### Funcionalidades e arquivos
+
+- **US19:** `prestadorPublicoService`, controller e routes; página `prestadores/[id]`; projeção pública explícita, paginação limitada e reputação a partir de avaliações reais. Link na comparação de propostas.
+- **US20/US21/US13:** `dashboardService`, controller e routes; página `dashboard` e atalho na home. Indicadores isolados por usuário, mês de São Paulo, conversão calculada no mesmo conjunto e carteira simulada derivada dos estados RETIDO/LIBERADO, sem crédito duplicado. Reembolsos não compõem o saldo.
+- **US01/US02:** validadores de CPF/CNPJ numéricos no backend/frontend; normalização e prevenção de duplicidade por pontuação; senha com limite compatível com bcrypt; consentimento estrito. Cadastro profissional com foto opcional multipart, mantendo JSON compatível; arquivo removido quando o cadastro falha. Migration `20261025000001` normaliza legados e aborta diante de colisões sem expor dados.
+- **US05:** formulário em três etapas, dados preservados, navegação de volta, anexos e revisão antes de publicar. Rótulos associados aos campos e navegação por teclado no seletor de anexos.
+- **US10:** migration `20261025000002`, modelo Proposta, services/controller e detalhes dos dois perfis incluem validade comercial distinta do prazo de execução, de 1 a 365 dias (padrão 7). Propostas expiradas não podem ser aceitas/renegociadas, mas podem ser recusadas, inclusive pelo chat.
+- **US12/US13/US17/US18/US31/US34:** transições com lock na solicitação antes das dependências; impede dois aceites, aceite de recusada e ações incompatíveis após contratação. Reembolso/retenção de nova contratação coerentes; retorno da custódia recarregado do banco; avaliação e reputação atômicas, serializadas por perfil. Eventos socket emitidos após commit nas transições corrigidas. Checkout exibido após o aceite e custódia reembolsada não é apresentada como protegida.
+- **US22:** `loginRateLimiter`, configuração JWT compartilhada e autenticação obrigatória/opcional/socket com conta ativa e perfil atual. Segredo público removido do fallback; inicialização valida a configuração. `.env.example` e Docker Compose corrigidos. Uploads usam extensão correspondente ao MIME permitido e erros de arquivo retornam 400. Atualizações compatíveis no lockfile reduziram o relatório de 11 avisos (incluindo um crítico) para dois moderados transitivos do Sequelize/uuid; não foi aplicado downgrade incompatível do ORM.
+- **US23:** foco visível e respeito à redução de movimento; suspensão React nas páginas com `useSearchParams` para permitir build de produção. Removida promessa de anonimização automática em 30 dias, que não correspondia ao soft-delete implementado.
+- **US24:** `config/openapi.ts`, `app.ts` e testes: 45 operações com contratos de entrada/saída e erros aplicáveis, autenticação Bearer e `$ref` válidos, geração em `src` e `dist`, JSON em `/api-docs.json`.
+- **US25:** seed original ajustado para status coerente, documentos sem pontuação, reputação inicial real e validade. Novo seed `20261025000001-demo-fluxo-completo.js` idempotente, com serviços concluídos/avaliações/custódia/chat/perguntas/denúncia, preservando contas e preferências anteriores.
+- **US26:** configuração Jest, preparação segura de MySQL `_test`, testes de integração e isolados em `backend/tests`; workflow `.github/workflows/validacao.yml` executa testes e build em PRs. README e instruções de teste atualizados.
+- **US27:** migration `20261025000003`, modelo RegistroAdministrativo e exportação em `models/index.ts`; alteração de status e resolução de denúncia registram autor, alvo, data e estados na mesma transação. A repetição sem mudança não duplica o registro; falha na auditoria desfaz a ação.
+
+### Referências da automação
+
+| Componente | Versão | Propósito | Documentação oficial |
+|---|---|---|---|
+| GitHub Actions | Serviço | Executar validação em pull requests | https://docs.github.com/pt/actions |
+| actions/checkout | v4 | Obter os arquivos da revisão | https://github.com/actions/checkout |
+| actions/setup-node | v4 | Preparar Node.js 22 e cache npm | https://github.com/actions/setup-node |
+| MySQL | 8.0 | Persistência de integração isolada no CI | https://dev.mysql.com/doc/refman/8.0/en/ |
+
+### Validações
+
+- Backend e frontend compilados com TypeScript; build de produção Next.js concluído após corrigir as fronteiras Suspense das listagens.
+- Migrações novas aplicadas no banco de desenvolvimento e no banco de testes, sem recriação de dados do usuário.
+- Integração usa as rotas reais, JWT e MySQL separado; cobre propostas simultâneas, estados inválidos, custódia/reembolso/recontratação, avaliação única/média, isolamento de conversas/indicadores, foto e consentimento, seeds reversíveis e auditoria transacional. A limpeza das fixtures administrativas exige retirar primeiro o vínculo de último administrador nas próprias contas de teste.
+- Navegação manual: login de demonstração, formulário da descrição até a revisão sem publicar fixture no banco de desenvolvimento, painel e perfil público. Conferência em viewport de 390 × 844; painel e revisão adaptados ao celular. Isso não substitui avaliação com usuários nem teste em dispositivos físicos.
+- Resultado final: **11 suítes e 193 testes aprovados**, incluindo integração MySQL, sem falhas. `npm run build` do frontend concluído; `git diff --check` sem erros. Migrations de 25/10/2026 aplicadas com sucesso. Trabalho preparado na branch `historias-pendentes` para integração por PR.
+
+## 25/10/2026 — Verificação real das páginas e complementos US35/US36
+
+### Achados e alterações
+
+- Publicação em três etapas com PNG, pergunta/resposta, duas propostas concorrentes, chat lateral privado com mensagem e imagem, contraproposta, aceite e PIX simulado exercitados nas páginas com contas demo. Solicitação fictícia `a892e83e-0eb3-4ebe-a3d1-ec5d8ee68ed5`, mantida para revisão.
+- **US35 / TCC-47:** registrada no backlog e importada antes de implementar a resposta do prestador à contraproposta. Migration `20261025000004-add-resposta-contraproposta.js`, modelo Proposta, service/controller/routes de oportunidades e bloqueio de contratação pendente em solicitacaoService. Resposta atômica com autorização, validade e notificação após commit; valor aceito efetivamente usado na contratação/custódia. Interfaces de detalhe dos dois perfis atualizadas.
+- **US36 / TCC-48:** descoberta em ABERTA/EM_NEGOCIACAO alinhada ao envio de propostas, nos filtros/listagem e vitrine inicial; indicação correta nos cards. Histórias anteriores preservadas. Descrições das duas novas histórias sincronizadas novamente no Jira após a validação.
+- Envio de proposta recarrega os dados de detalhe, corrigindo data inválida e status antigo logo após publicar. ChatPanel/ChatDrawer e chatController/chatService expõem somente leitura e bloqueiam envio em conversa recusada ou solicitação cancelada. Rótulos acessíveis adicionados no chat, sino, preferências e estrelas. Mensagem de contraproposta já contratada corrigida.
+- OpenAPI documenta resposta da contraproposta e estado de leitura do chat; inventário atual de 46 operações. `STATUS_HISTORIAS.md` atualizado para 36 histórias. `VERIFICACAO_FLUXOS.md` registra evidências e pendências manuais, sem equiparar implementação a homologação visual completa.
+
+### Testes e limites
+
+- Migration aplicada no banco de desenvolvimento e no MySQL isolado de testes.
+- `DB_NAME_TEST=tcc_servico_facil_test npm test`: **11 suítes, 199 testes aprovados**; novos casos de descoberta, resposta pendente/aceita/recusada/expirada, autorização, repetição, valor correto e chat recusado.
+- `npm run build` do frontend: produção, TypeScript e geração de páginas concluídos. `git diff --check` aprovado.
+- Confirmação nativa de conclusão travou a ferramenta de navegação. Tentativas de recuperar a aba não resolveram; conclusão conferida via API HTTP 200 e estado CONCLUIDA/formulário exibidos no detalhe. Envio da avaliação e demais fluxos listados no relatório continuam pendentes de homologação manual; não foram apresentados como aprovados na interface.
+- Backend reiniciado após interrupção do watcher; frontend reiniciado depois do build para disponibilizar a aplicação local.
+
+### Arquivos e referências
+
+Alterados: `backend/src/config/openapi.ts`, controllers chat/oportunidade, models/Proposta, routes/oportunidade, services chat/oportunidade/solicitacao, teste `fluxos.integracao.test.js`; frontend detalhes solicitante/prestador, feed, home, configurações, ChatPanel, ChatDrawer e NotificationBell; `historia.md`, `STATUS_HISTORIAS.md`. Criados: migration da contraproposta e `VERIFICACAO_FLUXOS.md`.
+
+Nenhuma biblioteca ou API externa nova adicionada. Reutilizadas as dependências já registradas:
+
+| Biblioteca | Versão instalada | Uso nesta etapa | Documentação oficial |
+|---|---|---|---|
+| Sequelize | 6.37.8 | Transação, locks e atributos da contraproposta | https://sequelize.org/docs/v6/ |
+| Express | 4.22.3 | Rota autenticada de resposta e contrato do chat | https://expressjs.com/pt-br/4x/api.html |
+| React | 18.3.1 | Estado dos controles e apresentação acessível | https://react.dev/reference/react |
+| Next.js | 14.2.35 | Rotas de detalhe, vitrine e build de produção | https://nextjs.org/docs/14 |
+| Jest | 30.5.2 | Regressões de negociação e descoberta | https://jestjs.io/docs/getting-started |
+| Supertest | 7.3.1 | Verificação integrada das rotas reais | https://github.com/forwardemail/supertest |
+
+
+## 26/10/2026 — US23: confirmações da aplicação e retomada dos fluxos
+
+- Substituídas as cinco chamadas `window.confirm` por `useConfirmacao.tsx`, hook com diálogo compartilhado em React/HTML. Confirmações de aceitar/recusar proposta, cancelar contratação, concluir pelos dois perfis e alterar conta administrativa agora permanecem no DOM, sem bloquear o JavaScript.
+- Interação: texto associado ao título, fundo inativo pelo modal, foco inicial em “Voltar sem alterar”, Escape sem efeitos, retorno ao controle de origem, proteção contra pedidos simultâneos e resolução como cancelamento ao desmontar. Botões se reorganizam em telas estreitas.
+- Correção coberta pela US23, sem novos endpoints ou regras de negócio e sem alteração dos critérios existentes. Não foi necessária nova história. Nenhuma dependência adicionada.
+- Criado `frontend/src/components/useConfirmacao.tsx`; alterados `frontend/src/app/globals.css`, detalhes `minhas-solicitacoes/[id]` e `oportunidades/[id]`, `admin/page.tsx`, `STATUS_HISTORIAS.md` e `VERIFICACAO_FLUXOS.md`.
+- Corrigido também o campo de data de cadastro na tabela administrativa: o retorno Sequelize existente é `createdAt`; a interface usava `created_at` e mostrava data inválida.
+- Validação manual: Escape e volta sem alteração; conclusão efetiva de fixture pela interface; avaliação 5 enviada e visível no perfil público; cancelamento da contratação em 390 × 844; diálogo administrativo aberto e cancelado. API confirmou LIBERADO e REEMBOLSADO de R$ 120 nas respectivas fixtures. Pré-condições de contratação foram preparadas pela API, sem confundir com percurso completo pela interface.
+- Dados fictícios de verificação mantidos para inspeção; nenhuma conta real desativada. A primeira preparação interrompida deixou um serviço fictício contratado sem pagamento, antes dos dois registros usados na validação.
+- Checagem TypeScript aprovada. Build de produção do frontend executado nesta etapa. A suíte backend de 199 testes aprovada na etapa anterior não foi reexecutada: não houve alteração de backend nesta correção.
+
+| Biblioteca/recurso | Versão | Propósito | Documentação oficial |
+|---|---|---|---|
+| React | 18.3.1 | Estado e ciclo de vida da confirmação assíncrona | https://react.dev/reference/react |
+| HTML dialog | Plataforma Web | Modal no DOM, foco e fundo inativo, sem `window.confirm` | https://html.spec.whatwg.org/multipage/interactive-elements.html#the-dialog-element |
+
+
+## 26/10/2026 — US13: apresentação do checkout e validação dos fluxos pendentes
+
+- Conferência real de Cartão de teste e PIX de teste nas páginas. A área existente de pagamento não mostrava resumo suficiente antes da confirmação e sumia após conclusão/cancelamento. Complementada em `frontend/src/app/minhas-solicitacoes/[id]/page.tsx`: seção rotulada “Pagamento e garantia”, prestador/valor/situação, grupo de métodos acessível e flexível, bloqueio do botão Voltar durante processamento e comprovante persistente para retenção/liberação/reembolso. Nenhuma cobrança real ou coleta de dados financeiros.
+- Backend já calcula pelo valor da proposta aceita e serializa pagamentos pela solicitação. Acrescentado teste em `backend/tests/fluxos.integracao.test.js` contra tentativa de trocar valor, prestador e proposta no corpo da requisição; valor/vínculo contratados prevalecem. Sem alteração do endpoint ou regra de negócio.
+- `frontend/src/app/perfil/page.tsx`: rótulos dos campos associados aos inputs com IDs React, corrigindo controles sem nome acessível encontrados na conferência de edição.
+- Validação manual: cartão R$ 120 retido, conclusão e liberação; saldo do prestador R$ 340→460 e custódia R$ 620→500. PIX R$ 120, desistência e reembolso sem crédito ao prestador. Solicitante viu comprovantes; profissional viu indicadores próprios. Notificação abriu solicitação correta. Preferência desativada persistiu após reload e foi restaurada; endereço demo editado, recarregado e restaurado.
+- Denúncia explicitamente fictícia enviada e resolvida por admin (pendências 3→2). Cadastro solicitante recusou CPF/senha/consentimento inválidos; os dois cadastros fictícios válidos foram finalizados após autorização explícita do usuário aos aceites, redirecionaram e autenticaram. Cadastro profissional incluiu foto PNG e bio/categoria. Conta fictícia de solicitante suspensa: login recusado; reativada em seguida. Contas anteriores preservadas.
+- Inspeção de largura em 390×844: início, painéis, perfil, configurações, solicitações/propostas, formulário novo, feed/detalhe, perfil público, status, cadastros e login; administração filtrada também conferida. Checkout/detalhe do solicitante em 320×740, sem transbordamento. Não equivale a ensaio em aparelho físico nem a todas as combinações de estado.
+- Fixtures principais: `787fcd22-3b42-4573-b377-f9c3b0d66851` (concluída/cartão/liberado), `8b4051fb-6ba0-4117-a1b5-f014e36c31f4` (PIX/desistência/reembolso). Pré-condições de contratação preparadas pela API. Contas e solicitações fictícias mantidas para revisão; credenciais não incluídas nos arquivos versionados.
+- `VERIFICACAO_FLUXOS.md` e `STATUS_HISTORIAS.md` atualizados com evidências e limites. Escopo coberto por US13, US04, US23 e testes US26; nenhuma história existente ou seus critérios foram alterados.
+- Resultado: **11 suítes e 200 testes aprovados**, incluindo MySQL isolado; build de produção Next.js e checagem TypeScript aprovados; `git diff --check` aprovado. Nenhuma dependência ou migration nova.
+
+| Biblioteca | Versão | Uso nesta etapa | Documentação oficial |
+|---|---|---|---|
+| React | 18.3.1 | Apresentação dos estados de pagamento e associação acessível dos campos via useId | https://react.dev/reference/react/useId |
+| Jest | 30.5.2 | Regressão de integridade do pagamento | https://jestjs.io/docs/api |
+| Supertest | 7.3.1 | Teste da rota real de custódia | https://github.com/forwardemail/supertest |
+
+
+## 26/10/2026 — US40 / TCC-53: documentos legais, aceite e canal de privacidade
+
+### Escopo e isolamento
+
+- História criada no backlog antes da implementação e importada pelo script para TCC-53, vinculada ao épico original TCC-3. Preservados os critérios das histórias anteriores e a numeração US37–US39 presente no trabalho paralelo da pasta principal.
+- Trabalho isolado no worktree `TCC-SistemaRequisicaoDeServico-privacidade`, branch `termos-privacidade-lgpd`, a partir de `415b844`. A tentativa de worktree gerenciado esbarrou na propriedade do caminho UNC; foi usado o Git nativo no WSL, sem alterar configurações globais de segurança. Alterações visuais não commitadas da pasta principal foram preservadas.
+- Prévia isolada em frontend 3002/API 3003, banco de desenvolvimento existente; testes em banco separado `tcc_servico_facil_privacidade_test`. Dependências/configurações locais reutilizadas por links ignorados, sem commitar credenciais. `.gitignore` contempla links locais de node_modules e cache Python.
+
+### Implementação
+
+- Termos e Política públicos, com versão/data, sumário, referências oficiais e contato informado e autorizado pelo usuário: Rodrigo Fernando Melo Dias da Silva / rodrigogofernandomelo15@gmail.com. Telefone não publicado. Referência de versão inicial `2026-10-26.1`, arquivo de publicação preservado e rotas por versão; mapa de publicações e manifestos sincronizados por teste.
+- Rodapé legal global e links nos cadastros abertos em nova aba, sem perder o preenchimento. Dois sinais inicialmente desmarcados: aceite dos Termos e ciência da Política. Nenhum consentimento genérico para todo tratamento. O cliente atual deixa de enviar o booleano legado; a API valida sinais estritos e versões atuais, gerando data no servidor.
+- Migration aditiva de versões/data e tabela de protocolos. Campos legados preservados, sem backfill de versão ou novo aceite de conta anterior. Seed fictício idempotente e reversível para a demonstração.
+- Services/controllers/routes em camadas; metadados públicos, central isolada pelo JWT, validações de descrição/tipo e até cinco pendentes, caixa administrativa paginada, resposta única com lock, autor/data do servidor e proteção por ADMIN. Nenhum envio automático de e-mail ou exclusão de dados.
+- Perfil passa a dizer “Desativar minha conta”, explicando preservação de histórico e encaminhando pedidos de acesso/correção/exclusão à central. Documentos descrevem sessão local, dados necessários, perfis públicos, anexos por links diretos, contas demo compartilhadas, infraestrutura e retenção manual efetiva, sem prometer anonimização ou pagamento real.
+- OpenAPI: cinco novas operações, DTOs do cadastro e registros atualizados, total de 51 operações documentadas nesta branch. `docs/PRIVACIDADE.md` registra contratos, publicação de versões, migração, operação e limitações antes de uso real.
+
+### Arquivos
+
+Novos: config/serviço de documentos, migration, modelo/serviço/controller/routes de privacidade, seed demonstrativo, testes documentosLegais/privacidade; componentes DocumentoLegal/RodapeLegal/AceiteDocumentos/CentralPrivacidade e CSS Module; páginas termos/política/central/administração e rotas por versão; conteúdo legal JSON versionado e guia técnico. Alterados app/modelos/auth/OpenAPI, fixtures de cadastro e inventário de rotas dos testes; layout/cadastros/perfil/admin; historia, status e este log.
+
+### Validação
+
+- 13 suítes e 238 testes aprovados no MySQL isolado, incluindo rejeição de versões/sinais ausentes/coagidos, cadastros sem campo genérico legado, data de servidor, isolamento de titulares, conta antiga sem versão, respostas concorrentes, paginação e limite de pendentes. Backend TypeScript compilado e build de produção Next.js aprovado.
+- Migration aplicada no desenvolvimento e nos testes; seed demonstrativo aplicado sem sobrescrever dados existentes. Não houve recriação de banco do usuário.
+- Interface: documentos e contato acessíveis sem login; sinais de cadastro desmarcados; central da conta demo mostrou versão desconhecida; protocolo fictício `b5e02ba2-0c8f-4156-ba3f-99a96ca2749a` registrado e respondido pelo admin, com resposta/data visíveis ao titular. Não houve exclusão de dados nem envio de mensagem ao contato externo. Novo aceite positivo validado na API, não realizado novamente pela interface.
+- Conferência em 390×844 dos documentos, cadastros e central; caixa administrativa e paginação também sem transbordamento. Links com contraste ajustado localmente, sem alterar a identidade visual paralela. Diff sem erros. Fontes oficiais e limites jurídicos/operacionais discriminados no guia.
+
+### Referências e dependências reutilizadas
+
+Nenhuma biblioteca nova adicionada.
+
+| Biblioteca/API | Versão | Propósito | Documentação oficial |
+|---|---|---|---|
+| Express | 4.22.3 | Novas rotas e contratos autenticados | https://expressjs.com/pt-br/4x/api.html |
+| Sequelize | 6.37.8 | Modelo, migração, paginação e transações/locks | https://sequelize.org/docs/v6/ |
+| Sequelize CLI | 6.6.5 | Migration e seed demonstrativo | https://sequelize.org/docs/v6/other-topics/migrations/ |
+| React | 18.3.1 | Aceites controlados e central de atendimento | https://react.dev/reference/react |
+| Next.js | 14.2.35 | Documentos públicos/versionados, CSS Modules e links | https://nextjs.org/docs/14 |
+| Axios | 1.19.0 | Cliente centralizado com JWT para protocolos | https://axios-http.com/docs/intro |
+| Jest | 30.5.2 | Testes de validação/contratos e integração | https://jestjs.io/docs/api |
+| Supertest | 7.3.1 | Rotas reais na integração isolada | https://github.com/forwardemail/supertest |
+| LGPD | Lei 13.709/2018, texto compilado consultado em 26/10/2026 | Transparência, finalidade, fundamentos e direitos | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm |
+| ANPD | Orientação consultada em 26/10/2026 | Direitos e canais do titular | https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados/direito-dos-titulares |

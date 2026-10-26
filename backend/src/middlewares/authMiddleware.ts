@@ -10,7 +10,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { authenticateToken } from '../config/jwt';
 
 export interface UserPayload {
   id: string;
@@ -27,7 +27,7 @@ declare global {
   }
 }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
@@ -47,10 +47,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
   }
 
   const token = parts[1];
-  const secret = process.env.JWT_SECRET || 'tcc_secret_key_super_segura_2026';
 
   try {
-    const decoded = jwt.verify(token, secret) as UserPayload;
+    const decoded = await authenticateToken(token);
     req.user = decoded;
     return next();
   } catch (err) {

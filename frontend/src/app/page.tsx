@@ -25,6 +25,7 @@ import api from '@/services/api';
 import NotificationBell from '@/components/NotificationBell';
 
 interface OportunidadeResumo {
+  status: 'ABERTA' | 'EM_NEGOCIACAO';
   id: string;
   titulo: string;
   categoria: string | null;
@@ -133,6 +134,7 @@ export default function Home() {
               <>
                 {/* Qualquer perfil logado pode publicar/ver suas próprias solicitações (US33 — o Prestador também pode contratar serviços). */}
                 <Link href="/minhas-solicitacoes" style={estiloLinkNav}>Minhas Solicitações</Link>
+                <Link href="/dashboard" style={estiloLinkNav}>Meu painel</Link>
                 {(usuarioLogado.tipo_perfil === 'PRESTADOR' || isAdmin) && (
                   <>
                     <Link href="/oportunidades" style={estiloLinkNav}>Oportunidades</Link>
@@ -278,7 +280,7 @@ export default function Home() {
               background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)', fontSize: '0.9rem',
             }}>
               <Inbox size={26} style={{ marginBottom: '0.5rem', opacity: 0.6 }} />
-              <p style={{ margin: 0 }}>Nenhuma solicitação aberta no momento.</p>
+              <p style={{ margin: 0 }}>Nenhuma solicitação disponível no momento.</p>
             </div>
           )}
 
@@ -291,6 +293,7 @@ export default function Home() {
                   borderRadius: 'var(--border-radius)', padding: '1rem',
                 }}>
                   <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#93c5fd' }}>{o.status === 'EM_NEGOCIACAO' ? 'Em negociação' : 'Aberta'}</span>
                     {o.categoria && (
                       <span style={{ padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 600, background: '#1e293b', color: '#cbd5e1' }}>
                         {o.categoria}

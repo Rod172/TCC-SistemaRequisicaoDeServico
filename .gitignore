@@ -34,3 +34,8 @@ Thumbs.db
 .idea/
 scratch/
 scratch_*.py
+
+# Dependências também podem ser links simbólicos em worktrees locais.
+/backend/node_modules
+/frontend/node_modules
+__pycache__/

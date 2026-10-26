@@ -41,6 +41,20 @@ button {
   font-family: inherit;
 }
 
+/* US23: foco visível para navegação por teclado em todas as telas. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ── Responsividade mobile ─────────────────────────────
    O layout do app é feito com estilos inline por componente (não há um design
    system/CSS Modules central), então as regras abaixo cobrem os pontos comuns
@@ -88,3 +102,22 @@ img {
     width: auto !important;
   }
 }
+
+/* Confirmação própria: modal acessível e adaptável a telas pequenas (US23). */
+.confirmacao-dialogo {
+  margin: auto; width: min(30rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem); overflow: auto; box-sizing: border-box;
+  padding: 1.5rem; border: 1px solid var(--card-border);
+  border-radius: 14px; background: var(--card-bg); color: var(--text-primary);
+  box-shadow: 0 24px 70px rgba(0,0,0,.4);
+}
+.confirmacao-dialogo::backdrop { background: rgba(0,0,0,.65); }
+.confirmacao-dialogo h2 { font-size: 1.2rem; margin: 0 0 1rem; }
+.confirmacao-dialogo p { line-height: 1.6; overflow-wrap: anywhere; }
+.confirmacao-acoes { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.confirmacao-acoes button {
+  flex: 1 1 10rem; min-height: 44px; padding: .65rem 1rem; cursor: pointer;
+  border: 1px solid var(--card-border); border-radius: 8px;
+  background: transparent; color: inherit; font: inherit;
+}
+.confirmacao-acoes .confirmacao-principal { background: #2563eb; color: white; }

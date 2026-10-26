@@ -9,7 +9,8 @@
  *    Doc Oficial: https://sequelize.org/docs/v6/
  */
 
-import { Solicitacao, Proposta, Usuario, Denuncia } from '../models';
+import { Solicitacao, Proposta, Usuario, Denuncia, RegistroAdministrativo } from '../models';
+import sequelize from '../config/database';
 import HttpError from '../utils/HttpError';
 
 export class DenunciaService {
@@ -55,12 +56,20 @@ export class DenunciaService {
     return denuncias.map((d) => d.get({ plain: true }));
   }
 
-  async resolver(denunciaId: string) {
-    const denuncia = await Denuncia.findByPk(denunciaId);
-    if (!denuncia) throw new HttpError(404, 'Denúncia não encontrada.');
-
-    await denuncia.update({ status: 'RESOLVIDA' });
-    return { mensagem: 'Denúncia marcada como resolvida.' };
+  async resolver(denunciaId: string, adminId: string) {
+    return sequelize.transaction(async (transaction) => {
+      const denuncia = await Denuncia.findByPk(denunciaId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!denuncia) throw new HttpError(404, 'Denúncia não encontrada.');
+      if (denuncia.status !== 'RESOLVIDA') {
+        const anterior = denuncia.status;
+        await denuncia.update({ status: 'RESOLVIDA' }, { transaction });
+        await RegistroAdministrativo.create({
+          admin_id: adminId, denuncia_id: denunciaId, acao: 'RESOLVER_DENUNCIA', ocorrido_em: new Date(),
+          estado_anterior: { status: anterior }, estado_posterior: { status: 'RESOLVIDA' },
+        }, { transaction });
+      }
+      return { mensagem: 'Denúncia marcada como resolvida.' };
+    });
   }
 }
 

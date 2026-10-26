@@ -29,6 +29,12 @@ function exigirPrestador(req: Request, res: Response): boolean {
 }
 
 export class OportunidadeController {
+  async responderContraproposta(req: Request, res: Response): Promise<Response | void> {
+    if (!exigirPrestador(req, res)) return;
+    try {
+      return res.json(await oportunidadeService.responderContraproposta(req.params.id, req.params.propostaId, req.user!.id, req.body.acao));
+    } catch (err: any) { return responderErro(res, err); }
+  }
   /**
    * @openapi
    * /prestador/oportunidades:
@@ -145,11 +151,19 @@ export class OportunidadeController {
    *                 type: number
    *               prazo_dias:
    *                 type: integer
+   *               validade_dias:
+   *                 type: integer
+   *                 minimum: 1
+   *                 maximum: 365
+   *                 default: 7
+   *                 description: Validade comercial em dias; independente do prazo de execução.
    *               mensagem:
    *                 type: string
    *     responses:
    *       201:
    *         description: Proposta enviada com sucesso.
+   *       400:
+   *         description: Dados inválidos, incluindo validade fora do intervalo de 1 a 365 dias.
    *       409:
    *         description: Oportunidade fechada ou prestador já possui proposta enviada.
    */
@@ -159,6 +173,7 @@ export class OportunidadeController {
       const resultado = await oportunidadeService.enviarProposta(req.params.id, req.user!.id, {
         valor: Number(req.body.valor),
         prazo_dias: Number(req.body.prazo_dias),
+        validade_dias: req.body.validade_dias === undefined ? 7 : Number(req.body.validade_dias),
         mensagem: String(req.body.mensagem || ''),
       });
       return res.status(201).json(resultado);

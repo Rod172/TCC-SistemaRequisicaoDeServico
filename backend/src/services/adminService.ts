@@ -1,7 +1,7 @@
 /**
  * @file adminService.ts
  * @description Serviço de regras de negócio do Painel Administrativo (US27): listagem/filtro de
- * usuários, ativação/desativação de contas com auditoria simples (quem e quando) e listagem de
+ * usuários, ativação/desativação de contas com histórico administrativo transacional e listagem de
  * todas as solicitações da plataforma, independente do dono.
  *
  * BIBLIOTECAS UTILIZADAS:
@@ -10,7 +10,8 @@
  */
 
 import { Op } from 'sequelize';
-import { Usuario, Solicitacao } from '../models';
+import { Usuario, Solicitacao, RegistroAdministrativo } from '../models';
+import sequelize from '../config/database';
 import { STATUS_SOLICITACAO } from '../models/Solicitacao';
 import HttpError from '../utils/HttpError';
 
@@ -63,19 +64,23 @@ export class AdminService {
       throw new HttpError(400, 'Você não pode ativar/desativar a sua própria conta de administrador.');
     }
 
-    const usuario = await Usuario.findByPk(usuarioId);
-    if (!usuario) {
-      throw new HttpError(404, 'Usuário não encontrado.');
-    }
-
-    await usuario.update({
-      ativo,
-      status_alterado_por: adminId,
-      status_alterado_em: new Date(),
+    return sequelize.transaction(async (transaction) => {
+      const usuario = await Usuario.findByPk(usuarioId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!usuario) throw new HttpError(404, 'Usuário não encontrado.');
+      // Repetir o estado atual não é uma nova alteração administrativa.
+      if (usuario.ativo !== ativo) {
+        const anterior = usuario.ativo;
+        const ocorridoEm = new Date();
+        await usuario.update({ ativo, status_alterado_por: adminId, status_alterado_em: ocorridoEm }, { transaction });
+        await RegistroAdministrativo.create({
+          admin_id: adminId, usuario_id: usuarioId,
+          acao: ativo ? 'ATIVAR_USUARIO' : 'DESATIVAR_USUARIO', ocorrido_em: ocorridoEm,
+          estado_anterior: { ativo: anterior }, estado_posterior: { ativo },
+        }, { transaction });
+      }
+      const { senha_hash: _senhaHash, ...usuarioSanitizado } = usuario.get({ plain: true }) as any;
+      return usuarioSanitizado;
     });
-
-    const { senha_hash: _senhaHash, ...usuarioSanitizado } = usuario.get({ plain: true }) as any;
-    return usuarioSanitizado;
   }
 
   async listarSolicitacoes(filtros: ListarSolicitacoesAdminFiltros) {

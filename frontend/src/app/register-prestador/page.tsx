@@ -9,13 +9,17 @@
  *    Doc Oficial: https://lucide.dev/
  * 2. Next.js (^14.2.3): Framework React com App Router.
  *    Doc Oficial: https://nextjs.org/docs
+ * 3. React (^18.3.1): Estado e ciclo de vida da prévia da foto. https://react.dev/reference/react
+ * 4. Axios (^1.7.2): Envio multipart pelo serviço api. https://axios-http.com/docs/multipart
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Briefcase, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText, Wrench, CheckSquare, Square } from 'lucide-react';
 import api from '@/services/api';
+import AceiteDocumentos from '@/components/AceiteDocumentos';
+import documentos from '@/conteudo/documentos-legais.json';
 
 const CATEGORIAS_DISPONIVEIS = [
   { id: 'ELETRICA', label: 'Elétrica & Iluminação' },
@@ -29,6 +33,7 @@ const CATEGORIAS_DISPONIVEIS = [
 ];
 
 export default function RegisterPrestadorPage() {
+  const [privacidadeCiente, setPrivacidadeCiente] = useState(false);
   const router = useRouter();
   const [formData, setFormData] = useState({
     nome: '',
@@ -46,6 +51,32 @@ export default function RegisterPrestadorPage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [foto, setFoto] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [erroFoto, setErroFoto] = useState<string | null>(null);
+  const fotoInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!foto) { setFotoPreview(null); return; }
+    const url = URL.createObjectURL(foto);
+    setFotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [foto]);
+
+  const validarFoto = (arquivo: File): string | null => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(arquivo.type)) return 'Envie uma foto JPEG, PNG ou WEBP.';
+    if (arquivo.size > 5 * 1024 * 1024) return 'A foto deve ter no máximo 5 MB.';
+    if (!arquivo.size) return 'A foto selecionada está vazia.';
+    return null;
+  };
+
+  const handleFoto = (evento: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = evento.target.files?.[0];
+    const erro = arquivo ? validarFoto(arquivo) : null;
+    setErroFoto(erro);
+    setFoto(arquivo && !erro ? arquivo : null);
+    if (erro) evento.target.value = '';
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -68,6 +99,12 @@ export default function RegisterPrestadorPage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    if (foto && validarFoto(foto)) {
+      setErrorMsg(validarFoto(foto));
+      return;
+    }
+    setErroFoto(null);
+
     if (formData.senha !== formData.confirmarSenha) {
       setErrorMsg('As senhas digitadas não coincidem.');
       return;
@@ -78,8 +115,8 @@ export default function RegisterPrestadorPage() {
       return;
     }
 
-    if (!formData.termoLgpdAceito) {
-      setErrorMsg('É necessário aceitar os termos de consentimento da LGPD para prosseguir.');
+    if (!formData.termoLgpdAceito || !privacidadeCiente) {
+      setErrorMsg('Aceite os Termos de Uso e confirme a leitura da Política de Privacidade para prosseguir.');
       return;
     }
 
@@ -95,10 +132,21 @@ export default function RegisterPrestadorPage() {
         senha: formData.senha,
         descricao_bio: formData.descricaoBio,
         categorias: categoriasSelecionadas,
-        termo_lgpd_aceito: formData.termoLgpdAceito,
+        termos_uso_aceitos: formData.termoLgpdAceito,
+        privacidade_ciente: privacidadeCiente,
+        termos_uso_versao: documentos.versao_termos,
+        privacidade_versao: documentos.versao_privacidade,
       };
 
-      const response = await api.post('/auth/register/prestador', payload);
+      const multipart = new FormData();
+      Object.entries(payload).forEach(([campo, valor]) => {
+        multipart.append(campo, Array.isArray(valor) ? JSON.stringify(valor) : String(valor));
+      });
+      if (foto) multipart.append('foto', foto);
+      const response = await api.post('/auth/register/prestador', multipart, {
+        // O navegador define o boundary multipart; remove o padrão application/json do cliente.
+        headers: { 'Content-Type': undefined },
+      });
       setSuccessMsg(`${response.data.message || 'Cadastro de Prestador realizado com sucesso!'} Redirecionando para o login...`);
 
       setTimeout(() => {
@@ -192,6 +240,16 @@ export default function RegisterPrestadorPage() {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <label htmlFor="foto-prestador" style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>Foto de perfil (opcional)</label>
+            <p id="ajuda-foto-prestador" style={{ fontSize: '.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>JPEG, PNG ou WEBP, até 5 MB. A foto aparecerá no seu perfil público.</p>
+            <input ref={fotoInput} id="foto-prestador" name="foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFoto} disabled={loading} aria-describedby="ajuda-foto-prestador erro-foto-prestador" aria-invalid={Boolean(erroFoto)} style={{ width: '100%', minWidth: 0 }} />
+            {erroFoto && <p id="erro-foto-prestador" role="alert" style={{ color: '#fca5a5', marginTop: 8 }}>{erroFoto}</p>}
+            {fotoPreview && <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginTop: 12 }}>
+              <img src={fotoPreview} alt="Prévia da foto de perfil selecionada" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%' }} />
+              <button type="button" disabled={loading} onClick={() => { setFoto(null); setErroFoto(null); if (fotoInput.current) fotoInput.current.value = ''; }} style={{ padding: '.65rem 1rem', background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: 8, cursor: 'pointer' }}>Remover foto</button>
+            </div>}
+          </div>
           {/* Nome ou Razão Social */}
           <div>
             <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
@@ -453,28 +511,9 @@ export default function RegisterPrestadorPage() {
           </div>
 
           {/* Checkbox Termo LGPD */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.75rem',
-            background: '#0f172a',
-            padding: '1rem',
-            borderRadius: '8px',
-            border: '1px solid #334155',
-            marginTop: '0.5rem'
-          }}>
-            <input
-              type="checkbox"
-              id="termoLgpdAceito"
-              name="termoLgpdAceito"
-              checked={formData.termoLgpdAceito}
-              onChange={handleChange}
-              style={{ marginTop: '0.2rem', cursor: 'pointer', width: '18px', height: '18px' }}
-            />
-            <label htmlFor="termoLgpdAceito" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer', lineHeight: 1.4 }}>
-              Concordo com o tratamento dos meus dados cadastrais e profissionais para divulgação de perfil e intermediação de propostas, em conformidade com a <strong>LGPD (Lei nº 13.709/2018)</strong>. *
-            </label>
-          </div>
+          <AceiteDocumentos termos={formData.termoLgpdAceito} ciencia={privacidadeCiente}
+              alterarTermos={valor => setFormData(prev => ({ ...prev, termoLgpdAceito: valor }))}
+              alterarCiencia={setPrivacidadeCiente} />
 
           {/* Botão de Submissão */}
           <button

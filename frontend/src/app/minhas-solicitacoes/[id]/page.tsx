@@ -22,6 +22,7 @@ import {
   Ban, ShieldCheck, CreditCard, MessageCircle, HelpCircle, Clock, Flag,
 } from 'lucide-react';
 import api from '@/services/api';
+import useConfirmacao from '@/components/useConfirmacao';
 import ChatDrawer from '@/components/ChatDrawer';
 
 const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/api\/v1\/?$/, '');
@@ -45,9 +46,11 @@ interface Anexo {
 }
 
 interface Proposta {
+  contraproposta_status?: 'PENDENTE' | 'ACEITA' | 'RECUSADA' | null;
   id: string;
   valor: string;
   prazo_dias: number;
+  validade_ate: string;
   mensagem: string;
   status: 'ENVIADA' | 'EM_ANALISE' | 'ACEITA' | 'RECUSADA';
   valor_contraproposta: string | null;
@@ -120,9 +123,16 @@ function formatarData(iso: string) {
 }
 
 export default function DetalhePropostasPage() {
+  const { confirmar, dialogo } = useConfirmacao();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const solicitacaoId = params.id;
+
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(intervalo);
+  }, []);
 
   const [solicitacao, setSolicitacao] = useState<SolicitacaoDetalhe | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -203,7 +213,7 @@ export default function DetalhePropostasPage() {
 
   async function alterarStatus(proposta: Proposta, acao: 'ACEITAR' | 'RECUSAR') {
     const verbo = acao === 'ACEITAR' ? 'aceitar' : 'recusar';
-    if (!window.confirm(`Deseja realmente ${verbo} a proposta de ${proposta.prestador.nome}?`)) return;
+    if (!await confirmar({ mensagem: `Deseja realmente ${verbo} a proposta de ${proposta.prestador.nome}?` })) return;
 
     setProcessandoId(proposta.id);
     setErro('');
@@ -212,7 +222,15 @@ export default function DetalhePropostasPage() {
       const response = await api.patch(`/solicitacoes/minhas/${solicitacaoId}/propostas/${proposta.id}/status`, { acao });
       setSucesso(response.data.mensagem);
       await carregar();
+      if (acao === 'ACEITAR') {
+        setChatPropostaId(null);
+        setPagando(true);
+      }
     } catch (err: any) {
+      if (err.response?.status === 409) {
+        await carregar();
+        setChatPropostaId(null);
+      }
       setErro(err.response?.data?.message || 'Não foi possível atualizar a proposta.');
     } finally {
       setProcessandoId(null);
@@ -220,7 +238,7 @@ export default function DetalhePropostasPage() {
   }
 
   async function cancelarContratacao() {
-    if (!window.confirm('Deseja realmente cancelar esta contratação? A solicitação volta a aceitar propostas de outros prestadores.')) return;
+    if (!await confirmar({ mensagem: 'Deseja realmente cancelar esta contratação? A solicitação volta a aceitar propostas de outros prestadores.' })) return;
 
     setProcessandoCancelContratacao(true);
     setErro('');
@@ -237,7 +255,7 @@ export default function DetalhePropostasPage() {
   }
 
   async function concluirServico() {
-    if (!window.confirm('Confirmar que o serviço foi concluído? O valor em custódia (se houver) será liberado ao prestador.')) return;
+    if (!await confirmar({ mensagem: 'Confirmar que o serviço foi concluído? O valor em custódia (se houver) será liberado ao prestador.' })) return;
 
     setProcessandoConclusao(true);
     setErro('');
@@ -294,6 +312,10 @@ export default function DetalhePropostasPage() {
       setRenegociandoId(null);
       await carregar();
     } catch (err: any) {
+      if (err.response?.status === 409) {
+        await carregar();
+        setRenegociandoId(null);
+      }
       setErro(err.response?.data?.message || 'Não foi possível enviar a contraproposta.');
     } finally {
       setProcessandoId(null);
@@ -411,6 +433,7 @@ export default function DetalhePropostasPage() {
 
   return (
     <main style={{ maxWidth: '860px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+      {dialogo}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <Link href={isAdmin ? '/admin' : '/minhas-solicitacoes'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           <ArrowLeft size={16} /> {isAdmin ? 'Voltar para o painel administrativo' : 'Voltar para minhas solicitações'}
@@ -566,20 +589,33 @@ export default function DetalhePropostasPage() {
         </form>
       )}
 
-      {solicitacao.status === 'CONTRATADA' && (
-        <div style={{
+      {(solicitacao.status === 'CONTRATADA' || solicitacao.transacao_custodia) && (
+        <section aria-labelledby="titulo-pagamento" style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-          padding: '1.25rem', marginBottom: '1.5rem',
+          padding: '1.25rem', marginBottom: '1.5rem', overflowWrap: 'anywhere', minWidth: 0,
         }}>
-          {solicitacao.transacao_custodia ? (
+          <h2 id="titulo-pagamento" style={{ fontSize: '1.2rem', marginBottom: '.75rem' }}>Pagamento e garantia</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>Demonstração acadêmica: nenhum dinheiro será cobrado ou transferido. Não informe dados bancários ou de cartão.</p>
+          {solicitacao.status === 'CONTRATADA' && solicitacao.propostas.filter(p => p.status === 'ACEITA').map(proposta => (
+            <dl key={proposta.id} style={{ marginBottom: '1rem', display: 'grid', gap: '.5rem' }}>
+              <div><dt>Prestador contratado</dt><dd>{proposta.prestador.nome}</dd></div>
+              <div><dt>Valor total contratado</dt><dd style={{ fontWeight: 700, fontSize: '1.3rem' }}>{formatarValor(proposta.valor)}</dd></div>
+              <div><dt>Situação</dt><dd>{solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? 'Pagamento confirmado e retido em custódia' : 'Aguardando confirmação do pagamento simulado'}</dd></div>
+            </dl>
+          ))}
+          {solicitacao.transacao_custodia && (
+            <div style={{ marginBottom: '1rem', lineHeight: 1.6 }}>
+              <p role="status">{solicitacao.transacao_custodia.status_pagamento === 'LIBERADO' ? 'Pagamento liberado ao prestador após a conclusão' : solicitacao.transacao_custodia.status_pagamento === 'REEMBOLSADO' ? 'Pagamento reembolsado ao solicitante' : 'Valor protegido em custódia'} — {formatarValor(solicitacao.transacao_custodia.valor)}</p>
+              <p>Método: {solicitacao.transacao_custodia.metodo_pagamento === 'PIX_TESTE' ? 'PIX de teste' : 'Cartão de teste'}</p>
+              <p>Referência do comprovante: {solicitacao.transacao_custodia.referencia_simulada}</p>
+            </div>
+          )}
+          {solicitacao.status !== 'CONTRATADA' ? null : solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <ShieldCheck size={24} color="#34d399" />
               <div>
-                <strong style={{ display: 'block', fontSize: '0.95rem' }}>
-                  Pagamento retido em custódia — {formatarValor(solicitacao.transacao_custodia.valor)}
-                </strong>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                  O valor será liberado ao prestador quando o serviço for concluído. Referência: {solicitacao.transacao_custodia.referencia_simulada}
+                  O valor será liberado ao prestador quando o serviço for concluído.
                 </span>
               </div>
             </div>
@@ -600,7 +636,8 @@ export default function DetalhePropostasPage() {
           ) : (
             <form onSubmit={simularPagamento}>
               <strong style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.95rem' }}>Checkout simulado</strong>
-              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+              <fieldset style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', border: 0, padding: 0 }}>
+                <legend style={{ marginBottom: '.5rem' }}>Escolha o método de teste</legend>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
                   <input type="radio" name="metodo" checked={metodoPagamento === 'CARTAO_TESTE'} onChange={() => setMetodoPagamento('CARTAO_TESTE')} />
                   Cartão de teste
@@ -609,18 +646,18 @@ export default function DetalhePropostasPage() {
                   <input type="radio" name="metodo" checked={metodoPagamento === 'PIX_TESTE'} onChange={() => setMetodoPagamento('PIX_TESTE')} />
                   PIX de teste
                 </label>
-              </div>
-              <div style={{ display: 'flex', gap: '0.6rem' }}>
+              </fieldset>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <button type="submit" disabled={processandoPagamento} style={{ ...botaoBase, background: '#3b82f6' }}>
                   {processandoPagamento ? 'Processando...' : 'Confirmar pagamento simulado'}
                 </button>
-                <button type="button" onClick={() => setPagando(false)} style={{ ...botaoBase, background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>
+                <button type="button" disabled={processandoPagamento} onClick={() => setPagando(false)} style={{ ...botaoBase, background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>
                   Voltar
                 </button>
               </div>
             </form>
           )}
-        </div>
+        </section>
       )}
 
       {/* Confirmação de conclusão do serviço (US17) e cancelamento de uma contratação já aceita (US34
@@ -676,6 +713,8 @@ export default function DetalhePropostasPage() {
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n} type="button" onClick={() => setNotaAvaliacao(n)}
+                    aria-label={`Avaliar com ${n} ${n === 1 ? 'estrela' : 'estrelas'}`}
+                    aria-pressed={notaAvaliacao === n}
                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     <Star size={26} color="#fbbf24" fill={n <= notaAvaliacao ? '#fbbf24' : 'none'} />
@@ -798,6 +837,7 @@ export default function DetalhePropostasPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {solicitacao.propostas.map((proposta) => {
+          const expirada = !(new Date(proposta.validade_ate).getTime() > agora);
           const podeAlterar = !['ACEITA', 'RECUSADA'].includes(proposta.status)
             && !['CONTRATADA', 'CONCLUIDA', 'CANCELADA'].includes(solicitacao.status);
           const cor = STATUS_PROPOSTA[proposta.status];
@@ -825,7 +865,9 @@ export default function DetalhePropostasPage() {
                   </div>
                   <div>
                     <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Proposta de</span>
-                    <strong style={{ fontSize: '1rem' }}>{proposta.prestador.nome}</strong>
+                    <Link href={`/prestadores/${proposta.prestador.id}`} style={{ fontSize: '1rem', fontWeight: 700 }}>
+                      {proposta.prestador.nome} · Ver perfil
+                    </Link>
                     {nota > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
                         <Star size={13} color="#fbbf24" fill="#fbbf24" />
@@ -885,10 +927,20 @@ export default function DetalhePropostasPage() {
                   <strong style={{ fontSize: '1.1rem' }}>{proposta.prazo_dias} dias</strong>
                 </div>
                 <div>
+                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Validade comercial até</span>
+                  <strong>{new Date(proposta.validade_ate).toLocaleString('pt-BR')}</strong>
+                </div>
+                <div>
                   <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Recebida em</span>
                   <strong style={{ fontSize: '1.1rem' }}>{formatarData(proposta.createdAt)}</strong>
                 </div>
               </div>
+
+              {expirada && ['ENVIADA', 'EM_ANALISE'].includes(proposta.status) && (
+                <p role="status" style={{ color: '#fbbf24', fontSize: '0.85rem' }}>
+                  Proposta expirada. O aceite e a renegociação estão bloqueados; ainda é possível recusá-la.
+                </p>
+              )}
 
               {proposta.valor_contraproposta !== null && (
                 <div style={{
@@ -897,6 +949,7 @@ export default function DetalhePropostasPage() {
                 }}>
                   <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem', marginBottom: '2px' }}>Sua contraproposta</span>
                   <strong style={{ fontSize: '1rem', color: '#fbbf24' }}>{formatarValor(proposta.valor_contraproposta)}</strong>
+                  <p role="status">{proposta.contraproposta_status === 'PENDENTE' ? 'Aguardando resposta do prestador. A contratação fica disponível após a resposta.' : proposta.contraproposta_status === 'ACEITA' ? (proposta.status === 'ACEITA' ? 'Contratação confirmada com o valor da contraproposta.' : 'O prestador aceitou o novo valor. Confira e confirme a contratação.') : proposta.contraproposta_status === 'RECUSADA' ? 'O prestador recusou a contraproposta. O valor anterior foi mantido.' : 'Negociação anterior'}</p>
                   <p style={{ color: '#cbd5e1', fontSize: '0.85rem', margin: '0.4rem 0 0' }}>{proposta.mensagem_contraproposta}</p>
                   {proposta.contraproposta_em && (
                     <small style={{ color: '#64748b' }}>Enviada em {formatarData(proposta.contraproposta_em)}</small>
@@ -920,14 +973,16 @@ export default function DetalhePropostasPage() {
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => alterarStatus(proposta, 'ACEITAR')}
-                    disabled={processandoId === proposta.id}
+                    disabled={processandoId === proposta.id || expirada || proposta.contraproposta_status === 'PENDENTE'}
+                    title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
                     style={{ ...botaoBase, background: '#10b981' }}
                   >
                     <CheckCircle size={15} /> Aceitar proposta
                   </button>
                   <button
                     onClick={() => abrirRenegociacao(proposta)}
-                    disabled={processandoId === proposta.id}
+                    disabled={processandoId === proposta.id || expirada}
+                    title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
                     style={{ ...botaoBase, background: 'transparent', border: '1px solid #8b5cf6', color: '#a78bfa' }}
                   >
                     <Handshake size={15} /> Renegociar valor
@@ -972,7 +1027,7 @@ export default function DetalhePropostasPage() {
                       />
                     </label>
                   </div>
-                  <button type="submit" disabled={processandoId === proposta.id} style={{ ...botaoBase, background: '#8b5cf6' }}>
+                  <button type="submit" disabled={processandoId === proposta.id || expirada} style={{ ...botaoBase, background: '#8b5cf6' }}>
                     {processandoId === proposta.id ? 'Enviando...' : 'Enviar contraproposta'}
                   </button>
                 </form>
@@ -992,8 +1047,12 @@ export default function DetalhePropostasPage() {
             aberto={!!chatPropostaId}
             onClose={() => setChatPropostaId(null)}
             statusProposta={propostaDoChat?.status}
-            onAceitar={propostaDoChat ? () => alterarStatus(propostaDoChat, 'ACEITAR') : undefined}
-            onRecusar={propostaDoChat ? () => alterarStatus(propostaDoChat, 'RECUSAR') : undefined}
+            onAceitar={propostaDoChat && propostaDoChat.contraproposta_status !== 'PENDENTE' && new Date(propostaDoChat.validade_ate).getTime() > agora
+              && ['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status)
+              ? () => alterarStatus(propostaDoChat, 'ACEITAR') : undefined}
+            onRecusar={propostaDoChat
+              && ['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status)
+              ? () => alterarStatus(propostaDoChat, 'RECUSAR') : undefined}
             decidindo={processandoId === chatPropostaId}
           />
         );

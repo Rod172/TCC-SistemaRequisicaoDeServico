@@ -1,3 +1,4 @@
+import SolicitacaoPrivacidade from './SolicitacaoPrivacidade';
 /**
  * @file index.ts
  * @description Ponto de entrada centralizado para modelos e associações relacionais do Sequelize ORM.
@@ -19,6 +20,7 @@ import PerguntaSolicitacao from './PerguntaSolicitacao';
 import PreferenciaNotificacao from './PreferenciaNotificacao';
 import Denuncia from './Denuncia';
 import Avaliacao from './Avaliacao';
+import RegistroAdministrativo from './RegistroAdministrativo';
 
 // Associação 1:1 entre Usuario e PrestadorPerfil
 Usuario.hasOne(PrestadorPerfil, {
@@ -235,6 +237,8 @@ export {
   PreferenciaNotificacao,
   Denuncia,
   Avaliacao,
+  RegistroAdministrativo,
+  SolicitacaoPrivacidade,
 };
 export default {
   Usuario,
@@ -249,4 +253,6 @@ export default {
   PreferenciaNotificacao,
   Denuncia,
   Avaliacao,
+  RegistroAdministrativo,
+  SolicitacaoPrivacidade,
 };

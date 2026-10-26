@@ -183,7 +183,7 @@ export class AdminController {
    */
   async resolverDenuncia(req: Request, res: Response): Promise<Response> {
     try {
-      const resultado = await denunciaService.resolver(req.params.id);
+      const resultado = await denunciaService.resolver(req.params.id, req.user!.id);
       return res.status(200).json(resultado);
     } catch (err: any) {
       return responderErro(res, err);

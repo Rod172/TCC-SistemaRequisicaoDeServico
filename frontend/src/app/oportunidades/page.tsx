@@ -22,6 +22,7 @@ import api from '@/services/api';
 import NotificationBell from '@/components/NotificationBell';
 
 interface Oportunidade {
+  status: 'ABERTA' | 'EM_NEGOCIACAO';
   id: string;
   titulo: string;
   categoria: string | null;
@@ -49,6 +50,10 @@ function formatarData(iso: string) {
 }
 
 export default function FeedOportunidadesPage() {
+  return <React.Suspense fallback={<main role="status" style={{ padding: '2rem' }}>Carregando oportunidades…</main>}><ConteudoOportunidades /></React.Suspense>;
+}
+
+function ConteudoOportunidades() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filtrosDaUrl = { ...FILTROS_INICIAIS, busca: searchParams.get('busca') || '' };
@@ -140,7 +145,7 @@ export default function FeedOportunidadesPage() {
             Área do prestador
           </span>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 700, margin: '0.25rem 0' }}>Oportunidades de Serviços</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Encontre solicitações abertas compatíveis com sua atuação e região.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Encontre solicitações abertas ou em negociação compatíveis com sua atuação e região.</p>
         </div>
         <div style={{ textAlign: 'right' }}>
           <strong style={{ fontSize: '1.5rem' }}>{carregando ? '—' : oportunidades.length}</strong>
@@ -228,7 +233,7 @@ export default function FeedOportunidadesPage() {
             }}>
               <div style={{ flex: '1 1 320px' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.6rem' }}>
-                  <span style={{ padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>Aberta</span>
+                  <span style={{ padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59,130,246,0.15)', color: '#60a5fa' }}>{o.status === 'EM_NEGOCIACAO' ? 'Em negociação' : 'Aberta'}</span>
                   {o.categoria && <span style={{ padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, background: '#1e293b', color: '#cbd5e1' }}>{o.categoria}</span>}
                 </div>
                 <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{o.titulo}</h2>
@@ -245,7 +250,7 @@ export default function FeedOportunidadesPage() {
                 <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Orçamento do cliente</span>
                 <strong style={{ fontSize: '1.05rem' }}>{formatarOrcamento(o.orcamento_cliente)}</strong>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', color: '#94a3b8', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-                  <MapPin size={13} /> {o.bairro}, {o.cidade}
+                  <MapPin size={13} /> {[o.bairro, o.cidade].filter(Boolean).join(', ') || 'Local não informado'}
                 </div>
                 <div style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '2px' }}>Publicada em {formatarData(o.created_at)}</div>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#34d399', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.5rem' }}>

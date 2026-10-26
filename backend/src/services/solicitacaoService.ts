@@ -52,14 +52,31 @@ export class SolicitacaoService {
    * anexos (fotos/documentos) já enviados pelo `uploadAnexosMiddleware` (US05).
    */
   async criarSolicitacao(solicitanteId: string, dados: CriarSolicitacaoDTO, arquivos: ArquivoAnexo[]) {
-    const titulo = (dados.titulo || '').trim();
-    const descricao = (dados.descricao || '').trim();
+    if (typeof dados.titulo !== 'string' || typeof dados.descricao !== 'string') {
+      throw new HttpError(400, 'O título e a descrição devem ser textos.');
+    }
+    const titulo = dados.titulo.trim();
+    const descricao = dados.descricao.trim();
 
-    if (titulo.length < 5) {
-      throw new HttpError(400, 'O título deve ter pelo menos 5 caracteres.');
+    if (titulo.length < 5 || titulo.length > 180) {
+      throw new HttpError(400, 'O título deve ter entre 5 e 180 caracteres.');
     }
     if (descricao.length < 20) {
       throw new HttpError(400, 'Descreva o problema/necessidade com pelo menos 20 caracteres.');
+    }
+
+    if (dados.orcamento_cliente !== undefined &&
+        (!Number.isFinite(dados.orcamento_cliente) || dados.orcamento_cliente < 0 || dados.orcamento_cliente > 99999999.99)) {
+      throw new HttpError(400, 'Informe um orçamento entre 0 e 99.999.999,99.');
+    }
+    if (dados.prazo_desejado_dias !== undefined &&
+        (!Number.isInteger(dados.prazo_desejado_dias) || dados.prazo_desejado_dias < 1 || dados.prazo_desejado_dias > 365)) {
+      throw new HttpError(400, 'Informe um prazo desejado entre 1 e 365 dias inteiros.');
+    }
+    for (const campo of ['categoria', 'cidade', 'bairro'] as const) {
+      if (dados[campo] !== undefined && dados[campo] !== null && typeof dados[campo] !== 'string') {
+        throw new HttpError(400, `O campo ${campo} deve ser um texto.`);
+      }
     }
 
     return sequelize.transaction(async (transaction) => {
@@ -71,8 +88,8 @@ export class SolicitacaoService {
           categoria: dados.categoria?.trim() || null,
           cidade: dados.cidade?.trim() || null,
           bairro: dados.bairro?.trim() || null,
-          prazo_desejado_dias: dados.prazo_desejado_dias || null,
-          orcamento_cliente: dados.orcamento_cliente || null,
+          prazo_desejado_dias: dados.prazo_desejado_dias ?? null,
+          orcamento_cliente: dados.orcamento_cliente ?? null,
           status: 'ABERTA',
         },
         { transaction }
@@ -204,27 +221,43 @@ export class SolicitacaoService {
     propostaId: string,
     acao: 'ACEITAR' | 'RECUSAR'
   ) {
-    const solicitacao = await Solicitacao.findOne({
-      where: { id: solicitacaoId, solicitante_id: solicitanteId },
-    });
-    if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
-
-    if (['CONCLUIDA', 'CANCELADA'].includes(solicitacao.status)) {
-      throw new HttpError(409, 'Esta solicitação não permite mais alterações.');
-    }
-
-    const proposta = await Proposta.findOne({ where: { id: propostaId, solicitacao_id: solicitacaoId } });
-    if (!proposta) throw new HttpError(404, 'Proposta não encontrada.');
-
-    if (acao === 'RECUSAR' && proposta.status === 'ACEITA') {
-      throw new HttpError(409, 'Uma proposta aceita não pode ser recusada.');
-    }
-
     await sequelize.transaction(async (transaction) => {
+      // Toda transição trava primeiro a solicitação e depois seus registros dependentes.
+      const solicitacao = await Solicitacao.findOne({
+        where: { id: solicitacaoId, solicitante_id: solicitanteId },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
+      if (!['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status)) {
+        throw new HttpError(409, 'Esta solicitação não permite mais alterações de propostas.');
+      }
+      const proposta = await Proposta.findOne({
+        where: { id: propostaId, solicitacao_id: solicitacaoId },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!proposta) throw new HttpError(404, 'Proposta não encontrada.');
+      if (acao === 'ACEITAR' && !(new Date(proposta.validade_ate).getTime() > Date.now())) {
+        throw new HttpError(409, 'A validade comercial desta proposta expirou. Não é possível aceitá-la.');
+      }
+      if (acao === 'ACEITAR' && proposta.contraproposta_status === 'PENDENTE') {
+        throw new HttpError(409, 'Aguarde a resposta do prestador à contraproposta antes de contratar.');
+      }
+      if (!['ENVIADA', 'EM_ANALISE'].includes(proposta.status)) {
+        throw new HttpError(409, 'Somente propostas enviadas ou em análise podem ser aceitas ou recusadas.');
+      }
+      if (proposta.prestador_id === solicitacao.solicitante_id) {
+        throw new HttpError(409, 'O solicitante não pode contratar a própria proposta.');
+      }
+      const contratada = await Proposta.findOne({
+        where: { solicitacao_id: solicitacaoId, status: 'ACEITA' },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (contratada) throw new HttpError(409, 'Esta solicitação já possui uma proposta aceita.');
+
       if (acao === 'ACEITAR') {
         // Busca as concorrentes ANTES do update em massa, pra saber quem notificar da recusa.
         const concorrentes = await Proposta.findAll({
-          where: { solicitacao_id: solicitacaoId, id: { [Op.ne]: proposta.id }, status: { [Op.ne]: 'ACEITA' } },
+          where: { solicitacao_id: solicitacaoId, id: { [Op.ne]: proposta.id }, status: { [Op.in]: ['ENVIADA', 'EM_ANALISE'] } },
           attributes: ['prestador_id'],
           transaction,
         });
@@ -236,7 +269,7 @@ export class SolicitacaoService {
             where: {
               solicitacao_id: solicitacaoId,
               id: { [Op.ne]: proposta.id },
-              status: { [Op.ne]: 'ACEITA' },
+              status: { [Op.in]: ['ENVIADA', 'EM_ANALISE'] },
             },
             transaction,
           }
@@ -253,7 +286,7 @@ export class SolicitacaoService {
             },
             { transaction }
           );
-          emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notifAceita.get({ plain: true }));
+          transaction.afterCommit(() => { emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notifAceita.get({ plain: true })); });
         }
 
         if (concorrentes.length > 0) {
@@ -271,7 +304,7 @@ export class SolicitacaoService {
               })),
               { transaction }
             );
-            concorrentesAtivos.forEach((prestadorId) => emitirParaUsuario(prestadorId, 'nova-notificacao', {}));
+            transaction.afterCommit(() => { concorrentesAtivos.forEach((prestadorId) => emitirParaUsuario(prestadorId, 'nova-notificacao', {})); });
           }
         }
       } else {
@@ -286,7 +319,7 @@ export class SolicitacaoService {
             },
             { transaction }
           );
-          emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notifRecusada.get({ plain: true }));
+          transaction.afterCommit(() => { emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notifRecusada.get({ plain: true })); });
         }
       }
     });
@@ -308,6 +341,7 @@ export class SolicitacaoService {
       const solicitacao = await Solicitacao.findOne({
         where: { id: solicitacaoId, solicitante_id: solicitanteId, status: 'CONTRATADA' },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (!solicitacao) {
         throw new HttpError(404, 'Solicitação não encontrada ou não está mais contratada.');
@@ -316,9 +350,21 @@ export class SolicitacaoService {
       const proposta = await Proposta.findOne({
         where: { solicitacao_id: solicitacaoId, status: 'ACEITA' },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (!proposta) {
         throw new HttpError(404, 'Nenhuma proposta aceita encontrada para esta solicitação.');
+      }
+
+      const custodia = await TransacaoCustodia.findOne({
+        where: { solicitacao_id: solicitacaoId },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (custodia && custodia.status_pagamento !== 'REEMBOLSADO') {
+        if (custodia.proposta_id !== proposta.id || custodia.status_pagamento !== 'RETIDO') {
+          throw new HttpError(409, 'A custódia não permite desfazer esta contratação.');
+        }
+        await custodia.update({ status_pagamento: 'REEMBOLSADO', liberado_em: null }, { transaction });
       }
 
       await proposta.update({ status: 'RECUSADA' }, { transaction });
@@ -334,7 +380,7 @@ export class SolicitacaoService {
           },
           { transaction }
         );
-        emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notificacao.get({ plain: true }));
+        transaction.afterCommit(() => { emitirParaUsuario(proposta.prestador_id, 'nova-notificacao', notificacao.get({ plain: true })); });
       }
 
       return { mensagem: 'Contratação cancelada. A solicitação voltou a aceitar propostas.' };
@@ -351,6 +397,7 @@ export class SolicitacaoService {
       const solicitacao = await Solicitacao.findOne({
         where: { id: solicitacaoId, status: 'CONTRATADA' },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (!solicitacao) {
         throw new HttpError(404, 'Solicitação não encontrada ou não está contratada.');
@@ -359,6 +406,7 @@ export class SolicitacaoService {
       const proposta = await Proposta.findOne({
         where: { solicitacao_id: solicitacaoId, status: 'ACEITA' },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (!proposta) {
         throw new HttpError(404, 'Nenhuma proposta aceita encontrada para esta solicitação.');
@@ -372,7 +420,13 @@ export class SolicitacaoService {
 
       await solicitacao.update({ status: 'CONCLUIDA' }, { transaction });
 
-      const transacao = await TransacaoCustodia.findOne({ where: { solicitacao_id: solicitacaoId }, transaction });
+      const transacao = await TransacaoCustodia.findOne({
+        where: { solicitacao_id: solicitacaoId }, transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (transacao && transacao.status_pagamento !== 'REEMBOLSADO' &&
+          (transacao.proposta_id !== proposta.id || transacao.status_pagamento !== 'RETIDO')) {
+        throw new HttpError(409, 'A custódia não corresponde à contratação atual.');
+      }
       if (transacao && transacao.status_pagamento === 'RETIDO') {
         await transacao.update({ status_pagamento: 'LIBERADO', liberado_em: new Date() }, { transaction });
       }
@@ -389,7 +443,7 @@ export class SolicitacaoService {
           },
           { transaction }
         );
-        emitirParaUsuario(outroId, 'nova-notificacao', notificacao.get({ plain: true }));
+        transaction.afterCommit(() => { emitirParaUsuario(outroId, 'nova-notificacao', notificacao.get({ plain: true })); });
       }
 
       return { mensagem: 'Serviço marcado como concluído.' };
@@ -413,28 +467,36 @@ export class SolicitacaoService {
       throw new HttpError(400, 'Informe uma mensagem com pelo menos 5 caracteres.');
     }
 
-    const solicitacao = await Solicitacao.findOne({
-      where: { id: solicitacaoId, solicitante_id: solicitanteId },
-    });
-    if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
-
-    if (['CONTRATADA', 'CONCLUIDA', 'CANCELADA'].includes(solicitacao.status)) {
-      throw new HttpError(409, 'Esta solicitação não permite renegociação.');
-    }
-
-    const proposta = await Proposta.findOne({ where: { id: propostaId, solicitacao_id: solicitacaoId } });
-    if (!proposta) throw new HttpError(404, 'Proposta não encontrada.');
-
-    if (['ACEITA', 'RECUSADA'].includes(proposta.status)) {
-      throw new HttpError(409, 'Esta proposta não permite renegociação.');
-    }
-
     await sequelize.transaction(async (transaction) => {
+      const solicitacao = await Solicitacao.findOne({
+        where: { id: solicitacaoId, solicitante_id: solicitanteId },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
+
+      if (['CONTRATADA', 'CONCLUIDA', 'CANCELADA'].includes(solicitacao.status)) {
+        throw new HttpError(409, 'Esta solicitação não permite renegociação.');
+      }
+
+      const proposta = await Proposta.findOne({
+        where: { id: propostaId, solicitacao_id: solicitacaoId },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!proposta) throw new HttpError(404, 'Proposta não encontrada.');
+      if (!(new Date(proposta.validade_ate).getTime() > Date.now())) {
+        throw new HttpError(409, 'A validade comercial desta proposta expirou. Não é possível renegociá-la.');
+      }
+
+      if (['ACEITA', 'RECUSADA'].includes(proposta.status)) {
+        throw new HttpError(409, 'Esta proposta não permite renegociação.');
+      }
       await proposta.update(
         {
           valor_contraproposta: valor,
           mensagem_contraproposta: mensagem.trim(),
           contraproposta_em: new Date(),
+          contraproposta_status: 'PENDENTE',
+          contraproposta_respondida_em: null,
           status: 'EM_ANALISE',
         },
         { transaction }
@@ -471,6 +533,7 @@ export class SolicitacaoService {
         where: { solicitacao_id: solicitacaoId },
         attributes: ['prestador_id'],
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
 
       await solicitacao.update(
@@ -492,7 +555,7 @@ export class SolicitacaoService {
             })),
             { transaction }
           );
-          prestadoresAtivos.forEach((prestadorId) => emitirParaUsuario(prestadorId, 'nova-notificacao', {}));
+          transaction.afterCommit(() => { prestadoresAtivos.forEach((prestadorId) => emitirParaUsuario(prestadorId, 'nova-notificacao', {})); });
         }
       }
 
@@ -504,8 +567,8 @@ export class SolicitacaoService {
 
   /**
    * Simula o checkout/retenção do valor de uma proposta aceita em custódia (US13). Idempotente: se a
-   * solicitação já tiver uma transação de custódia, apenas a retorna. A liberação (US17) não é
-   * implementada aqui.
+   * solicitação já tiver uma transação de custódia, retida para a contratação atual, apenas a retorna. Após reembolso, reutiliza o registro
+   * único para a nova contratação; a conclusão libera o valor em US17.
    */
   async simularPagamentoCustodia(
     solicitanteId: string,
@@ -531,6 +594,7 @@ export class SolicitacaoService {
       const proposta = await Proposta.findOne({
         where: { solicitacao_id: solicitacaoId, status: 'ACEITA' },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (!proposta) throw new HttpError(409, 'Nenhuma proposta aceita foi encontrada para esta solicitação.');
 
@@ -539,22 +603,31 @@ export class SolicitacaoService {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
-      if (existente) {
+      if (existente && existente.status_pagamento !== 'REEMBOLSADO') {
+        if (existente.proposta_id !== proposta.id || existente.status_pagamento !== 'RETIDO') {
+          throw new HttpError(409, 'A custódia não corresponde à contratação atual.');
+        }
         return { mensagem: 'O valor desta proposta já está protegido.', dados: existente.get({ plain: true }) };
       }
 
       const referenciaSimulada = `SIM-${solicitacao.id}-${proposta.id}-${Date.now()}`;
-      const transacao = await TransacaoCustodia.create(
-        {
+      const dadosCustodia = {
           solicitacao_id: solicitacao.id,
           proposta_id: proposta.id,
           valor: proposta.valor,
           metodo_pagamento: metodoPagamento,
           referencia_simulada: referenciaSimulada,
           retido_em: new Date(),
-        },
-        { transaction }
-      );
+          status_pagamento: 'RETIDO' as const,
+          liberado_em: null,
+        };
+      // A solicitação possui uma única custódia: somente um reembolso permite reutilizá-la.
+      const transacao = existente
+        ? await existente.update(dadosCustodia, { transaction })
+        : await TransacaoCustodia.create(dadosCustodia, { transaction });
+
+      // Retorna a precisão efetivamente persistida pelo MySQL, inclusive os timestamps DATETIME.
+      await transacao.reload({ transaction });
 
       return { mensagem: 'Pagamento simulado e valor retido em custódia.', dados: transacao.get({ plain: true }) };
     });

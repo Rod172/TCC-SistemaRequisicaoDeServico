@@ -80,7 +80,7 @@ export class ChatService {
 
     const { proposta, solicitacao, outroParticipanteId } = await this.verificarParticipante(propostaId, usuarioId);
 
-    if (proposta.status === 'RECUSADA') {
+    if (proposta.status === 'RECUSADA' || solicitacao.status === 'CANCELADA') {
       throw new HttpError(409, 'Esta negociação foi encerrada — a conversa ficou disponível só para consulta.');
     }
 

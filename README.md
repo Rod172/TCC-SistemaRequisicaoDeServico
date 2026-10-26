@@ -24,7 +24,7 @@ O **ServiçoFácil** é uma plataforma web bilateral de intermediação de servi
 1. O **Solicitante** publica uma requisição descrevendo a necessidade e anexando fotos do problema.
 2. Os **Prestadores** visualizam a solicitação no feed de oportunidades e enviam **Propostas/Orçamentos** personalizados (valor R$ e prazo).
 3. O **Solicitante** compara as propostas recebidas (preço, prazo e reputação) e aceita o orçamento escolhido.
-4. O valor do serviço é retido em custódia garantia (Escrow) e o **Chat Privado em Tempo Real** é liberado para alinhamento.
+4. O chat privado fica disponível por proposta desde o envio; após a contratação, o cliente pode simular o pagamento em custódia. Cada prestador tem uma conversa separada.
 5. Após a conclusão do trabalho, a etapa de **Avaliação de Reputação** (1 a 5 estrelas) é liberada.
 
 ---
@@ -100,3 +100,50 @@ docker-compose up --build
 Todas as adições técnicas, referências oficiais de bibliotecas e registros de execução de testes são obrigatoriamente documentados no arquivo [LOG_DESENVOLVIMENTO.md](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/LOG_DESENVOLVIMENTO.md).
 
 Desenvolvido para o curso de Ciência da Computação da Universidade Paulista (UNIP) - 2026.
+
+
+## Histórias complementadas em 25/10/2026
+
+- Perfil público em `/prestadores/:id`, acessível pelo nome do profissional na comparação de propostas (US19).
+- Indicadores pessoais e carteira simulada em `/dashboard`, pelo atalho **Meu painel** (US13, US20 e US21). Valores retidos só integram o saldo disponível após a conclusão; reembolsos não integram o saldo.
+- Foto opcional no cadastro profissional e validação de CPF/CNPJ numéricos (US01/US02).
+- Publicação em três etapas com revisão antes do envio (US05).
+- Validade comercial separada do prazo de execução: padrão de 7 dias, configurável de 1 a 365 dias. Propostas expiradas não podem ser aceitas nem renegociadas (US10).
+- Login limitado a 10 tentativas por IP em 15 minutos. JWT exige conta ativa e segredo local válido (US22).
+- Contratos de entrada, saída e erros em [Swagger](http://localhost:3001/api-docs/) e [OpenAPI JSON](http://localhost:3001/api-docs.json), inclusive com o backend compilado (US24).
+
+### Preparação local
+
+No WSL, usando Node.js 22 e o MySQL do Docker:
+
+```bash
+cd backend
+cp .env.example .env # apenas na primeira configuração; preserve seu .env existente
+# Preencha JWT_SECRET com uma chave local gerada por:
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+npm ci
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+O arquivo `.env` não deve entrar no Git. `JWT_SECRET` é obrigatório, deve conter ao menos 32 caracteres e não pode usar o valor público antigo. A troca da chave exige novo login. O Docker Compose lê `backend/.env` para usar a mesma configuração.
+
+A migração de documentos remove pontuação dos registros existentes e aborta sem alterações caso encontre duplicações. As propostas antigas recebem validade de sete dias a partir da publicação original, preservando a expiração. Os seeds de demonstração devem ser usados em uma base destinada à demonstração; o seed complementar é idempotente e não recria contas existentes.
+
+### Validação automatizada
+
+```bash
+cd backend
+npm run test:unit
+DB_NAME_TEST=tcc_servico_facil_test npm test
+# Somente integração:
+DB_NAME_TEST=tcc_servico_facil_test npm run test:integration
+cd ../frontend
+npx tsc --noEmit
+npm run build
+```
+
+A integração cria e migra somente o banco explicitamente indicado com sufixo `_test`, utiliza as rotas reais e remove suas próprias fixtures. Não depende de seeds nem dos servidores de desenvolvimento. Detalhes em `backend/tests/LEIA-ME.md`.
+
+O fluxo `.github/workflows/validacao.yml` executa a suíte com MySQL 8, verifica TypeScript e compila o frontend em pull requests. A integração na `main` deve ocorrer pelo PR após os testes.

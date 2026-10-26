@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin, User, CheckCircle, AlertCircle, Send, FileText, MessageCircle, HelpCircle, Clock, Ban, Flag, Star } from 'lucide-react';
 import api from '@/services/api';
+import useConfirmacao from '@/components/useConfirmacao';
 import ChatDrawer from '@/components/ChatDrawer';
 
 const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/api\/v1\/?$/, '');
@@ -35,9 +36,13 @@ interface Anexo {
 }
 
 interface MinhaProposta {
+  valor_contraproposta?: string | null;
+  mensagem_contraproposta?: string | null;
+  contraproposta_status?: 'PENDENTE' | 'ACEITA' | 'RECUSADA' | null;
   id: string;
   valor: string;
   prazo_dias: number;
+  validade_ate: string;
   mensagem: string;
   status: string;
   created_at: string;
@@ -89,7 +94,7 @@ function formatarData(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const PROPOSTA_INICIAL = { valor: '', prazo_dias: '', mensagem: '' };
+const PROPOSTA_INICIAL = { valor: '', prazo_dias: '', validade_dias: '7', mensagem: '' };
 
 const STATUS_SOLICITACAO: Record<string, { label: string; bg: string; fg: string }> = {
   ABERTA: { label: 'Aberta', bg: 'rgba(59,130,246,0.15)', fg: '#60a5fa' },
@@ -100,13 +105,21 @@ const STATUS_SOLICITACAO: Record<string, { label: string; bg: string; fg: string
 };
 
 export default function OportunidadeDetalhePage() {
+  const { confirmar, dialogo } = useConfirmacao();
   const params = useParams<{ id: string }>();
   const router = useRouter();
+
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(intervalo);
+  }, []);
 
   const [oportunidade, setOportunidade] = useState<Oportunidade | null>(null);
   const [formulario, setFormulario] = useState(PROPOSTA_INICIAL);
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [respondendoContraproposta, setRespondendoContraproposta] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [logado, setLogado] = useState(false);
@@ -190,16 +203,32 @@ export default function OportunidadeDetalhePage() {
       const response = await api.post(`/prestador/oportunidades/${params.id}/propostas`, {
         valor: Number(formulario.valor),
         prazo_dias: Number(formulario.prazo_dias),
+        validade_dias: Number(formulario.validade_dias),
         mensagem: formulario.mensagem.trim(),
       });
-      setOportunidade((atual) => (atual ? { ...atual, pode_enviar_proposta: false, minha_proposta: response.data.dados } : atual));
+      // Releitura do detalhe usa o mesmo contrato das consultas (created_at) e atualiza
+      // também o status da solicitação, que passa para EM_NEGOCIACAO após o envio.
+      await carregar();
       setFormulario(PROPOSTA_INICIAL);
       setSucesso(response.data.mensagem);
     } catch (err: any) {
+      if (err.response?.status === 409) await carregar();
       setErro(err.response?.data?.message || 'Não foi possível enviar sua proposta.');
     } finally {
       setEnviando(false);
     }
+  }
+
+  async function responderContraproposta(acao: 'ACEITAR' | 'RECUSAR') {
+    if (!oportunidade?.minha_proposta) return;
+    setRespondendoContraproposta(true);
+    setErro('');
+    try {
+      const resposta = await api.post(`/prestador/oportunidades/${params.id}/propostas/${oportunidade.minha_proposta.id}/contraproposta/responder`, { acao });
+      await carregar();
+      setSucesso(resposta.data.mensagem);
+    } catch (err: any) { setErro(err.response?.data?.message || 'Não foi possível responder à contraproposta.'); }
+    finally { setRespondendoContraproposta(false); }
   }
 
   async function enviarPergunta(e: React.FormEvent) {
@@ -242,7 +271,7 @@ export default function OportunidadeDetalhePage() {
   }
 
   async function concluirServico() {
-    if (!window.confirm('Confirmar que o serviço foi concluído?')) return;
+    if (!await confirmar({ mensagem: 'Confirmar que o serviço foi concluído?' })) return;
 
     setProcessandoConclusao(true);
     setErro('');
@@ -297,6 +326,7 @@ export default function OportunidadeDetalhePage() {
 
   return (
     <main style={{ maxWidth: '960px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+      {dialogo}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <Link href="/oportunidades" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           <ArrowLeft size={16} /> Voltar para oportunidades
@@ -484,7 +514,30 @@ export default function OportunidadeDetalhePage() {
                   <span style={{ color: '#64748b' }}>Enviada em</span> <strong>{formatarData(proposta.created_at)}</strong>
                 </div>
               </div>
+              <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                Validade comercial até {new Date(proposta.validade_ate).toLocaleString('pt-BR')}.
+              </p>
+              {['ENVIADA', 'EM_ANALISE'].includes(proposta.status) && !(new Date(proposta.validade_ate).getTime() > agora) && (
+                <p role="status" style={{ color: '#fbbf24', fontSize: '0.85rem' }}>
+                  Proposta expirada. O cliente não pode aceitar nem renegociar esta proposta.
+                </p>
+              )}
               <p style={{ color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{proposta.mensagem}</p>
+              {proposta.valor_contraproposta != null && (
+                <section aria-label="Contraproposta do cliente" style={{ padding: '1rem', border: '1px solid #475569', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1rem' }}>Contraproposta do cliente</h3>
+                  <strong>{formatarMoeda(proposta.valor_contraproposta)}</strong>
+                  <p>{proposta.mensagem_contraproposta}</p>
+                  <p role="status">{proposta.contraproposta_status === 'PENDENTE' ? 'Aguardando sua resposta' : proposta.contraproposta_status === 'ACEITA' ? 'Você aceitou o novo valor. O cliente ainda deve confirmar a contratação.' : 'Você recusou. O orçamento anterior foi mantido.'}</p>
+                  {proposta.contraproposta_status === 'PENDENTE' && proposta.status === 'EM_ANALISE'
+                    && ['ABERTA', 'EM_NEGOCIACAO'].includes(oportunidade.status) && new Date(proposta.validade_ate).getTime() > agora && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
+                      <button disabled={respondendoContraproposta} onClick={() => responderContraproposta('ACEITAR')} style={{ padding: '0.65rem', background: '#059669', border: 0, borderRadius: '6px', color: '#fff' }}>Aceitar contraproposta</button>
+                      <button disabled={respondendoContraproposta} onClick={() => responderContraproposta('RECUSAR')} style={{ padding: '0.65rem', background: '#475569', border: 0, borderRadius: '6px', color: '#fff' }}>Recusar contraproposta</button>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {/* Chat liberado desde o envio da proposta (US34) — não é mais preciso esperar o aceite
                   pra poder negociar detalhes com o cliente. */}
@@ -493,7 +546,7 @@ export default function OportunidadeDetalhePage() {
                 padding: '0.75rem', width: '100%', background: '#3b82f6', color: '#fff', border: 'none',
                 borderRadius: '8px', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer', marginBottom: '0.6rem',
               }}>
-                <MessageCircle size={16} /> {proposta.status === 'ACEITA' ? 'Conversar com o cliente' : 'Conversar sobre a proposta'}
+                <MessageCircle size={16} /> {proposta.status === 'RECUSADA' ? 'Ver conversa' : proposta.status === 'ACEITA' ? 'Conversar com o cliente' : 'Conversar sobre a proposta'}
               </button>
 
               {proposta.status === 'ACEITA' && oportunidade.status === 'CONTRATADA' ? (
@@ -569,7 +622,7 @@ export default function OportunidadeDetalhePage() {
                   )}
                 </div>
               ) : (
-                <small style={{ color: '#64748b' }}>O cliente poderá analisar, aceitar, recusar ou enviar uma contraproposta.</small>
+                <small style={{ color: '#64748b' }}>{!(new Date(proposta.validade_ate).getTime() > agora) ? 'A validade comercial expirou; aceite e renegociação estão bloqueados.' : 'O cliente poderá analisar, aceitar, recusar ou enviar uma contraproposta.'}</small>
               )}
             </div>
           ) : !logado ? (
@@ -627,6 +680,12 @@ export default function OportunidadeDetalhePage() {
                     <input type="number" name="prazo_dias" min="1" max="3650" step="1" required value={formulario.prazo_dias} onChange={alterarCampo} placeholder="5" style={campoInput} />
                   </label>
                 </div>
+
+                <label style={{ fontSize: '0.85rem' }}>
+                  <span style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Validade comercial (dias)</span>
+                  <input type="number" name="validade_dias" min="1" max="365" step="1" required value={formulario.validade_dias} onChange={alterarCampo} style={campoInput} />
+                  <small style={{ color: '#94a3b8' }}>Período para aceitar ou renegociar a proposta, contado do envio. Não é o prazo de execução.</small>
+                </label>
 
                 <label style={{ fontSize: '0.85rem' }}>
                   <span style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Mensagem para o cliente</span>

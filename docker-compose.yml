@@ -25,6 +25,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: tcc_servico_facil_backend
+    env_file:
+      - ./backend/.env
     restart: always
     ports:
       - '3001:3001'

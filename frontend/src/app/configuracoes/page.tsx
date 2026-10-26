@@ -143,6 +143,7 @@ export default function ConfiguracoesPage() {
                   onClick={() => alternar(p.tipo_evento)}
                   disabled={salvando === p.tipo_evento}
                   role="switch"
+                  aria-label={info.titulo}
                   aria-checked={p.ativo}
                   style={{
                     position: 'relative', width: '44px', height: '24px', borderRadius: '999px', border: 'none',

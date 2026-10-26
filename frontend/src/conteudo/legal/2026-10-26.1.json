@@ -1,0 +1,91 @@
+{
+  "documentos": {
+    "versao_termos": "2026-10-26.1",
+    "versao_privacidade": "2026-10-26.1",
+    "publicado_em": "2026-10-26",
+    "responsavel": "Rodrigo Fernando Melo Dias da Silva",
+    "email_privacidade": "rodrigogofernandomelo15@gmail.com",
+    "termos_url": "/termos-de-uso/2026-10-26.1",
+    "privacidade_url": "/politica-de-privacidade/2026-10-26.1"
+  },
+  "termos": [
+    [
+      "1. Plataforma e responsável",
+      "Eloserv (anteriormente ServiçoFácil) é um protótipo acadêmico de intermediação entre pessoas que solicitam serviços e profissionais que apresentam propostas. O responsável pelo atendimento desta versão é Rodrigo Fernando Melo Dias da Silva, pelo e-mail rodrigogofernandomelo15@gmail.com. A instituição de ensino não é apresentada como operadora do serviço."
+    ],
+    [
+      "2. Cadastro e uso da conta",
+      "Informe dados corretos, proteja sua senha e comunique uso indevido da conta. O cadastro exige documento, nome, e-mail e telefone; endereço e foto são opcionais. A validação do CPF/CNPJ verifica dígitos e duplicidade, sem comprovar identidade, habilitação profissional ou antecedentes. Não publique dados de terceiros sem autorização. Contas de demonstração têm acesso compartilhado entre participantes dos testes, inclusive ao painel administrativo de demonstração. Use somente dados fictícios nesses testes."
+    ],
+    [
+      "3. Solicitações, propostas e negociação",
+      "Solicitantes descrevem a necessidade e podem receber propostas concorrentes. O prestador informa preço, prazo de execução, condições e validade comercial. As partes podem esclarecer dúvidas públicas e conversar privadamente por proposta antes da contratação. Confira condições, materiais, local e qualificação antes de aceitar. A resposta a uma contraproposta não contrata automaticamente: o solicitante confirma a proposta escolhida."
+    ],
+    [
+      "4. Contratação e cancelamento",
+      "O aceite registra a contratação e recusa as propostas concorrentes. Antes da contratação é possível cancelar a solicitação. Após contratar, o solicitante pode desfazer o aceite e o profissional contratado pode desistir com motivo; o sistema reabre a negociação e reembolsa eventual custódia simulada. Serviços já concluídos não seguem esse fluxo. Condições e responsabilidades de uma prestação real devem ser combinadas de forma clara pelas partes, respeitada a legislação aplicável."
+    ],
+    [
+      "5. Pagamento exclusivamente simulado",
+      "Cartão e PIX de teste não cobram nem transferem dinheiro. A custódia e o saldo disponíveis na interface são registros fictícios para demonstração. O valor é o da proposta contratada, fica retido após a confirmação do checkout e é liberado na conclusão ou reembolsado no cancelamento/desistência compatível. Não forneça número de cartão, conta bancária, chave PIX real ou comprovante financeiro. A plataforma não oferece garantia financeira real."
+    ],
+    [
+      "6. Conclusão e avaliações",
+      "Os participantes autorizados confirmam a conclusão do serviço. O solicitante pode registrar uma avaliação única, com nota e comentário, que afeta a reputação pública do prestador. Avalie a experiência com respeito e sem expor documentos, endereços ou outras informações privadas. Não publique avaliações falsas ou ofensivas."
+    ],
+    [
+      "7. Conteúdo, segurança e moderação",
+      "Não publique material ilegal, discriminatório, fraudulento ou que viole direitos de terceiros. Denuncie solicitações ou conversas inadequadas pelo botão disponível no detalhe/chat. Administradores podem revisar denúncias e suspender contas. A conta pode ficar indisponível em caso de abuso ou manutenção. Contestações podem ser enviadas ao responsável. O atendimento administrativo não garante fiscalização prévia de todo conteúdo."
+    ],
+    [
+      "8. Limites da demonstração e direitos preservados",
+      "Esta versão pode ter interrupções e limitações próprias de um TCC. Não a utilize para operações financeiras reais nem como repositório de informações sigilosas. Nenhuma disposição afasta direitos obrigatórios previstos na legislação ou elimina responsabilidades que não possam ser afastadas."
+    ],
+    [
+      "9. Documentos e alterações",
+      "O cadastro registra a versão dos Termos aceita e a versão da Política de Privacidade conhecida, com a data do servidor. Ciência da Política não é autorização irrestrita para tratamento. Mudanças relevantes devem ser comunicadas e versões anteriores preservadas pela equipe; o sistema não atribui um novo aceite automaticamente a contas existentes. Consulte a Central de Privacidade para verificar o registro e enviar pedidos."
+    ]
+  ],
+  "privacidade": [
+    [
+      "1. Quem atende seus pedidos",
+      "O responsável informado para a operação deste protótipo é Rodrigo Fernando Melo Dias da Silva. Contato: rodrigogofernandomelo15@gmail.com. Pessoas com conta ativa também podem usar a Central de Privacidade. Sem acesso à conta, use o e-mail; a equipe poderá verificar sua identidade antes de fornecer ou alterar dados, solicitando apenas o necessário."
+    ],
+    [
+      "2. Dados utilizados e finalidades",
+      "O sistema utiliza nome, e-mail, CPF/CNPJ, telefone, senha protegida por hash e dados opcionais de endereço/foto para criar e autenticar contas, evitar duplicidades e permitir o uso do serviço. Categoria e biografia compõem o perfil profissional. Solicitações, propostas, perguntas, mensagens, anexos, avaliações, notificações e preferências são usados nas interações descritas na plataforma. Registros administrativos, protocolos e versões aceitas permitem atendimento e rastreabilidade. Pagamentos e saldos são simulados; não há coleta de dados financeiros reais no checkout."
+    ],
+    [
+      "3. Fundamentos e escolhas",
+      "O tratamento necessário ao cadastro, às interações solicitadas e à execução do serviço é relacionado à execução de contrato ou procedimentos pedidos pelo titular. Atividades de segurança, defesa de direitos ou cumprimento de obrigações devem observar a hipótese legal aplicável e a necessidade. Aceitar os Termos é uma manifestação contratual; declarar ciência da Política é um aviso de transparência. Nenhuma dessas escolhas autoriza qualquer uso futuro dos dados. Tratamentos opcionais que dependam de consentimento precisam de finalidade específica e possibilidade de revogação. Esta versão não solicita consentimento para publicidade ou venda de dados."
+    ],
+    [
+      "4. O que outras pessoas podem ver",
+      "A vitrine e os detalhes de solicitações são públicos; não escreva endereço completo, documento ou telefone na descrição. Nome, foto, biografia, categorias, reputação e avaliações do profissional compõem o perfil público. Comentários e identificação de exibição do avaliador também podem aparecer. Dados cadastrais como CPF, telefone, endereço e e-mail não integram a projeção de perfil público. Conversas são autorizadas por proposta entre seus participantes. Administradores acessam cadastros, solicitações e registros necessários à moderação e ao atendimento. Este ambiente de TCC inclui contas de demonstração compartilhadas, inclusive administrativas. Não trate os registros dessas contas como confidenciais e use dados fictícios nos testes."
+    ],
+    [
+      "5. Atenção aos anexos",
+      "Nesta versão, arquivos enviados têm endereços de acesso direto. Quem obtiver esses links pode acessar o conteúdo, inclusive quando o link tiver sido compartilhado numa conversa. Envie apenas conteúdo que possa ser compartilhado e não inclua documentos, imagens íntimas, dados sensíveis ou informações de terceiros. A autorização das telas de chat não equivale a uma proteção individual de cada link de arquivo."
+    ],
+    [
+      "6. Infraestrutura e terceiros",
+      "Os dados são persistidos no MySQL da instalação; arquivos ficam no armazenamento do servidor. Se a equipe disponibilizar o teste por hospedagem ou túnel, esse fornecedor poderá processar dados técnicos de conexão. A interface pode carregar fontes do Google Fonts conforme a configuração visual; nesse caso o navegador faz uma conexão externa sujeita às práticas desse fornecedor. O responsável deve informar alterações de fornecedor ou hospedagem que afetem o tratamento. Não há integração com processador de pagamentos reais."
+    ],
+    [
+      "7. Sessão e armazenamento no navegador",
+      "A sessão utiliza token e identificação da conta no armazenamento local do navegador para autenticar chamadas da aplicação. Esses itens podem permanecer após fechar a página e são removidos no logout. Não há ferramenta de publicidade ou medição comportamental implementada nesta versão. Recursos necessários à sessão não devem ser confundidos com consentimento para rastreamento. Em dispositivo compartilhado, encerre sua sessão."
+    ],
+    [
+      "8. Conservação, desativação e exclusão",
+      "Os dados permanecem na instalação enquanto necessários às finalidades informadas e à demonstração. Não existe expurgo automático com prazo fixo nesta versão. Desativar a conta bloqueia seu uso e preserva os registros; não é exclusão nem anonimização. Pedidos de exclusão ou anonimização são analisados pelo responsável, inclusive quanto a obrigações de conservação e direitos de terceiros, e recebem resposta justificada. A equipe deve revisar a necessidade dos registros ao encerrar os testes e executar a destinação adequada; backups podem exigir tratamento próprio."
+    ],
+    [
+      "9. Seus direitos e como solicitar",
+      "Você pode pedir confirmação/acesso, correção, informações sobre compartilhamento e finalidades, ou solicitar análise de exclusão, anonimização, bloqueio, portabilidade ou revogação de consentimento, conforme o caso. A Central de Privacidade registra o tipo, descrição, protocolo e resposta. Para direitos sem opção específica, use Informações e explique o pedido. O atendimento é gratuito e manual, sujeito aos prazos legais aplicáveis, incluindo os relativos à confirmação e ao acesso. Registrar ou responder um protocolo não executa automaticamente exclusão ou portabilidade. Também é possível recorrer à ANPD e aos órgãos competentes."
+    ],
+    [
+      "10. Segurança, incidentes e atualizações",
+      "A aplicação protege senhas com hash, autentica acessos e aplica regras por participante/perfil, mas não oferece garantia de risco zero. Comunique incidente ou uso indevido ao contato informado, sem enviar senhas. A equipe deve avaliar o caso e cumprir os deveres de comunicação aplicáveis. Novas finalidades e mudanças relevantes devem ser informadas com clareza. A versão conhecida no cadastro fica registrada; contas antigas sem versão não recebem aceite retroativo."
+    ]
+  ]
+}

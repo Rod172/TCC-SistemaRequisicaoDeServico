@@ -18,6 +18,7 @@ import dotenv from 'dotenv';
 import app from './app';
 import { sequelize } from './config/database';
 import { initChatSocket } from './sockets/chatSocket';
+import { getJwtSecret } from './config/jwt';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ const PORT = process.env.PORT || 3001;
 
 async function startServer() {
   try {
+    getJwtSecret();
     // Autenticar a conexão com o banco de dados MySQL
     await sequelize.authenticate();
     console.log('✅ Conexão com o banco de dados MySQL realizada com sucesso via Sequelize ORM.');

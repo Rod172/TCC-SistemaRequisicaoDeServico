@@ -16,8 +16,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText } from 'lucide-react';
 import api from '@/services/api';
+import AceiteDocumentos from '@/components/AceiteDocumentos';
+import documentos from '@/conteudo/documentos-legais.json';
+import { normalizarDocumento, validarCPF } from '@/utils/documento';
 
 export default function RegisterSolicitantePage() {
+  const [privacidadeCiente, setPrivacidadeCiente] = useState(false);
   const router = useRouter();
   const [formData, setFormData] = useState({
     nome: '',
@@ -47,14 +51,20 @@ export default function RegisterSolicitantePage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    // Impede o envio de CPF inválido antes de iniciar a requisição de cadastro.
+    if (!validarCPF(formData.cpf)) {
+      setErrorMsg('CPF inválido. Confira os 11 dígitos e tente novamente.');
+      return;
+    }
+
     // Validações no cliente
     if (formData.senha !== formData.confirmarSenha) {
       setErrorMsg('As senhas digitadas não coincidem.');
       return;
     }
 
-    if (!formData.termoLgpdAceito) {
-      setErrorMsg('É necessário aceitar os termos de uso e política de privacidade (LGPD) para prosseguir.');
+    if (!formData.termoLgpdAceito || !privacidadeCiente) {
+      setErrorMsg('Aceite os Termos de Uso e confirme a leitura da Política de Privacidade para prosseguir.');
       return;
     }
 
@@ -64,11 +74,14 @@ export default function RegisterSolicitantePage() {
       const payload = {
         nome: formData.nome,
         email: formData.email,
-        cpf: formData.cpf,
+        cpf: normalizarDocumento(formData.cpf),
         telefone: formData.telefone,
         endereco: formData.endereco,
         senha: formData.senha,
-        termo_lgpd_aceito: formData.termoLgpdAceito,
+        termos_uso_aceitos: formData.termoLgpdAceito,
+        privacidade_ciente: privacidadeCiente,
+        termos_uso_versao: documentos.versao_termos,
+        privacidade_versao: documentos.versao_privacidade,
       };
 
       const response = await api.post('/auth/register/solicitante', payload);
@@ -357,28 +370,9 @@ export default function RegisterSolicitantePage() {
           </div>
 
           {/* Checkbox Termo LGPD */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.75rem',
-            background: '#0f172a',
-            padding: '1rem',
-            borderRadius: '8px',
-            border: '1px solid #334155',
-            marginTop: '0.5rem'
-          }}>
-            <input
-              type="checkbox"
-              id="termoLgpdAceito"
-              name="termoLgpdAceito"
-              checked={formData.termoLgpdAceito}
-              onChange={handleChange}
-              style={{ marginTop: '0.2rem', cursor: 'pointer', width: '18px', height: '18px' }}
-            />
-            <label htmlFor="termoLgpdAceito" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer', lineHeight: 1.4 }}>
-              Concordo com o tratamento de meus dados pessoais para fins de cadastro e intermediação de serviços, em conformidade com a <strong>LGPD (Lei nº 13.709/2018)</strong> e os Termos de Uso da Plataforma. *
-            </label>
-          </div>
+          <AceiteDocumentos termos={formData.termoLgpdAceito} ciencia={privacidadeCiente}
+              alterarTermos={valor => setFormData(prev => ({ ...prev, termoLgpdAceito: valor }))}
+              alterarCiencia={setPrivacidadeCiente} />
 
           {/* Botão de Submissão */}
           <button

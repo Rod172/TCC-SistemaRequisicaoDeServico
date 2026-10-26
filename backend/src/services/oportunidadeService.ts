@@ -10,7 +10,7 @@
 
 import { Op } from 'sequelize';
 import sequelize from '../config/database';
-import { Solicitacao, Proposta, Usuario, AnexoSolicitacao, Notificacao, PerguntaSolicitacao } from '../models';
+import { Solicitacao, Proposta, Usuario, AnexoSolicitacao, Notificacao, PerguntaSolicitacao, TransacaoCustodia } from '../models';
 import HttpError from '../utils/HttpError';
 import { emitirParaUsuario } from '../sockets/chatSocket';
 import preferenciaNotificacaoService from './preferenciaNotificacaoService';
@@ -26,6 +26,7 @@ export interface ListarOportunidadesFiltros {
 export interface EnviarPropostaDTO {
   valor: number;
   prazo_dias: number;
+  validade_dias?: number;
   mensagem: string;
 }
 
@@ -45,7 +46,7 @@ export class OportunidadeService {
     const bairro = limpar(filtros.bairro);
     const ordenacao = filtros.ordenacao === 'antigas' ? 'ASC' : 'DESC';
 
-    const where: Record<string, unknown> = { status: 'ABERTA' };
+    const where: Record<string, unknown> = { status: { [Op.in]: ['ABERTA', 'EM_NEGOCIACAO'] } };
     if (categoria) where.categoria = categoria;
     if (cidade) where.cidade = cidade;
     if (bairro) where.bairro = bairro;
@@ -64,14 +65,14 @@ export class OportunidadeService {
         order: [['created_at', ordenacao]],
       }),
       Solicitacao.findAll({
-        where: { status: 'ABERTA' },
+        where: { status: { [Op.in]: ['ABERTA', 'EM_NEGOCIACAO'] } },
         attributes: ['categoria'],
         group: ['categoria'],
         order: [['categoria', 'ASC']],
         raw: true,
       }),
       Solicitacao.findAll({
-        where: { status: 'ABERTA' },
+        where: { status: { [Op.in]: ['ABERTA', 'EM_NEGOCIACAO'] } },
         attributes: ['cidade', 'bairro'],
         group: ['cidade', 'bairro'],
         order: [['cidade', 'ASC'], ['bairro', 'ASC']],
@@ -122,7 +123,8 @@ export class OportunidadeService {
     const minhaProposta = prestadorId
       ? await Proposta.findOne({
           where: { solicitacao_id: oportunidadeId, prestador_id: prestadorId },
-          attributes: ['id', 'valor', 'prazo_dias', 'mensagem', 'status', 'created_at'],
+          attributes: ['id', 'valor', 'prazo_dias', 'mensagem', 'status', 'validade_ate', 'created_at',
+            'valor_contraproposta', 'mensagem_contraproposta', 'contraproposta_status', 'contraproposta_respondida_em'],
         })
       : null;
 
@@ -130,7 +132,7 @@ export class OportunidadeService {
       ...oportunidade.get({ plain: true }),
       // Precisa bater com o filtro de `enviarProposta` (ABERTA/EM_NEGOCIACAO) — senão a tela nega uma
       // ação que o backend aceitaria de verdade.
-      pode_enviar_proposta: !!prestadorId && !minhaProposta && ['ABERTA', 'EM_NEGOCIACAO'].includes(oportunidade.status),
+      pode_enviar_proposta: !!prestadorId && prestadorId !== oportunidade.solicitante_id && !minhaProposta && ['ABERTA', 'EM_NEGOCIACAO'].includes(oportunidade.status),
       minha_proposta: minhaProposta ? minhaProposta.get({ plain: true }) : null,
     };
   }
@@ -144,7 +146,11 @@ export class OportunidadeService {
    * `ABERTA` (idempotente se já estiver `EM_NEGOCIACAO`).
    */
   async enviarProposta(oportunidadeId: string, prestadorId: string, dados: EnviarPropostaDTO) {
-    const { valor, prazo_dias, mensagem } = dados;
+    const { valor, prazo_dias, mensagem, validade_dias = 7 } = dados;
+
+    if (!Number.isInteger(validade_dias) || validade_dias < 1 || validade_dias > 365) {
+      throw new HttpError(400, 'Informe uma validade comercial entre 1 e 365 dias.');
+    }
 
     if (!Number.isFinite(valor) || valor <= 0 || valor > 99999999.99) {
       throw new HttpError(400, 'Informe um valor válido para a proposta.');
@@ -168,9 +174,14 @@ export class OportunidadeService {
         throw new HttpError(409, 'A oportunidade não aceita mais propostas (já foi contratada, concluída ou cancelada).');
       }
 
+      if (oportunidade.solicitante_id === prestadorId) {
+        throw new HttpError(403, 'Você não pode propor um serviço para a própria solicitação.');
+      }
+
       const propostaExistente = await Proposta.findOne({
         where: { solicitacao_id: oportunidadeId, prestador_id: prestadorId },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
 
       if (propostaExistente) {
@@ -183,6 +194,7 @@ export class OportunidadeService {
           prestador_id: prestadorId,
           valor,
           prazo_dias,
+          validade_ate: new Date(Date.now() + validade_dias * 24 * 60 * 60 * 1000),
           mensagem: mensagem.trim(),
           status: 'ENVIADA',
         },
@@ -202,10 +214,41 @@ export class OportunidadeService {
           },
           { transaction }
         );
-        emitirParaUsuario(oportunidade.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true }));
+        transaction.afterCommit(() => { emitirParaUsuario(oportunidade.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true })); });
       }
 
       return { mensagem: 'Proposta enviada ao cliente com sucesso.', dados: proposta.get({ plain: true }) };
+    });
+  }
+
+  /** US35: o prestador decide sobre o valor negociado sem contratar automaticamente. */
+  async responderContraproposta(solicitacaoId: string, propostaId: string, prestadorId: string, acao: string) {
+    if (!['ACEITAR', 'RECUSAR'].includes(acao)) throw new HttpError(400, 'Informe ACEITAR ou RECUSAR.');
+    return sequelize.transaction(async transaction => {
+      const solicitacao = await Solicitacao.findByPk(solicitacaoId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
+      const proposta = await Proposta.findOne({ where: { id: propostaId, solicitacao_id: solicitacaoId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!proposta) throw new HttpError(404, 'Proposta não encontrada.');
+      if (proposta.prestador_id !== prestadorId) throw new HttpError(403, 'Você não é o prestador desta proposta.');
+      if (!['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status) || proposta.status !== 'EM_ANALISE'
+          || proposta.contraproposta_status !== 'PENDENTE' || proposta.valor_contraproposta == null
+          || !(new Date(proposta.validade_ate).getTime() > Date.now())) {
+        throw new HttpError(409, 'Esta contraproposta não está pendente ou sua validade expirou.');
+      }
+      await proposta.update({
+        ...(acao === 'ACEITAR' ? { valor: proposta.valor_contraproposta } : {}),
+        status: 'ENVIADA', contraproposta_status: acao === 'ACEITAR' ? 'ACEITA' : 'RECUSADA',
+        contraproposta_respondida_em: new Date(),
+      }, { transaction });
+      if (await preferenciaNotificacaoService.estaAtivado(solicitacao.solicitante_id, 'PROPOSTA_ACEITA_RECUSADA')) {
+        const notificacao = await Notificacao.create({ usuario_id: solicitacao.solicitante_id,
+          titulo: acao === 'ACEITAR' ? 'Contraproposta aceita' : 'Contraproposta recusada',
+          mensagem: `O prestador respondeu à negociação de "${solicitacao.titulo}". Confira o orçamento antes de contratar.`,
+          link_redirecionamento: `/minhas-solicitacoes/${solicitacaoId}`,
+        }, { transaction });
+        transaction.afterCommit(() => { emitirParaUsuario(solicitacao.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true })); });
+      }
+      return { mensagem: acao === 'ACEITAR' ? 'Contraproposta aceita. Aguarde a confirmação do cliente.' : 'Contraproposta recusada. O valor anterior foi mantido.' };
     });
   }
 
@@ -225,7 +268,7 @@ export class OportunidadeService {
 
     const propostas = await Proposta.findAll({
       where,
-      attributes: ['id', 'valor', 'prazo_dias', 'status', 'created_at'],
+      attributes: ['id', 'valor', 'prazo_dias', 'status', 'validade_ate', 'created_at'],
       include: [{ model: Solicitacao, as: 'solicitacao', attributes: ['id', 'titulo', 'status'] }],
       order: [['created_at', 'DESC']],
     });
@@ -257,9 +300,21 @@ export class OportunidadeService {
       const proposta = await Proposta.findOne({
         where: { solicitacao_id: solicitacaoId, prestador_id: prestadorId, status: 'ACEITA' },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (!proposta) {
         throw new HttpError(403, 'Você não é o prestador contratado desta solicitação.');
+      }
+
+      const custodia = await TransacaoCustodia.findOne({
+        where: { solicitacao_id: solicitacaoId },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (custodia && custodia.status_pagamento !== 'REEMBOLSADO') {
+        if (custodia.proposta_id !== proposta.id || custodia.status_pagamento !== 'RETIDO') {
+          throw new HttpError(409, 'A custódia não permite desfazer esta contratação.');
+        }
+        await custodia.update({ status_pagamento: 'REEMBOLSADO', liberado_em: null }, { transaction });
       }
 
       await proposta.update({ status: 'RECUSADA' }, { transaction });
@@ -275,7 +330,7 @@ export class OportunidadeService {
           },
           { transaction }
         );
-        emitirParaUsuario(solicitacao.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true }));
+        transaction.afterCommit(() => { emitirParaUsuario(solicitacao.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true })); });
       }
 
       return { mensagem: 'Desistência registrada. O cliente foi notificado e a solicitação está aberta a novas propostas.' };

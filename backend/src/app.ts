@@ -11,6 +11,8 @@
  *    Doc Oficial: https://helmetjs.github.io/
  * 4. Swagger UI Express (^5.0.1) & Swagger JSDoc (^6.2.8): Documentação interativa da API REST.
  *    Doc Oficial: https://swagger.io/tools/swagger-ui/
+ * 5. Multer (^2.3.0): Identificação de erros de upload no tratamento centralizado.
+ *    Doc Oficial: https://github.com/expressjs/multer
  */
 
 import express, { Request, Response, NextFunction } from 'express';
@@ -18,7 +20,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
-import swaggerJsDoc from 'swagger-jsdoc';
+import { criarDocumentoOpenApi } from './config/openapi';
 import authRoutes from './routes/authRoutes';
 import perfilRoutes from './routes/perfilRoutes';
 import solicitacaoRoutes from './routes/solicitacaoRoutes';
@@ -29,6 +31,12 @@ import notificacaoRoutes from './routes/notificacaoRoutes';
 import perguntaRoutes from './routes/perguntaRoutes';
 import denunciaRoutes from './routes/denunciaRoutes';
 import avaliacaoRoutes from './routes/avaliacaoRoutes';
+import prestadorPublicoRoutes from './routes/prestadorPublicoRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
+import HttpError from './utils/HttpError';
+import multer from 'multer';
+
+import privacidadeRoutes from './routes/privacidadeRoutes';
 
 const app = express();
 
@@ -51,28 +59,8 @@ app.use(
 );
 
 // Configuração da Especificação Swagger / OpenAPI 3.0
-const swaggerOptions: swaggerJsDoc.Options = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'API ServiçoFácil - Plataforma de Requisição de Serviços (TCC)',
-      version: '1.0.0',
-      description: 'Documentação oficial da API REST desenvolvida em Node.js com Express, TypeScript e Sequelize.',
-      contact: {
-        name: 'Equipe de TCC (UNIP)',
-      },
-    },
-    servers: [
-      {
-        url: 'http://localhost:3001/api/v1',
-        description: 'Servidor Local de Desenvolvimento',
-      },
-    ],
-  },
-  apis: ['./src/controllers/*.ts', './src/routes/*.ts'],
-};
-
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
+const swaggerDocs = criarDocumentoOpenApi();
+app.get('/api-docs.json', (_req, res) => res.json(swaggerDocs));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Rota de Health Check para verificação de status da API
@@ -87,6 +75,7 @@ app.get('/api/v1/health', (req: Request, res: Response) => {
 });
 
 // Registro dos Módulos de Rotas da Aplicação
+app.use('/api/v1', privacidadeRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/perfil', perfilRoutes);
 app.use('/api/v1/solicitacoes', solicitacaoRoutes);
@@ -97,13 +86,24 @@ app.use('/api/v1/solicitacoes', avaliacaoRoutes);
 app.use('/api/v1/prestador', oportunidadeRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/notificacoes', notificacaoRoutes);
+app.use('/api/v1/prestadores', prestadorPublicoRoutes);
+app.use('/api/v1/dashboards', dashboardRoutes);
 
 // Middleware Global de Tratamento de Erros
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Unhandled Error:', err);
+  if (err instanceof HttpError) {
+    return res.status(err.status).json({ error: err.name, message: err.message });
+  }
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: 'Arquivo inválido', message: err.code === 'LIMIT_FILE_SIZE' ? 'Arquivo excede o tamanho permitido.' : 'Quantidade ou campo de arquivos inválido.' });
+  }
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ error: 'Requisição inválida', message: 'O corpo JSON é inválido.' });
+  }
+  console.error('Erro não tratado:', err);
   res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message || 'Ocorreu um erro interno inesperado no servidor.',
+    error: 'Erro interno',
+    message: 'Ocorreu um erro interno inesperado no servidor.',
   });
 });
 

@@ -258,7 +258,7 @@ export class PerfilController {
       await usuario.update({ ativo: false });
 
       return res.status(200).json({
-        message: 'Sua conta foi desativada com sucesso. Seus dados serão anonimizados em até 30 dias conforme a LGPD (Lei nº 13.709/2018).',
+        message: 'Sua conta foi desativada com sucesso. O acesso à plataforma foi bloqueado.',
       });
     } catch (err: any) {
       return res.status(500).json({ error: 'Internal Server Error', message: err.message });

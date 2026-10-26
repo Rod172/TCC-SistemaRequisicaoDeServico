@@ -49,7 +49,8 @@ export class ChatController {
   async listarMensagens(req: Request, res: Response): Promise<Response> {
     try {
       const dados = await chatService.listarMensagens(req.params.propostaId, req.user!.id);
-      return res.status(200).json({ data: dados });
+      const { proposta, solicitacao } = await chatService.verificarParticipante(req.params.propostaId, req.user!.id);
+      return res.status(200).json({ data: dados, somente_leitura: proposta.status === 'RECUSADA' || solicitacao.status === 'CANCELADA' });
     } catch (err: any) {
       return responderErro(res, err);
     }

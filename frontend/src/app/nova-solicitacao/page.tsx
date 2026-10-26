@@ -46,6 +46,7 @@ export default function NovaSolicitacaoPage() {
   const [arrastando, setArrastando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
+  const [etapa, setEtapa] = useState(1);
 
   useEffect(() => {
     const token = localStorage.getItem('@ServicoFacil:token');
@@ -94,6 +95,16 @@ export default function NovaSolicitacaoPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro('');
+    if (enviando) return;
+    if (etapa < 3) {
+      setEtapa(etapa + 1);
+      return;
+    }
+    if (formulario.titulo.trim().length < 5 || formulario.descricao.trim().length < 20) {
+      setErro('Revise o título e a descrição antes de publicar.');
+      setEtapa(1);
+      return;
+    }
     setEnviando(true);
 
     try {
@@ -137,7 +148,7 @@ export default function NovaSolicitacaoPage() {
       </header>
 
       {erro && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           <AlertCircle size={20} /> <span>{erro}</span>
         </div>
       )}
@@ -147,6 +158,16 @@ export default function NovaSolicitacaoPage() {
         borderRadius: 'var(--border-radius)', padding: '2rem',
         display: 'flex', flexDirection: 'column', gap: '1.25rem',
       }}>
+        <ol aria-label="Etapas da publicação" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', listStyle: 'none' }}>
+          {['Descreva o serviço', 'Adicione anexos', 'Revise e publique'].map((nome, i) => (
+            <li key={nome} aria-current={etapa === i + 1 ? 'step' : undefined} style={{ color: etapa === i + 1 ? '#93c5fd' : '#94a3b8', fontWeight: etapa === i + 1 ? 700 : 400 }}>
+              {i + 1}. {nome}
+            </li>
+          ))}
+        </ol>
+        <p aria-live="polite">Etapa {etapa} de 3</p>
+        <fieldset hidden={etapa !== 1} disabled={etapa !== 1 || enviando} style={{ border: 0, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <Campo label="Título *" icon={<ClipboardList size={18} />}>
           <input name="titulo" required minLength={5} value={formulario.titulo} onChange={alterarCampo} placeholder="Ex.: Instalação de 3 tomadas na cozinha" style={estiloInput} />
         </Campo>
@@ -177,7 +198,7 @@ export default function NovaSolicitacaoPage() {
         </Campo>
 
         <div>
-          <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+          <label htmlFor="descricao-solicitacao" style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
             Descrição detalhada *
           </label>
           <div style={{
@@ -188,19 +209,23 @@ export default function NovaSolicitacaoPage() {
             {' '}<strong>desde quando</strong> é um problema, e <strong>algum detalhe que ajude a orçar</strong> (tamanho, quantidade, marca/modelo, se já tentou algo).
           </div>
           <textarea
-            name="descricao" required minLength={20} rows={5}
+            id="descricao-solicitacao" name="descricao" required minLength={20} rows={5}
             value={formulario.descricao} onChange={alterarCampo}
             placeholder="Ex.: A pia da cozinha está entupindo há 3 dias, mesmo depois de usar desentupidor. É um apartamento, o ralo fica embaixo da pia. Preciso resolver ainda essa semana."
             style={{ ...estiloInput, paddingLeft: '0.75rem', resize: 'vertical' }}
           />
         </div>
+        </div>
+        </fieldset>
 
         {/* ── Upload de anexos ─────────────────── */}
-        <div>
+        <div hidden={etapa !== 2}>
           <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
             Fotos ou documentos (opcional, até {MAX_ARQUIVOS} arquivos de {MAX_TAMANHO_MB}MB cada)
           </label>
           <div
+            role="button" tabIndex={0} aria-label="Selecionar fotos ou documentos"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
             onDragOver={(e) => { e.preventDefault(); setArrastando(true); }}
             onDragLeave={() => setArrastando(false)}
             onDrop={handleDrop}
@@ -236,7 +261,7 @@ export default function NovaSolicitacaoPage() {
                     {arquivo.name}
                   </span>
                   <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{(arquivo.size / 1024 / 1024).toFixed(1)}MB</span>
-                  <button type="button" onClick={() => removerArquivo(indice)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', display: 'flex' }}>
+                  <button type="button" aria-label={`Remover ${arquivo.name}`} onClick={() => removerArquivo(indice)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', display: 'flex', padding: '0.5rem' }}>
                     <X size={16} />
                   </button>
                 </div>
@@ -245,13 +270,28 @@ export default function NovaSolicitacaoPage() {
           )}
         </div>
 
+        {etapa === 3 && (
+          <section aria-label="Revisão da solicitação" style={{ overflowWrap: 'anywhere' }}>
+            <h2 style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>Confira antes de publicar</h2>
+            <dl style={{ display: 'grid', gap: '0.75rem' }}>
+              {[
+                ['Título', formulario.titulo], ['Categoria', formulario.categoria || 'Não informada'],
+                ['Local', [formulario.cidade, formulario.bairro].filter(Boolean).join(' — ') || 'Não informado'],
+                ['Prazo desejado', formulario.prazo_desejado_dias ? `${formulario.prazo_desejado_dias} dias` : 'A combinar'],
+                ['Orçamento', formulario.orcamento_cliente ? Number(formulario.orcamento_cliente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'A combinar'],
+                ['Descrição', formulario.descricao], ['Anexos', arquivos.map(a => a.name).join(', ') || 'Nenhum arquivo'],
+              ].map(([nome, valor]) => <div key={nome}><dt style={{ color: '#94a3b8' }}>{nome}</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{valor}</dd></div>)}
+            </dl>
+          </section>
+        )}
+        {etapa > 1 && <button type="button" disabled={enviando} onClick={() => { setErro(''); setEtapa(etapa - 1); }} style={{ ...estiloInput, cursor: 'pointer', padding: '0.75rem' }}>Voltar à etapa anterior</button>}
         <button type="submit" disabled={enviando} style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
           padding: '0.9rem', background: enviando ? '#475569' : '#3b82f6', color: '#fff',
           border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.95rem',
           cursor: enviando ? 'not-allowed' : 'pointer', marginTop: '0.5rem',
         }}>
-          <CheckCircle size={18} /> {enviando ? 'Publicando...' : 'Publicar solicitação'}
+          <CheckCircle size={18} /> {enviando ? 'Publicando...' : etapa === 3 ? 'Publicar solicitação' : 'Continuar'}
         </button>
       </form>
     </main>
@@ -259,16 +299,18 @@ export default function NovaSolicitacaoPage() {
 }
 
 function Campo({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+  const campo = React.isValidElement<{ name?: string; id?: string }>(children) ? children : null;
+  const id = campo?.props.id || `solicitacao-${campo?.props.name}`;
   return (
     <div>
-      <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+      <label htmlFor={id} style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
         {label}
       </label>
       <div style={{ position: 'relative' }}>
         <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', display: 'flex' }}>
           {icon}
         </span>
-        {children}
+        {campo ? React.cloneElement(campo, { id }) : children}
       </div>
     </div>
   );

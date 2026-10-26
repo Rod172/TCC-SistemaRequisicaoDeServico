@@ -2,7 +2,7 @@
  * @file TransacaoCustodia.ts
  * @description Modelo relacional do Sequelize em TypeScript representando a retenção simulada do
  * valor de uma proposta aceita, em garantia (escrow) até a conclusão do serviço (US13). A liberação
- * (`LIBERADO`), dependente da confirmação de conclusão (US17), não é acionada por este projeto ainda.
+ * (`LIBERADO`) ocorre na confirmação de conclusão (US17) e compõe a carteira simulada do prestador.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Sequelize ORM (^6.37.3): Mapeamento Objeto-Relacional.
