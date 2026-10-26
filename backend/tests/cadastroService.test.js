@@ -5,7 +5,8 @@ jest.mock('bcryptjs', () => ({ hash: jest.fn().mockResolvedValue('hash'), compar
 const { Usuario, PrestadorPerfil } = require('../dist/models');
 const { AuthService } = require('../dist/services/authService');
 const servico = new AuthService();
-const dados = { nome: 'Teste', email: ' TESTE@example.com ', telefone: '11999999999', cpf: '529.982.247-25', cnpj_cpf: '11.222.333/0001-81', senha: 'Senha123!', termo_lgpd_aceito: true, categorias: ['Pintura'], foto_url: '/uploads/foto.png' };
+const aceiteDocumentos = { termos_uso_aceitos: true, privacidade_ciente: true, termos_uso_versao: '2026-10-26.1', privacidade_versao: '2026-10-26.1' };
+const dados = { ...aceiteDocumentos, nome: 'Teste', email: ' TESTE@example.com ', telefone: '11999999999', cpf: '529.982.247-25', cnpj_cpf: '11.222.333/0001-81', senha: 'Senha123!', termo_lgpd_aceito: true, categorias: ['Pintura'], foto_url: '/uploads/foto.png' };
 beforeEach(() => {
   jest.clearAllMocks();
   Usuario.findOne.mockResolvedValue(null);

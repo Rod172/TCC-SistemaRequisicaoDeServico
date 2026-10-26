@@ -95,6 +95,30 @@
 
 ---
 
+### US40 - Documentos Legais, Aceite Versionado e Direitos de Privacidade
+**Como** uma pessoa que utiliza a plataforma
+
+**Quero** ler os Termos de Uso e a Política de Privacidade, conhecer o que aceitei e solicitar atendimento sobre meus dados
+
+**Para que** eu entenda o serviço e possa exercer meus direitos com transparência.
+
+#### Critérios de Aceite:
+- [x] Termos de Uso e Política de Privacidade públicos, em português, acessíveis sem login no cadastro e rodapé, com versão/data e regras coerentes com o protótipo e pagamento simulado.
+- [x] Cadastro distingue aceite dos Termos e ciência da Política, sem caixa pré-marcada ou consentimento genérico para qualquer uso. API exige as versões vigentes e os dois sinais explícitos; alteração de versão não é aceita silenciosamente.
+- [x] Persistir versões e data do aceite no cadastro, usando relógio do servidor. Contas anteriores permanecem com versão desconhecida, sem atribuir aceite retroativo.
+- [x] Central de Privacidade mostra registros do usuário e permite enviar/acompanhar pedidos de acesso, correção, exclusão, informação ou revogação de consentimento, com protocolo, validação e isolamento por titular.
+- [x] Administrador acompanha e responde aos pedidos; resposta e data ficam registradas. Responder não exclui dados automaticamente nem promete prazo, anonimização ou cumprimento jurídico não implementado.
+- [x] Informar dados/finalidades, visibilidade e fornecedores, armazenamento local de sessão, retenção efetiva, direitos e canal da equipe, distinguindo bases necessárias ao serviço de consentimento específico.
+- [x] Documentar limitações acadêmicas e necessidades de configuração do responsável antes de operação pública. Cobrir validações, persistência, autorização e migração com testes; conferir links/formulários no desktop e celular.
+
+#### Tarefas Técnicas:
+- **BD**: Migration de versões de aceite em usuarios e tabela de solicitacoes_privacidade, sem backfill de aceite legado.
+- **Backend (Node.js)**: Metadados públicos versionados, validação do cadastro e endpoints autenticados do titular e da administração, com OpenAPI e resposta transacional auditável.
+- **Frontend (React)**: Páginas legais, rodapé compartilhado, aceite com links e Central de Privacidade com caixa administrativa.
+- **Testes/Documentação**: Integração, conteúdo coerente com recursos existentes, referências oficiais LGPD/ANPD, registro de limites e implantação.
+
+---
+
 ## 📝 Épico 2: Publicação e Gerenciamento de Requisições (Solicitante)
 
 ### US05 - Publicação de Nova Solicitação de Serviço
@@ -689,3 +713,4 @@
 
 | **E4** | US35 | Resposta à Contraproposta | Must Have | 5 |
 | **E3** | US36 | Descoberta de Oportunidades em Negociação | Must Have | 3 |
+| **E1** | US40 | Documentos Legais, Aceite Versionado e Direitos de Privacidade | Must Have | 8 |

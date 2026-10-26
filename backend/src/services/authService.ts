@@ -1,3 +1,4 @@
+import { AceiteDocumentos, validarAceiteDocumentos } from './documentosLegaisService';
 /**
  * @file authService.ts
  * @description Serviço de regras de negócio para cadastro de Solicitantes, Prestadores, Login e emissão de JWT.
@@ -18,7 +19,7 @@ import { getJwtSecret } from '../config/jwt';
 import sequelize from '../config/database';
 import { Usuario, PrestadorPerfil } from '../models';
 
-export interface RegisterSolicitanteDTO {
+export interface RegisterSolicitanteDTO extends AceiteDocumentos {
   nome: string;
   email: string;
   cpf: string;
@@ -26,10 +27,11 @@ export interface RegisterSolicitanteDTO {
   endereco?: string;
   foto_url?: string;
   senha: string;
-  termo_lgpd_aceito: boolean;
+  /** Compatibilidade: não é consentimento genérico nem substitui o aceite versionado. */
+  termo_lgpd_aceito?: boolean;
 }
 
-export interface RegisterPrestadorDTO {
+export interface RegisterPrestadorDTO extends AceiteDocumentos {
   nome: string;
   email: string;
   cnpj_cpf: string;
@@ -39,7 +41,8 @@ export interface RegisterPrestadorDTO {
   senha: string;
   descricao_bio?: string;
   categorias: string[];
-  termo_lgpd_aceito: boolean;
+  /** Compatibilidade: não é consentimento genérico nem substitui o aceite versionado. */
+  termo_lgpd_aceito?: boolean;
 }
 
 export interface LoginDTO {
@@ -72,15 +75,16 @@ function validarDadosCadastro(nome: unknown, telefone: unknown, endereco: unknow
 
 export class AuthService {
   /**
-   * Registra um novo usuário Solicitante (Cliente) com senha criptografada e consentimento LGPD.
+   * Registra um novo usuário Solicitante (Cliente) com senha protegida, aceite dos Termos e ciência da Política de Privacidade.
    */
   async registerSolicitante(data: RegisterSolicitanteDTO) {
     const { nome, email, cpf, telefone, endereco, foto_url, senha, termo_lgpd_aceito } = data;
 
-    if (termo_lgpd_aceito !== true) {
-      throw Object.assign(new Error('É obrigatório aceitar o termo de consentimento da LGPD para se cadastrar.'), { status: 400 });
+    if (termo_lgpd_aceito !== undefined && termo_lgpd_aceito !== true) {
+      throw Object.assign(new Error('É obrigatório aceitar os Termos de Uso e confirmar a ciência da Política de Privacidade.'), { status: 400 });
     }
 
+    const registroDocumentos = validarAceiteDocumentos(data);
     validarDadosCadastro(nome, telefone, endereco);
     validarCredenciaisCadastro(email, senha);
     const documento = validarDocumento(cpf);
@@ -106,6 +110,7 @@ export class AuthService {
       endereco: endereco ? endereco.trim() : undefined,
       foto_url,
       senha_hash,
+      ...registroDocumentos,
       tipo_perfil: 'SOLICITANTE',
       termo_lgpd_aceito: true,
       termo_lgpd_aceito_em: new Date(),
@@ -122,8 +127,8 @@ export class AuthService {
   async registerPrestador(data: RegisterPrestadorDTO) {
     const { nome, email, cnpj_cpf, telefone, endereco, foto_url, senha, descricao_bio, categorias, termo_lgpd_aceito } = data;
 
-    if (termo_lgpd_aceito !== true) {
-      throw Object.assign(new Error('É obrigatório aceitar o termo de consentimento da LGPD para se cadastrar.'), { status: 400 });
+    if (termo_lgpd_aceito !== undefined && termo_lgpd_aceito !== true) {
+      throw Object.assign(new Error('É obrigatório aceitar os Termos de Uso e confirmar a ciência da Política de Privacidade.'), { status: 400 });
     }
 
     if (!Array.isArray(categorias) || categorias.length === 0 || categorias.some(categoria => typeof categoria !== 'string' || !categoria.trim())) {
@@ -133,6 +138,7 @@ export class AuthService {
       throw Object.assign(new Error('Descrição inválida: informe um texto para a biografia.'), { status: 400 });
     }
 
+    const registroDocumentos = validarAceiteDocumentos(data);
     validarDadosCadastro(nome, telefone, endereco);
     validarCredenciaisCadastro(email, senha);
     const documento = validarDocumento(cnpj_cpf, true);
@@ -160,6 +166,7 @@ export class AuthService {
           endereco: endereco ? endereco.trim() : undefined,
           foto_url,
           senha_hash,
+          ...registroDocumentos,
           tipo_perfil: 'PRESTADOR',
           termo_lgpd_aceito: true,
           termo_lgpd_aceito_em: new Date(),

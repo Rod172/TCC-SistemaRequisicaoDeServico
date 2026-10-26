@@ -59,7 +59,7 @@ export class AuthController {
    *       201:
    *         description: Solicitante cadastrado com sucesso.
    *       400:
-   *         description: Dados inválidos ou consentimento LGPD não fornecido.
+   *         description: Dados inválidos, aceite ausente ou versão dos documentos divergente.
    *       409:
    *         description: E-mail ou CPF já existente no sistema.
    *       500:
@@ -83,7 +83,11 @@ export class AuthController {
         telefone,
         endereco,
         senha,
-        termo_lgpd_aceito: termo_lgpd_aceito === true,
+        termos_uso_aceitos: req.body.termos_uso_aceitos === true || (Boolean(req.is('multipart/form-data')) && req.body.termos_uso_aceitos === 'true'),
+        privacidade_ciente: req.body.privacidade_ciente === true || (Boolean(req.is('multipart/form-data')) && req.body.privacidade_ciente === 'true'),
+        termos_uso_versao: req.body.termos_uso_versao,
+        privacidade_versao: req.body.privacidade_versao,
+        termo_lgpd_aceito: termo_lgpd_aceito === undefined ? undefined : termo_lgpd_aceito === true,
       });
 
       return res.status(201).json({
@@ -185,7 +189,7 @@ export class AuthController {
    *       201:
    *         description: Prestador cadastrado com sucesso.
    *       400:
-   *         description: Dados inválidos ou consentimento LGPD não fornecido.
+   *         description: Dados inválidos, aceite ausente ou versão dos documentos divergente.
    *       409:
    *         description: E-mail ou CPF/CNPJ já existente no sistema.
    *       500:
@@ -209,10 +213,10 @@ export class AuthController {
         return res.status(400).json({ error: 'Bad Request', message: 'Informe ao menos uma categoria de atuação profissional válida.' });
       }
       // JSON exige booleano; somente o multipart também aceita a representação textual exata.
-      const consentimentoAceito = termo_lgpd_aceito === true ||
+      const aceiteLegado = termo_lgpd_aceito === undefined ? undefined : termo_lgpd_aceito === true ||
         (Boolean(req.is('multipart/form-data')) && termo_lgpd_aceito === 'true');
-      if (!consentimentoAceito) {
-        return res.status(400).json({ error: 'Bad Request', message: 'É obrigatório aceitar o termo de consentimento da LGPD para se cadastrar.' });
+      if (aceiteLegado === false) {
+        return res.status(400).json({ error: 'Bad Request', message: 'É obrigatório aceitar os Termos de Uso e confirmar a ciência da Política de Privacidade.' });
       }
 
       if (!nome || !email || !cnpj_cpf || !telefone || !senha) {
@@ -233,7 +237,11 @@ export class AuthController {
         senha,
         descricao_bio,
         categorias: categoriasTratadas as string[],
-        termo_lgpd_aceito: consentimentoAceito,
+        termos_uso_aceitos: req.body.termos_uso_aceitos === true || (Boolean(req.is('multipart/form-data')) && req.body.termos_uso_aceitos === 'true'),
+        privacidade_ciente: req.body.privacidade_ciente === true || (Boolean(req.is('multipart/form-data')) && req.body.privacidade_ciente === 'true'),
+        termos_uso_versao: req.body.termos_uso_versao,
+        privacidade_versao: req.body.privacidade_versao,
+        termo_lgpd_aceito: aceiteLegado,
         foto_url: req.file ? `/uploads/perfil/${req.file.filename}` : undefined,
       };
       const usuario = await authService.registerPrestador(dadosCadastro);
