@@ -524,3 +524,20 @@ Nenhuma biblioteca ou API externa nova adicionada. Reutilizadas as dependências
 | Next.js | 14.2.35 | Rotas de detalhe, vitrine e build de produção | https://nextjs.org/docs/14 |
 | Jest | 30.5.2 | Regressões de negociação e descoberta | https://jestjs.io/docs/getting-started |
 | Supertest | 7.3.1 | Verificação integrada das rotas reais | https://github.com/forwardemail/supertest |
+
+
+## 26/10/2026 — US23: confirmações da aplicação e retomada dos fluxos
+
+- Substituídas as cinco chamadas `window.confirm` por `useConfirmacao.tsx`, hook com diálogo compartilhado em React/HTML. Confirmações de aceitar/recusar proposta, cancelar contratação, concluir pelos dois perfis e alterar conta administrativa agora permanecem no DOM, sem bloquear o JavaScript.
+- Interação: texto associado ao título, fundo inativo pelo modal, foco inicial em “Voltar sem alterar”, Escape sem efeitos, retorno ao controle de origem, proteção contra pedidos simultâneos e resolução como cancelamento ao desmontar. Botões se reorganizam em telas estreitas.
+- Correção coberta pela US23, sem novos endpoints ou regras de negócio e sem alteração dos critérios existentes. Não foi necessária nova história. Nenhuma dependência adicionada.
+- Criado `frontend/src/components/useConfirmacao.tsx`; alterados `frontend/src/app/globals.css`, detalhes `minhas-solicitacoes/[id]` e `oportunidades/[id]`, `admin/page.tsx`, `STATUS_HISTORIAS.md` e `VERIFICACAO_FLUXOS.md`.
+- Corrigido também o campo de data de cadastro na tabela administrativa: o retorno Sequelize existente é `createdAt`; a interface usava `created_at` e mostrava data inválida.
+- Validação manual: Escape e volta sem alteração; conclusão efetiva de fixture pela interface; avaliação 5 enviada e visível no perfil público; cancelamento da contratação em 390 × 844; diálogo administrativo aberto e cancelado. API confirmou LIBERADO e REEMBOLSADO de R$ 120 nas respectivas fixtures. Pré-condições de contratação foram preparadas pela API, sem confundir com percurso completo pela interface.
+- Dados fictícios de verificação mantidos para inspeção; nenhuma conta real desativada. A primeira preparação interrompida deixou um serviço fictício contratado sem pagamento, antes dos dois registros usados na validação.
+- Checagem TypeScript aprovada. Build de produção do frontend executado nesta etapa. A suíte backend de 199 testes aprovada na etapa anterior não foi reexecutada: não houve alteração de backend nesta correção.
+
+| Biblioteca/recurso | Versão | Propósito | Documentação oficial |
+|---|---|---|---|
+| React | 18.3.1 | Estado e ciclo de vida da confirmação assíncrona | https://react.dev/reference/react |
+| HTML dialog | Plataforma Web | Modal no DOM, foco e fundo inativo, sem `window.confirm` | https://html.spec.whatwg.org/multipage/interactive-elements.html#the-dialog-element |

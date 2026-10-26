@@ -22,6 +22,7 @@ import {
   Ban, ShieldCheck, CreditCard, MessageCircle, HelpCircle, Clock, Flag,
 } from 'lucide-react';
 import api from '@/services/api';
+import useConfirmacao from '@/components/useConfirmacao';
 import ChatDrawer from '@/components/ChatDrawer';
 
 const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/api\/v1\/?$/, '');
@@ -122,6 +123,7 @@ function formatarData(iso: string) {
 }
 
 export default function DetalhePropostasPage() {
+  const { confirmar, dialogo } = useConfirmacao();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const solicitacaoId = params.id;
@@ -211,7 +213,7 @@ export default function DetalhePropostasPage() {
 
   async function alterarStatus(proposta: Proposta, acao: 'ACEITAR' | 'RECUSAR') {
     const verbo = acao === 'ACEITAR' ? 'aceitar' : 'recusar';
-    if (!window.confirm(`Deseja realmente ${verbo} a proposta de ${proposta.prestador.nome}?`)) return;
+    if (!await confirmar({ mensagem: `Deseja realmente ${verbo} a proposta de ${proposta.prestador.nome}?` })) return;
 
     setProcessandoId(proposta.id);
     setErro('');
@@ -236,7 +238,7 @@ export default function DetalhePropostasPage() {
   }
 
   async function cancelarContratacao() {
-    if (!window.confirm('Deseja realmente cancelar esta contratação? A solicitação volta a aceitar propostas de outros prestadores.')) return;
+    if (!await confirmar({ mensagem: 'Deseja realmente cancelar esta contratação? A solicitação volta a aceitar propostas de outros prestadores.' })) return;
 
     setProcessandoCancelContratacao(true);
     setErro('');
@@ -253,7 +255,7 @@ export default function DetalhePropostasPage() {
   }
 
   async function concluirServico() {
-    if (!window.confirm('Confirmar que o serviço foi concluído? O valor em custódia (se houver) será liberado ao prestador.')) return;
+    if (!await confirmar({ mensagem: 'Confirmar que o serviço foi concluído? O valor em custódia (se houver) será liberado ao prestador.' })) return;
 
     setProcessandoConclusao(true);
     setErro('');
@@ -431,6 +433,7 @@ export default function DetalhePropostasPage() {
 
   return (
     <main style={{ maxWidth: '860px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+      {dialogo}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <Link href={isAdmin ? '/admin' : '/minhas-solicitacoes'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           <ArrowLeft size={16} /> {isAdmin ? 'Voltar para o painel administrativo' : 'Voltar para minhas solicitações'}

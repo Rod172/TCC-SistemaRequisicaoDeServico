@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MapPin, User, CheckCircle, AlertCircle, Send, FileText, MessageCircle, HelpCircle, Clock, Ban, Flag, Star } from 'lucide-react';
 import api from '@/services/api';
+import useConfirmacao from '@/components/useConfirmacao';
 import ChatDrawer from '@/components/ChatDrawer';
 
 const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/api\/v1\/?$/, '');
@@ -104,6 +105,7 @@ const STATUS_SOLICITACAO: Record<string, { label: string; bg: string; fg: string
 };
 
 export default function OportunidadeDetalhePage() {
+  const { confirmar, dialogo } = useConfirmacao();
   const params = useParams<{ id: string }>();
   const router = useRouter();
 
@@ -269,7 +271,7 @@ export default function OportunidadeDetalhePage() {
   }
 
   async function concluirServico() {
-    if (!window.confirm('Confirmar que o serviço foi concluído?')) return;
+    if (!await confirmar({ mensagem: 'Confirmar que o serviço foi concluído?' })) return;
 
     setProcessandoConclusao(true);
     setErro('');
@@ -324,6 +326,7 @@ export default function OportunidadeDetalhePage() {
 
   return (
     <main style={{ maxWidth: '960px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+      {dialogo}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <Link href="/oportunidades" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           <ArrowLeft size={16} /> Voltar para oportunidades

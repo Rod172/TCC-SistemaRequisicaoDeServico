@@ -49,3 +49,19 @@ A ferramenta de navegação ficou bloqueada após uma confirmação nativa e dei
 Ainda não foram aprovados integralmente pela interface nesta etapa: avaliação enviada e refletida no perfil público; atualização da carteira e dashboards após conclusão; cancelamento/reembolso e desistência; cadastro e edição de perfil; moderação e denúncias com administrador; persistência das preferências/notificações; uso completo de todos esses caminhos em celular. Existem testes automatizados e implementações desses recursos, mas não se deve chamar essa cobertura de homologação visual completa.
 
 Para repetir o ponto interrompido: entrar como Solicitante demo, abrir a solicitação fictícia concluída, selecionar a nota e enviar a avaliação; depois conferir o perfil público e o painel do Prestador (Elétrica). Para testar a confirmação nativa desde o início, publicar outra solicitação fictícia, aceitar e pagar uma proposta simulada e usar “Marcar como concluído”.
+
+
+## Retomada em 26/10/2026 — Confirmação própria e desbloqueio da navegação
+
+As cinco chamadas `window.confirm` foram substituídas por um diálogo da aplicação, compartilhado entre os detalhes do solicitante/prestador e a administração. A confirmação usa HTML `<dialog>` com conteúdo React, não uma caixa de confirmação nativa do navegador. O fluxo JavaScript permanece assíncrono e a decisão continua obrigatória antes de chamar a API.
+
+As pendências de conclusão e avaliação descritas no relato de 25/10 foram retomadas com novos registros fictícios. Os dados até a contratação/custódia foram preparados pela API; as ações abaixo foram realizadas na interface:
+
+- Serviço `02fc22ac-cc79-4818-bd5e-bd755e1a6ff7`: abrir confirmação, cancelar por Escape, conferir estado CONTRATADA e foco de volta no botão; abrir novamente e confirmar; conferir CONCLUIDA. Enviar nota 5 com comentário fictício; conferir “Sua avaliação” e comentário no perfil público, com duas avaliações e média 5,0. Consulta posterior da API confirmou custódia LIBERADO, R$ 120.
+- Serviço `a54b199c-f84b-4891-a0b6-c90ca4873a25`: viewport 390 × 844, abrir cancelamento, voltar sem alterar, reabrir e confirmar. Página exibiu EM_NEGOCIACAO e proposta RECUSADA. Consulta posterior confirmou custódia REEMBOLSADO, R$ 120.
+- Administração: abrir confirmação de desativação da conta demo e voltar sem alterar; nenhuma conta foi desativada. Corrigida a data de cadastro na tabela (`createdAt`, conforme retorno existente da API).
+- Abertura do diálogo deixa o fundo inativo; opção “Voltar sem alterar” recebe foco inicial; Escape fecha sem efetivar ação; foco retorna ao controle de origem. Conferida apresentação do diálogo no celular.
+
+Portanto, conclusão pelo solicitante, envio de avaliação, reflexo no perfil público e cancelamento de contratação pelo solicitante passaram pela interface nesta retomada. A liberação e o reembolso foram também conferidos pela API. Continuam pendentes a homologação completa da carteira/dashboard, desistência, cadastro/edição, moderação efetivada, notificações e todos esses caminhos em celular. O caminho de conclusão do prestador e os aceites/recusas passam pelo mesmo componente, mas não foram repetidos integralmente nesta retomada.
+
+Não se deve interpretar o bloqueio histórico de 25/10 como bloqueio atual do diálogo: o percurso retomado acima funcionou sem travamento.
