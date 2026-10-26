@@ -517,3 +517,52 @@ describe('US26 — cadastro multipart, consentimento e arquivos', () => {
   expect(await Usuario.count({ where: { email } })).toBe(0); await esperarLimpeza(antes);
  });
 });
+
+
+describe('US35/US36 — negociação visível e resposta da contraproposta', () => {
+ const responder = (id, proposta, ator, acao) => autenticar(request(app).post(`/api/v1/prestador/oportunidades/${id}/propostas/${proposta}/contraproposta/responder`), ator).send({ acao });
+ test('feed mantém solicitação após primeira proposta, permite concorrência e remove após contratar', async () => {
+  const { id, p1 } = await disputa();
+  const feed = await request(app).get('/api/v1/prestador/oportunidades').query({ busca: 'Reparo elétrico US26' }).expect(200);
+  expect(feed.body.dados.find(s => s.id === id)).toMatchObject({ status: 'EM_NEGOCIACAO', categoria: 'ELETRICA' });
+  expect(feed.body.filtrosDisponiveis.categorias).toContain('ELETRICA');
+  await aceitar(id, p1).expect(200);
+  const fechado = await request(app).get('/api/v1/prestador/oportunidades').expect(200);
+  expect(fechado.body.dados.some(s => s.id === id)).toBe(false);
+ });
+ test('contraproposta fica visível ao prestador, bloqueia contratação pendente e aceita valor na custódia', async () => {
+  const { id, p1 } = await disputa();
+  await renegociar(id, p1).expect(200);
+  const detalhe = await autenticar(request(app).get(`/api/v1/prestador/oportunidades/${id}`), prestador).expect(200);
+  expect(detalhe.body.dados.minha_proposta).toMatchObject({ contraproposta_status: 'PENDENTE', mensagem_contraproposta: 'Podemos ajustar o valor do serviço?' });
+  expect(Number(detalhe.body.dados.minha_proposta.valor_contraproposta)).toBe(220);
+  await aceitar(id, p1).expect(409);
+  await responder(id, p1, concorrente, 'ACEITAR').expect(403);
+  await responder(id, p1, prestador, 'ACEITAR').expect(200);
+  await responder(id, p1, prestador, 'ACEITAR').expect(409);
+  expect((await Solicitacao.findByPk(id)).status).toBe('EM_NEGOCIACAO');
+  expect(Number((await Proposta.findByPk(p1)).valor)).toBe(220);
+  await aceitar(id, p1).expect(200);
+  const pagamento = await pagar(id).expect(200);
+  expect(Number(pagamento.body.dados.valor)).toBe(220);
+ });
+ test('recusa mantém preço original e permite o cliente confirmar o orçamento original', async () => {
+  const { id, p1 } = await disputa(); await renegociar(id, p1).expect(200);
+  await responder(id, p1, prestador, 'RECUSAR').expect(200);
+  const salva = await Proposta.findByPk(p1);
+  expect(salva.contraproposta_status).toBe('RECUSADA'); expect(Number(salva.valor)).toBe(propostaValida.valor);
+  await aceitar(id, p1).expect(200);
+ });
+ test('contraproposta expirada não pode ser respondida', async () => {
+  const { id, p1 } = await disputa(); await renegociar(id, p1).expect(200);
+  await Proposta.update({ validade_ate: new Date(Date.now() - 60000) }, { where: { id: p1 } });
+  await responder(id, p1, prestador, 'ACEITAR').expect(409);
+  expect(Number((await Proposta.findByPk(p1)).valor)).toBe(propostaValida.valor);
+ });
+ test('chat de proposta recusada informa somente leitura e impede envio', async () => {
+  const { id, p1, p2 } = await disputa(); await aceitar(id, p1).expect(200);
+  const chat = await autenticar(request(app).get(`/api/v1/propostas/${p2}/mensagens`), concorrente).expect(200);
+  expect(chat.body.somente_leitura).toBe(true);
+  await autenticar(request(app).post(`/api/v1/propostas/${p2}/mensagens`), concorrente).send({ conteudo: 'Não pode enviar.' }).expect(409);
+ });
+});

@@ -46,7 +46,7 @@ export class OportunidadeService {
     const bairro = limpar(filtros.bairro);
     const ordenacao = filtros.ordenacao === 'antigas' ? 'ASC' : 'DESC';
 
-    const where: Record<string, unknown> = { status: 'ABERTA' };
+    const where: Record<string, unknown> = { status: { [Op.in]: ['ABERTA', 'EM_NEGOCIACAO'] } };
     if (categoria) where.categoria = categoria;
     if (cidade) where.cidade = cidade;
     if (bairro) where.bairro = bairro;
@@ -65,14 +65,14 @@ export class OportunidadeService {
         order: [['created_at', ordenacao]],
       }),
       Solicitacao.findAll({
-        where: { status: 'ABERTA' },
+        where: { status: { [Op.in]: ['ABERTA', 'EM_NEGOCIACAO'] } },
         attributes: ['categoria'],
         group: ['categoria'],
         order: [['categoria', 'ASC']],
         raw: true,
       }),
       Solicitacao.findAll({
-        where: { status: 'ABERTA' },
+        where: { status: { [Op.in]: ['ABERTA', 'EM_NEGOCIACAO'] } },
         attributes: ['cidade', 'bairro'],
         group: ['cidade', 'bairro'],
         order: [['cidade', 'ASC'], ['bairro', 'ASC']],
@@ -123,7 +123,8 @@ export class OportunidadeService {
     const minhaProposta = prestadorId
       ? await Proposta.findOne({
           where: { solicitacao_id: oportunidadeId, prestador_id: prestadorId },
-          attributes: ['id', 'valor', 'prazo_dias', 'mensagem', 'status', 'validade_ate', 'created_at'],
+          attributes: ['id', 'valor', 'prazo_dias', 'mensagem', 'status', 'validade_ate', 'created_at',
+            'valor_contraproposta', 'mensagem_contraproposta', 'contraproposta_status', 'contraproposta_respondida_em'],
         })
       : null;
 
@@ -217,6 +218,37 @@ export class OportunidadeService {
       }
 
       return { mensagem: 'Proposta enviada ao cliente com sucesso.', dados: proposta.get({ plain: true }) };
+    });
+  }
+
+  /** US35: o prestador decide sobre o valor negociado sem contratar automaticamente. */
+  async responderContraproposta(solicitacaoId: string, propostaId: string, prestadorId: string, acao: string) {
+    if (!['ACEITAR', 'RECUSAR'].includes(acao)) throw new HttpError(400, 'Informe ACEITAR ou RECUSAR.');
+    return sequelize.transaction(async transaction => {
+      const solicitacao = await Solicitacao.findByPk(solicitacaoId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!solicitacao) throw new HttpError(404, 'Solicitação não encontrada.');
+      const proposta = await Proposta.findOne({ where: { id: propostaId, solicitacao_id: solicitacaoId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!proposta) throw new HttpError(404, 'Proposta não encontrada.');
+      if (proposta.prestador_id !== prestadorId) throw new HttpError(403, 'Você não é o prestador desta proposta.');
+      if (!['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status) || proposta.status !== 'EM_ANALISE'
+          || proposta.contraproposta_status !== 'PENDENTE' || proposta.valor_contraproposta == null
+          || !(new Date(proposta.validade_ate).getTime() > Date.now())) {
+        throw new HttpError(409, 'Esta contraproposta não está pendente ou sua validade expirou.');
+      }
+      await proposta.update({
+        ...(acao === 'ACEITAR' ? { valor: proposta.valor_contraproposta } : {}),
+        status: 'ENVIADA', contraproposta_status: acao === 'ACEITAR' ? 'ACEITA' : 'RECUSADA',
+        contraproposta_respondida_em: new Date(),
+      }, { transaction });
+      if (await preferenciaNotificacaoService.estaAtivado(solicitacao.solicitante_id, 'PROPOSTA_ACEITA_RECUSADA')) {
+        const notificacao = await Notificacao.create({ usuario_id: solicitacao.solicitante_id,
+          titulo: acao === 'ACEITAR' ? 'Contraproposta aceita' : 'Contraproposta recusada',
+          mensagem: `O prestador respondeu à negociação de "${solicitacao.titulo}". Confira o orçamento antes de contratar.`,
+          link_redirecionamento: `/minhas-solicitacoes/${solicitacaoId}`,
+        }, { transaction });
+        transaction.afterCommit(() => { emitirParaUsuario(solicitacao.solicitante_id, 'nova-notificacao', notificacao.get({ plain: true })); });
+      }
+      return { mensagem: acao === 'ACEITAR' ? 'Contraproposta aceita. Aguarde a confirmação do cliente.' : 'Contraproposta recusada. O valor anterior foi mantido.' };
     });
   }
 

@@ -29,6 +29,12 @@ function exigirPrestador(req: Request, res: Response): boolean {
 }
 
 export class OportunidadeController {
+  async responderContraproposta(req: Request, res: Response): Promise<Response | void> {
+    if (!exigirPrestador(req, res)) return;
+    try {
+      return res.json(await oportunidadeService.responderContraproposta(req.params.id, req.params.propostaId, req.user!.id, req.body.acao));
+    } catch (err: any) { return responderErro(res, err); }
+  }
   /**
    * @openapi
    * /prestador/oportunidades:

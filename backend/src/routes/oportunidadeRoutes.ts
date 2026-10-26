@@ -16,6 +16,10 @@ import optionalAuthMiddleware from '../middlewares/optionalAuthMiddleware';
 
 const oportunidadeRoutes = Router();
 
+// US35: somente o profissional dono da proposta decide sobre a contraproposta.
+oportunidadeRoutes.post('/oportunidades/:id/propostas/:propostaId/contraproposta/responder', authMiddleware,
+  (req, res) => oportunidadeController.responderContraproposta(req, res));
+
 // GET /api/v1/prestador/oportunidades — Feed de oportunidades abertas, público (US08)
 oportunidadeRoutes.get('/oportunidades', optionalAuthMiddleware, (req, res) => oportunidadeController.listarOportunidades(req, res));
 

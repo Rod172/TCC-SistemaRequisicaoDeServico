@@ -35,6 +35,9 @@ interface Anexo {
 }
 
 interface MinhaProposta {
+  valor_contraproposta?: string | null;
+  mensagem_contraproposta?: string | null;
+  contraproposta_status?: 'PENDENTE' | 'ACEITA' | 'RECUSADA' | null;
   id: string;
   valor: string;
   prazo_dias: number;
@@ -114,6 +117,7 @@ export default function OportunidadeDetalhePage() {
   const [formulario, setFormulario] = useState(PROPOSTA_INICIAL);
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [respondendoContraproposta, setRespondendoContraproposta] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [logado, setLogado] = useState(false);
@@ -200,7 +204,9 @@ export default function OportunidadeDetalhePage() {
         validade_dias: Number(formulario.validade_dias),
         mensagem: formulario.mensagem.trim(),
       });
-      setOportunidade((atual) => (atual ? { ...atual, pode_enviar_proposta: false, minha_proposta: response.data.dados } : atual));
+      // Releitura do detalhe usa o mesmo contrato das consultas (created_at) e atualiza
+      // também o status da solicitação, que passa para EM_NEGOCIACAO após o envio.
+      await carregar();
       setFormulario(PROPOSTA_INICIAL);
       setSucesso(response.data.mensagem);
     } catch (err: any) {
@@ -209,6 +215,18 @@ export default function OportunidadeDetalhePage() {
     } finally {
       setEnviando(false);
     }
+  }
+
+  async function responderContraproposta(acao: 'ACEITAR' | 'RECUSAR') {
+    if (!oportunidade?.minha_proposta) return;
+    setRespondendoContraproposta(true);
+    setErro('');
+    try {
+      const resposta = await api.post(`/prestador/oportunidades/${params.id}/propostas/${oportunidade.minha_proposta.id}/contraproposta/responder`, { acao });
+      await carregar();
+      setSucesso(resposta.data.mensagem);
+    } catch (err: any) { setErro(err.response?.data?.message || 'Não foi possível responder à contraproposta.'); }
+    finally { setRespondendoContraproposta(false); }
   }
 
   async function enviarPergunta(e: React.FormEvent) {
@@ -502,6 +520,21 @@ export default function OportunidadeDetalhePage() {
                 </p>
               )}
               <p style={{ color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{proposta.mensagem}</p>
+              {proposta.valor_contraproposta != null && (
+                <section aria-label="Contraproposta do cliente" style={{ padding: '1rem', border: '1px solid #475569', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1rem' }}>Contraproposta do cliente</h3>
+                  <strong>{formatarMoeda(proposta.valor_contraproposta)}</strong>
+                  <p>{proposta.mensagem_contraproposta}</p>
+                  <p role="status">{proposta.contraproposta_status === 'PENDENTE' ? 'Aguardando sua resposta' : proposta.contraproposta_status === 'ACEITA' ? 'Você aceitou o novo valor. O cliente ainda deve confirmar a contratação.' : 'Você recusou. O orçamento anterior foi mantido.'}</p>
+                  {proposta.contraproposta_status === 'PENDENTE' && proposta.status === 'EM_ANALISE'
+                    && ['ABERTA', 'EM_NEGOCIACAO'].includes(oportunidade.status) && new Date(proposta.validade_ate).getTime() > agora && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
+                      <button disabled={respondendoContraproposta} onClick={() => responderContraproposta('ACEITAR')} style={{ padding: '0.65rem', background: '#059669', border: 0, borderRadius: '6px', color: '#fff' }}>Aceitar contraproposta</button>
+                      <button disabled={respondendoContraproposta} onClick={() => responderContraproposta('RECUSAR')} style={{ padding: '0.65rem', background: '#475569', border: 0, borderRadius: '6px', color: '#fff' }}>Recusar contraproposta</button>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {/* Chat liberado desde o envio da proposta (US34) — não é mais preciso esperar o aceite
                   pra poder negociar detalhes com o cliente. */}
@@ -510,7 +543,7 @@ export default function OportunidadeDetalhePage() {
                 padding: '0.75rem', width: '100%', background: '#3b82f6', color: '#fff', border: 'none',
                 borderRadius: '8px', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer', marginBottom: '0.6rem',
               }}>
-                <MessageCircle size={16} /> {proposta.status === 'ACEITA' ? 'Conversar com o cliente' : 'Conversar sobre a proposta'}
+                <MessageCircle size={16} /> {proposta.status === 'RECUSADA' ? 'Ver conversa' : proposta.status === 'ACEITA' ? 'Conversar com o cliente' : 'Conversar sobre a proposta'}
               </button>
 
               {proposta.status === 'ACEITA' && oportunidade.status === 'CONTRATADA' ? (

@@ -51,7 +51,7 @@ const solicitacao = objeto({ id: uuid, solicitante_id: uuid, titulo: texto, desc
   cancelada_em: nulo(dataHora), ...datas }, ['id', 'solicitante_id', 'titulo', 'descricao', 'status']);
 const proposta = objeto({ id: uuid, solicitacao_id: uuid, prestador_id: uuid, valor: decimal,
   prazo_dias: inteiro, validade_ate: dataHora, mensagem: texto, status: statusProposta, valor_contraproposta: dinheiroNulo,
-  mensagem_contraproposta: nulo(texto), contraproposta_em: nulo(dataHora), ...datas },
+  mensagem_contraproposta: nulo(texto), contraproposta_em: nulo(dataHora), contraproposta_status: nulo({ type: 'string', enum: ['PENDENTE', 'ACEITA', 'RECUSADA'] }), contraproposta_respondida_em: nulo(dataHora), ...datas },
   ['id', 'solicitacao_id', 'prestador_id', 'valor', 'prazo_dias', 'validade_ate', 'mensagem', 'status']);
 const pessoa = escolher(usuario, ['id', 'nome', 'foto_url']);
 const anexo = objeto({ id: uuid, url_arquivo: texto, nome_original: texto });
@@ -70,7 +70,7 @@ const denuncia = objeto({ id: uuid, solicitacao_id: uuid, denunciante_id: uuid, 
   status: { type: 'string', enum: ['PENDENTE', 'RESOLVIDA'] }, ...datas },
   ['id', 'solicitacao_id', 'denunciante_id', 'motivo', 'status']);
 const resumoSolicitacao = escolher(solicitacao, ['id', 'titulo', 'status']);
-const resumoProposta = escolher(proposta, ['id', 'valor', 'prazo_dias', 'validade_ate', 'mensagem', 'status', 'created_at']);
+const resumoProposta = escolher(proposta, ['id', 'valor', 'prazo_dias', 'validade_ate', 'mensagem', 'status', 'created_at', 'valor_contraproposta', 'mensagem_contraproposta', 'contraproposta_status', 'contraproposta_respondida_em']);
 const cadastro = { nome: { type: 'string', minLength: 1, maxLength: 150 }, email: { type: 'string', format: 'email', maxLength: 150 },
   telefone: { type: 'string', minLength: 1, maxLength: 20 }, endereco: { type: 'string', maxLength: 255 },
   senha: { type: 'string', format: 'password', writeOnly: true, minLength: 8, description: 'No mínimo 8 caracteres e no máximo 72 bytes UTF-8 (limite bcrypt).' },
@@ -79,6 +79,7 @@ const evento = { type: 'string', enum: ['NOVA_PROPOSTA', 'PROPOSTA_ACEITA_RECUSA
 const binario = { type: 'string', format: 'binary' };
 
 export const schemas: Record<string, Schema> = {
+  ResponderContrapropostaDTO: objeto({ acao: { type: 'string', enum: ['ACEITAR', 'RECUSAR'] } }),
   Erro: objeto({ error: texto, message: texto }, ['message']),
   Mensagem: objeto({ mensagem: texto }), MensagemCadastro: objeto({ message: texto }),
   UsuarioDTO: usuario, PerfilPrestadorDTO: perfil,
@@ -178,12 +179,13 @@ const contratos: Record<string, Contrato> = {
   'POST /solicitacoes/{id}/denunciar': { entrada: 'MotivoDTO', status: 201, saida: resultado('dados', ref('DenunciaDTO')), erros: [400, 403, 404] },
   'POST /solicitacoes/{id}/avaliar': { entrada: 'AvaliarDTO', status: 201, saida: resultado('dados', ref('AvaliacaoDTO')), erros: [400, 404, 409] },
   'GET /solicitacoes/{id}/avaliacao': { saida: envelope('data', { ...schemas.AvaliacaoComPrestadorDTO, nullable: true }) },
-  'GET /propostas/{propostaId}/mensagens': { saida: envelope('data', lista(ref('MensagemChatDTO'))), erros: [403, 404] },
+  'GET /propostas/{propostaId}/mensagens': { saida: objeto({ data: lista(ref('MensagemChatDTO')), somente_leitura: booleano }), erros: [403, 404] },
   'POST /propostas/{propostaId}/mensagens': { entrada: 'EnviarMensagemDTO', multipart: true, status: 201, saida: envelope('data', ref('MensagemChatDTO')), erros: [400, 403, 404, 409] },
   'PATCH /propostas/{propostaId}/mensagens/lidas': { saida: ref('Mensagem'), erros: [403, 404] },
-  'GET /prestador/oportunidades': { publico: true, saida: ref('FeedDTO'), parametros: ['busca', 'categoria', 'cidade', 'bairro'].map(nome => query(nome)).concat([query('ordenacao', { type: 'string', enum: ['recentes', 'antigas'] })]), resumo: 'Lista oportunidades abertas; acesso público e filtros opcionais' },
+  'GET /prestador/oportunidades': { publico: true, saida: ref('FeedDTO'), parametros: ['busca', 'categoria', 'cidade', 'bairro'].map(nome => query(nome)).concat([query('ordenacao', { type: 'string', enum: ['recentes', 'antigas'] })]), resumo: 'Lista oportunidades abertas ou em negociação; acesso público e filtros opcionais' },
   'GET /prestador/oportunidades/{id}': { publico: true, saida: envelope('dados', ref('OportunidadeDTO')), erros: [404], resumo: 'Consulta uma oportunidade; JWT opcional identifica a proposta do prestador' },
   'POST /prestador/oportunidades/{id}/propostas': { entrada: 'EnviarPropostaDTO', status: 201, saida: resultado('dados', ref('PropostaDTO')), erros: [400, 403, 409] },
+  'POST /prestador/oportunidades/{id}/propostas/{propostaId}/contraproposta/responder': { entrada: 'ResponderContrapropostaDTO', saida: ref('Mensagem'), erros: [400, 403, 404, 409], resumo: 'Prestador aceita ou recusa contraproposta pendente (US35)' },
   'GET /prestador/propostas': { saida: envelope('dados', lista(ref('MinhaPropostaDTO'))), erros: [400, 403], parametros: [query('status', statusProposta)] },
   'PATCH /prestador/oportunidades/{id}/desistir': { entrada: 'MotivoDTO', saida: ref('Mensagem'), erros: [400, 403, 409] },
   'GET /notificacoes': { saida: ref('NotificacoesDTO') },

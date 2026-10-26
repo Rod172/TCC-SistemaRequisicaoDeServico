@@ -239,6 +239,9 @@ export class SolicitacaoService {
       if (acao === 'ACEITAR' && !(new Date(proposta.validade_ate).getTime() > Date.now())) {
         throw new HttpError(409, 'A validade comercial desta proposta expirou. Não é possível aceitá-la.');
       }
+      if (acao === 'ACEITAR' && proposta.contraproposta_status === 'PENDENTE') {
+        throw new HttpError(409, 'Aguarde a resposta do prestador à contraproposta antes de contratar.');
+      }
       if (!['ENVIADA', 'EM_ANALISE'].includes(proposta.status)) {
         throw new HttpError(409, 'Somente propostas enviadas ou em análise podem ser aceitas ou recusadas.');
       }
@@ -492,6 +495,8 @@ export class SolicitacaoService {
           valor_contraproposta: valor,
           mensagem_contraproposta: mensagem.trim(),
           contraproposta_em: new Date(),
+          contraproposta_status: 'PENDENTE',
+          contraproposta_respondida_em: null,
           status: 'EM_ANALISE',
         },
         { transaction }

@@ -193,7 +193,7 @@ export default function ChatDrawer({
         )}
 
         <div style={{ flex: 1, minHeight: 0 }}>
-          <ChatPanel propostaId={propostaId} />
+          <ChatPanel propostaId={propostaId} somenteLeitura={statusProposta === 'RECUSADA'} />
         </div>
       </div>
     </>

@@ -198,6 +198,24 @@
 
 ---
 
+### US36 - Descoberta de Oportunidades que Ainda Aceitam Propostas
+**Como** um Prestador procurando serviços
+**Quero** encontrar no feed solicitações abertas e em negociação
+**Para que** eu consiga enviar um orçamento concorrente enquanto o cliente ainda não contratou um profissional.
+
+#### Critérios de Aceite:
+- [x] Feed e vitrine inicial incluem solicitações `ABERTA` e `EM_NEGOCIACAO`, indicando o status correto.
+- [x] Solicitações `CONTRATADA`, `CONCLUIDA` ou `CANCELADA` não aparecem como oportunidades disponíveis.
+- [x] Os filtros de categoria/local e a busca consideram o mesmo conjunto de solicitações disponíveis.
+- [x] Após a primeira proposta, outro prestador consegue encontrar a solicitação pela busca e propor pela página, respeitando a regra de uma proposta por prestador.
+
+#### Tarefas Técnicas:
+- **Backend (Node.js)**: Unificar os filtros de disponibilidade no feed e suas opções, alinhados à US10.
+- **Frontend (React)**: Status em cada card, busca pública e vitrine compatíveis com a negociação.
+- **Testes**: Integração do feed antes/depois da primeira proposta e exclusão dos estados finais.
+
+---
+
 ### US29 - Perguntas e Respostas Públicas na Oportunidade
 **Como** um Prestador de Serviço  
 **Quero** fazer perguntas públicas sobre uma solicitação antes de enviar minha proposta  
@@ -320,6 +338,26 @@
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: `PATCH /api/v1/prestador/oportunidades/:id/desistir` (`oportunidadeService.desistirContratacao`), restrito ao prestador dono da proposta aceita.
 - **Frontend (React)**: botão em `oportunidades/[id]` quando a proposta do prestador logado está `ACEITA` e a solicitação está `CONTRATADA`.
+
+---
+
+### US35 - Resposta do Prestador à Contraproposta do Solicitante
+**Como** um Prestador que recebeu uma contraproposta
+**Quero** visualizar o valor e a mensagem do cliente e aceitar ou recusar a negociação
+**Para que** o orçamento acordado seja explícito e o cliente confirme a contratação pelo valor correto.
+
+#### Critérios de Aceite:
+- [x] O prestador vê o valor, a mensagem e a situação da última contraproposta na própria proposta.
+- [x] Somente o prestador da proposta pode aceitar ou recusar uma contraproposta pendente, com solicitação em negociação e validade comercial vigente.
+- [x] Aceitar atualiza o valor da proposta; recusar mantém o valor anterior. A resposta é registrada e o solicitante é notificado conforme suas preferências.
+- [x] A resposta não contrata automaticamente: o solicitante confirma o aceite depois. Enquanto a contraproposta estiver pendente, o aceite da contratação fica bloqueado.
+- [x] A comparação e a custódia utilizam o valor atualizado após uma contraproposta aceita. Respostas repetidas ou estados incompatíveis retornam conflito.
+
+#### Tarefas Técnicas:
+- **BD**: Migration de situação e data da resposta à contraproposta em `propostas`.
+- **Backend (Node.js)**: Endpoint de resposta do prestador, validações de dono/estado/validade e transação com lock.
+- **Frontend (React)**: Exibir condições e ações de resposta no detalhe do prestador; situação da negociação na comparação do solicitante e nas decisões pelo chat.
+- **Testes**: Cobrir autorização, resposta única, valor contratado/custódia e bloqueio de contratação pendente.
 
 ---
 
@@ -648,3 +686,6 @@
 | **E9** | US26 | Testes de Integração (Jest/Supertest) | Should Have | 5 |
 | **E10** | US27 | Painel Administrativo e Moderação | Should Have | 8 |
 | **E10** | US32 | Denúncia de Solicitação para Moderação | Should Have | 5 |
+
+| **E4** | US35 | Resposta à Contraproposta | Must Have | 5 |
+| **E3** | US36 | Descoberta de Oportunidades em Negociação | Must Have | 3 |

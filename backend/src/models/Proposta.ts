@@ -26,6 +26,8 @@ export interface PropostaAttributes {
   valor_contraproposta?: number | null;
   mensagem_contraproposta?: string | null;
   contraproposta_em?: Date | null;
+  contraproposta_status?: 'PENDENTE' | 'ACEITA' | 'RECUSADA' | null;
+  contraproposta_respondida_em?: Date | null;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -45,6 +47,8 @@ export class Proposta extends Model<PropostaAttributes, PropostaCreationAttribut
   public valor_contraproposta?: number | null;
   public mensagem_contraproposta?: string | null;
   public contraproposta_em?: Date | null;
+  public contraproposta_status?: 'PENDENTE' | 'ACEITA' | 'RECUSADA' | null;
+  public contraproposta_respondida_em?: Date | null;
 
   public readonly created_at!: Date;
   public readonly updated_at!: Date;
@@ -102,6 +106,8 @@ Proposta.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    contraproposta_status: { type: DataTypes.ENUM('PENDENTE', 'ACEITA', 'RECUSADA'), allowNull: true },
+    contraproposta_respondida_em: { type: DataTypes.DATE, allowNull: true },
   },
   {
     sequelize: db,

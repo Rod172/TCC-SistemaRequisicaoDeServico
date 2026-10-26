@@ -45,6 +45,7 @@ interface Anexo {
 }
 
 interface Proposta {
+  contraproposta_status?: 'PENDENTE' | 'ACEITA' | 'RECUSADA' | null;
   id: string;
   valor: string;
   prazo_dias: number;
@@ -695,6 +696,8 @@ export default function DetalhePropostasPage() {
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n} type="button" onClick={() => setNotaAvaliacao(n)}
+                    aria-label={`Avaliar com ${n} ${n === 1 ? 'estrela' : 'estrelas'}`}
+                    aria-pressed={notaAvaliacao === n}
                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     <Star size={26} color="#fbbf24" fill={n <= notaAvaliacao ? '#fbbf24' : 'none'} />
@@ -929,6 +932,7 @@ export default function DetalhePropostasPage() {
                 }}>
                   <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem', marginBottom: '2px' }}>Sua contraproposta</span>
                   <strong style={{ fontSize: '1rem', color: '#fbbf24' }}>{formatarValor(proposta.valor_contraproposta)}</strong>
+                  <p role="status">{proposta.contraproposta_status === 'PENDENTE' ? 'Aguardando resposta do prestador. A contratação fica disponível após a resposta.' : proposta.contraproposta_status === 'ACEITA' ? (proposta.status === 'ACEITA' ? 'Contratação confirmada com o valor da contraproposta.' : 'O prestador aceitou o novo valor. Confira e confirme a contratação.') : proposta.contraproposta_status === 'RECUSADA' ? 'O prestador recusou a contraproposta. O valor anterior foi mantido.' : 'Negociação anterior'}</p>
                   <p style={{ color: '#cbd5e1', fontSize: '0.85rem', margin: '0.4rem 0 0' }}>{proposta.mensagem_contraproposta}</p>
                   {proposta.contraproposta_em && (
                     <small style={{ color: '#64748b' }}>Enviada em {formatarData(proposta.contraproposta_em)}</small>
@@ -952,7 +956,7 @@ export default function DetalhePropostasPage() {
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => alterarStatus(proposta, 'ACEITAR')}
-                    disabled={processandoId === proposta.id || expirada}
+                    disabled={processandoId === proposta.id || expirada || proposta.contraproposta_status === 'PENDENTE'}
                     title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
                     style={{ ...botaoBase, background: '#10b981' }}
                   >
@@ -1026,7 +1030,7 @@ export default function DetalhePropostasPage() {
             aberto={!!chatPropostaId}
             onClose={() => setChatPropostaId(null)}
             statusProposta={propostaDoChat?.status}
-            onAceitar={propostaDoChat && new Date(propostaDoChat.validade_ate).getTime() > agora
+            onAceitar={propostaDoChat && propostaDoChat.contraproposta_status !== 'PENDENTE' && new Date(propostaDoChat.validade_ate).getTime() > agora
               && ['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status)
               ? () => alterarStatus(propostaDoChat, 'ACEITAR') : undefined}
             onRecusar={propostaDoChat

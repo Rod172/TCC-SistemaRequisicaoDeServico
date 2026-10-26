@@ -52,7 +52,8 @@ function formatarHora(iso: string) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function ChatPanel({ propostaId }: { propostaId: string }) {
+export default function ChatPanel({ propostaId, somenteLeitura = false }: { propostaId: string; somenteLeitura?: boolean }) {
+  const [leituraApenas, setLeituraApenas] = useState(somenteLeitura);
   const [meuId, setMeuId] = useState('');
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [texto, setTexto] = useState('');
@@ -85,6 +86,7 @@ export default function ChatPanel({ propostaId }: { propostaId: string }) {
       .get(`/propostas/${propostaId}/mensagens`)
       .then((response) => {
         setMensagens(response.data.data);
+        setLeituraApenas(somenteLeitura || response.data.somente_leitura === true);
         return api.patch(`/propostas/${propostaId}/mensagens/lidas`);
       })
       .catch((err) => {
@@ -134,6 +136,7 @@ export default function ChatPanel({ propostaId }: { propostaId: string }) {
 
   async function enviarMensagem(e: React.FormEvent) {
     e.preventDefault();
+    if (leituraApenas) return;
     const conteudo = texto.trim();
     if (!conteudo && !arquivo) return;
 
@@ -149,6 +152,7 @@ export default function ChatPanel({ propostaId }: { propostaId: string }) {
       setTexto('');
       setArquivo(null);
     } catch (err: any) {
+      if (err.response?.status === 409) setLeituraApenas(true);
       setErro(err.response?.data?.message || 'Não foi possível enviar a mensagem.');
     } finally {
       setEnviando(false);
@@ -188,7 +192,7 @@ export default function ChatPanel({ propostaId }: { propostaId: string }) {
       }}>
         {mensagens.length === 0 && (
           <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Nenhuma mensagem ainda. Comece a conversa!
+            {leituraApenas ? 'Nenhuma mensagem nesta conversa encerrada.' : 'Nenhuma mensagem ainda. Comece a conversa!'}
           </div>
         )}
 
@@ -257,13 +261,13 @@ export default function ChatPanel({ propostaId }: { propostaId: string }) {
             <Paperclip size={14} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{arquivo.name}</span>
           </span>
-          <button type="button" onClick={() => setArquivo(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}>
+          <button type="button" aria-label="Remover anexo" onClick={() => setArquivo(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}>
             <X size={16} />
           </button>
         </div>
       )}
 
-      <form onSubmit={enviarMensagem} style={{ display: 'flex', gap: '0.5rem' }}>
+      <form hidden={leituraApenas} onSubmit={enviarMensagem} style={{ display: leituraApenas ? 'none' : 'flex', gap: '0.5rem' }}>
         <input ref={inputArquivoRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={selecionarArquivo} hidden />
         <button
           type="button"
@@ -289,6 +293,7 @@ export default function ChatPanel({ propostaId }: { propostaId: string }) {
         />
         <button
           type="submit"
+          aria-label="Enviar mensagem"
           disabled={enviando || (!texto.trim() && !arquivo)}
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -300,6 +305,8 @@ export default function ChatPanel({ propostaId }: { propostaId: string }) {
           <Send size={17} />
         </button>
       </form>
+
+      {leituraApenas && <p role="status" style={{ padding: '0.75rem', color: '#94a3b8' }}>Negociação encerrada. Conversa disponível somente para leitura.</p>}
 
       {/* ── Modal de ampliação da imagem ─────────────── */}
       {imagemAmpliada && (

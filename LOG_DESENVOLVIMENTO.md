@@ -491,3 +491,36 @@ Conferido `historia.md` contra os modelos, endpoints e telas. US19, US20 e US21 
 - Integração usa as rotas reais, JWT e MySQL separado; cobre propostas simultâneas, estados inválidos, custódia/reembolso/recontratação, avaliação única/média, isolamento de conversas/indicadores, foto e consentimento, seeds reversíveis e auditoria transacional. A limpeza das fixtures administrativas exige retirar primeiro o vínculo de último administrador nas próprias contas de teste.
 - Navegação manual: login de demonstração, formulário da descrição até a revisão sem publicar fixture no banco de desenvolvimento, painel e perfil público. Conferência em viewport de 390 × 844; painel e revisão adaptados ao celular. Isso não substitui avaliação com usuários nem teste em dispositivos físicos.
 - Resultado final: **11 suítes e 193 testes aprovados**, incluindo integração MySQL, sem falhas. `npm run build` do frontend concluído; `git diff --check` sem erros. Migrations de 25/10/2026 aplicadas com sucesso. Trabalho preparado na branch `historias-pendentes` para integração por PR.
+
+## 25/10/2026 — Verificação real das páginas e complementos US35/US36
+
+### Achados e alterações
+
+- Publicação em três etapas com PNG, pergunta/resposta, duas propostas concorrentes, chat lateral privado com mensagem e imagem, contraproposta, aceite e PIX simulado exercitados nas páginas com contas demo. Solicitação fictícia `a892e83e-0eb3-4ebe-a3d1-ec5d8ee68ed5`, mantida para revisão.
+- **US35 / TCC-47:** registrada no backlog e importada antes de implementar a resposta do prestador à contraproposta. Migration `20261025000004-add-resposta-contraproposta.js`, modelo Proposta, service/controller/routes de oportunidades e bloqueio de contratação pendente em solicitacaoService. Resposta atômica com autorização, validade e notificação após commit; valor aceito efetivamente usado na contratação/custódia. Interfaces de detalhe dos dois perfis atualizadas.
+- **US36 / TCC-48:** descoberta em ABERTA/EM_NEGOCIACAO alinhada ao envio de propostas, nos filtros/listagem e vitrine inicial; indicação correta nos cards. Histórias anteriores preservadas. Descrições das duas novas histórias sincronizadas novamente no Jira após a validação.
+- Envio de proposta recarrega os dados de detalhe, corrigindo data inválida e status antigo logo após publicar. ChatPanel/ChatDrawer e chatController/chatService expõem somente leitura e bloqueiam envio em conversa recusada ou solicitação cancelada. Rótulos acessíveis adicionados no chat, sino, preferências e estrelas. Mensagem de contraproposta já contratada corrigida.
+- OpenAPI documenta resposta da contraproposta e estado de leitura do chat; inventário atual de 46 operações. `STATUS_HISTORIAS.md` atualizado para 36 histórias. `VERIFICACAO_FLUXOS.md` registra evidências e pendências manuais, sem equiparar implementação a homologação visual completa.
+
+### Testes e limites
+
+- Migration aplicada no banco de desenvolvimento e no MySQL isolado de testes.
+- `DB_NAME_TEST=tcc_servico_facil_test npm test`: **11 suítes, 199 testes aprovados**; novos casos de descoberta, resposta pendente/aceita/recusada/expirada, autorização, repetição, valor correto e chat recusado.
+- `npm run build` do frontend: produção, TypeScript e geração de páginas concluídos. `git diff --check` aprovado.
+- Confirmação nativa de conclusão travou a ferramenta de navegação. Tentativas de recuperar a aba não resolveram; conclusão conferida via API HTTP 200 e estado CONCLUIDA/formulário exibidos no detalhe. Envio da avaliação e demais fluxos listados no relatório continuam pendentes de homologação manual; não foram apresentados como aprovados na interface.
+- Backend reiniciado após interrupção do watcher; frontend reiniciado depois do build para disponibilizar a aplicação local.
+
+### Arquivos e referências
+
+Alterados: `backend/src/config/openapi.ts`, controllers chat/oportunidade, models/Proposta, routes/oportunidade, services chat/oportunidade/solicitacao, teste `fluxos.integracao.test.js`; frontend detalhes solicitante/prestador, feed, home, configurações, ChatPanel, ChatDrawer e NotificationBell; `historia.md`, `STATUS_HISTORIAS.md`. Criados: migration da contraproposta e `VERIFICACAO_FLUXOS.md`.
+
+Nenhuma biblioteca ou API externa nova adicionada. Reutilizadas as dependências já registradas:
+
+| Biblioteca | Versão instalada | Uso nesta etapa | Documentação oficial |
+|---|---|---|---|
+| Sequelize | 6.37.8 | Transação, locks e atributos da contraproposta | https://sequelize.org/docs/v6/ |
+| Express | 4.22.1 | Rota autenticada de resposta e contrato do chat | https://expressjs.com/pt-br/4x/api.html |
+| React | 18.3.1 | Estado dos controles e apresentação acessível | https://react.dev/reference/react |
+| Next.js | 14.2.35 | Rotas de detalhe, vitrine e build de produção | https://nextjs.org/docs/14 |
+| Jest | 30.5.2 | Regressões de negociação e descoberta | https://jestjs.io/docs/getting-started |
+| Supertest | 7.3.1 | Verificação integrada das rotas reais | https://github.com/forwardemail/supertest |

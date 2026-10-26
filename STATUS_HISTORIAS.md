@@ -2,7 +2,7 @@
 
 Data: 25/10/2026. Referência inicial: commit `3dadf09`.
 
-A conferência compara o backlog com as rotas, regras de negócio e telas. “Implementada” indica presença da funcionalidade e dos critérios no código; a coluna de evidências distingue os testes automatizados das conferências manuais. Os textos, prioridades e números das histórias existentes foram preservados. As descrições das 34 histórias foram sincronizadas no Jira pelo script do projeto.
+A conferência compara o backlog com as rotas, regras de negócio e telas. “Implementada” indica presença da funcionalidade e dos critérios no código; a coluna de evidências distingue os testes automatizados das conferências manuais. Os textos, prioridades e números das histórias existentes foram preservados. As descrições das 36 histórias foram sincronizadas no Jira pelo script do projeto.
 
 As principais funcionalidades ausentes eram US19, US20 e US21. Também foram encontrados e completados critérios das US01, US02, US05, US10, US13, US22, US24, US25, US26 e US27, além de corrigidas transições das US12, US17, US18, US31 e US34.
 
@@ -15,7 +15,7 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 | US05 | Publicação de Nova Solicitação de Serviço | Implementada | Formulário em três etapas, revisão e anexos; integração e navegação manual até revisão. |
 | US06 | Painel "Minhas Solicitações" (Solicitante) | Implementada | Listagem própria com busca, status e contadores; integração de isolamento e build de produção. |
 | US07 | Cancelamento de Solicitação de Serviço | Implementada | Cancelamento anterior à contratação e notificações; regras transacionais existentes. |
-| US08 | Feed de Oportunidades de Serviços para Prestadores | Implementada | Feed público de solicitações ABERTA com filtros; acesso público preservado. |
+| US08 | Feed de Oportunidades de Serviços para Prestadores | Implementada | Feed público de solicitações ABERTA e EM_NEGOCIACAO com filtros (US36); acesso público preservado. |
 | US09 | Visualização Detalhada da Solicitação pelo Prestador | Implementada | Detalhe, anexos e identificação da proposta própria; integração e navegação existente. |
 | US10 | Envio de Proposta/Orçamento pelo Prestador | Implementada | Valor/prazo/condições, validade comercial persistida e proposta única; testes de expiração e limites. |
 | US11 | Visualização e Comparação de Propostas Recebidas pelo Solicitante | Implementada | Comparação com reputação, bio/categorias, destaque e link para perfil público; build de produção. |
@@ -31,7 +31,7 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 | US21 | Dashboard do Prestador | Implementada | GET /dashboards/prestador; período mensal de São Paulo, conversão sem divisão por zero e reputação real. |
 | US22 | Segurança e Criptografia de Dados (Node.js / Express) | Implementada | bcrypt, JWT HS256 com conta ativa, ORM e limite de login 10/15min; testes de tokens, perfis e bloqueio. |
 | US23 | Interface Responsiva e Usabilidade (React & Heurísticas de Nielsen) | Implementada | Layouts adaptáveis, foco visível, redução de movimento e estados de feedback; build e conferência manual a 390px nas telas novas. |
-| US24 | Documentação Interativa da API (Swagger / OpenAPI) | Implementada | 45 operações documentadas com contratos de entrada/saída/erros, autenticação e referências resolvidas em src/dist. |
+| US24 | Documentação Interativa da API (Swagger / OpenAPI) | Implementada | 46 operações documentadas com contratos de entrada/saída/erros, autenticação e referências resolvidas em src/dist. |
 | US25 | Migrações e Dados Fictícios de Demonstração (Sequelize Migrations & Seeders) | Implementada | Migrations de todas as tabelas e seeds coerentes com conclusão, avaliações, custódia, chat e moderação; teste de idempotência/reversão. |
 | US26 | Cobertura de Testes de Integração da API REST | Implementada | Jest/Supertest com MySQL exclusivo _test, sem mocks nos fluxos integrados e validação em pull requests. |
 | US27 | Painel Administrativo de Usuários e Moderação | Implementada | Administração protegida, filtros e suporte; histórico de ações persistido na mesma transação, com testes de autorização e rollback. |
@@ -43,6 +43,9 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 | US33 | Prestador Também Pode Solicitar Serviços | Implementada | Prestador publica solicitações próprias sem perder acesso às propostas de terceiros. |
 | US34 | Negociação por Chat Antes da Contratação e Cancelamento pelo Solicitante | Implementada | Negociação privada antes do aceite, decisão pelo chat e cancelamento da contratação; testes de isolamento/reabertura. |
 
+| US35 | Resposta do Prestador à Contraproposta do Solicitante | Implementada | Resposta exclusiva e única, valor atualizado e bloqueio do aceite pendente; integração e aceite manual pela página. |
+| US36 | Descoberta de Oportunidades que Ainda Aceitam Propostas | Implementada | Feed/vitrine incluem negociação; segundo prestador encontrou e enviou proposta pela interface. |
+
 ## Alcance da validação
 
 - Integração usa banco MySQL separado e cobre fluxos críticos com concorrência, privacidade, valores e rollback; não implica cobertura de todas as combinações de entrada possíveis.
@@ -51,7 +54,7 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 - O limite de login utiliza armazenamento em memória por processo. Uma implantação com várias instâncias precisaria de armazenamento compartilhado.
 - A auditoria de dependências do backend ficou com dois avisos moderados ligados a `uuid` transitivo do Sequelize. A atualização automática proposta faria downgrade incompatível do ORM; essa troca não foi aplicada.
 
-Validação final: **11 suítes e 193 testes aprovados**, além do build de produção do frontend e verificação do diff.
+Validação final: **11 suítes e 199 testes aprovados**, além do build de produção do frontend e verificação do diff.
 
 
 ## Leitura conjunta das histórias e termos legados
@@ -60,3 +63,7 @@ Validação final: **11 suítes e 193 testes aprovados**, além do build de prod
 - **US10/US12:** o backlog usa os termos genéricos PENDENTE/REJEITADA em algumas tarefas. Os estados persistidos atuais são ENVIADA/EM_ANALISE/ACEITA/RECUSADA; pendência corresponde aos dois primeiros e rejeição corresponde a RECUSADA. Os contratos OpenAPI documentam os nomes efetivamente aceitos.
 - **US13/US17:** o aceite abre o checkout simulado; a retenção ocorre somente quando o solicitante confirma o checkout. O saldo simulado disponível só inclui custódias LIBERADO após a conclusão. O pagamento não é realizado automaticamente em nome do usuário.
 - As rotas históricas sugeridas nas tarefas técnicas podem diferir dos caminhos implementados; o inventário vigente está em `/api-docs.json`. O texto dos critérios originais foi preservado, com essas correspondências explícitas para a leitura do backlog.
+
+## Verificação adicional das páginas — 25/10/2026
+
+Consulte `VERIFICACAO_FLUXOS.md` para os passos realmente executados e os limites da conferência. A implementação das histórias e a aprovação dos testes não significam que todas as ações de todas as telas passaram por uma validação manual completa. A confirmação nativa de conclusão travou a ferramenta de navegação; a conclusão foi validada pela API e sua apresentação conferida na página. A avaliação pela interface e as demais verificações discriminadas no relatório permanecem pendentes de homologação manual.
