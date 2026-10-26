@@ -519,7 +519,7 @@ Nenhuma biblioteca ou API externa nova adicionada. Reutilizadas as dependências
 | Biblioteca | Versão instalada | Uso nesta etapa | Documentação oficial |
 |---|---|---|---|
 | Sequelize | 6.37.8 | Transação, locks e atributos da contraproposta | https://sequelize.org/docs/v6/ |
-| Express | 4.22.1 | Rota autenticada de resposta e contrato do chat | https://expressjs.com/pt-br/4x/api.html |
+| Express | 4.22.3 | Rota autenticada de resposta e contrato do chat | https://expressjs.com/pt-br/4x/api.html |
 | React | 18.3.1 | Estado dos controles e apresentação acessível | https://react.dev/reference/react |
 | Next.js | 14.2.35 | Rotas de detalhe, vitrine e build de produção | https://nextjs.org/docs/14 |
 | Jest | 30.5.2 | Regressões de negociação e descoberta | https://jestjs.io/docs/getting-started |
