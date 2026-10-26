@@ -343,6 +343,14 @@ describe('US26 — validade comercial persistida', () => {
 });
 
 describe('US26 — retenção, reembolso e nova contratação', () => {
+ test('checkout ignora valor e prestador enviados pelo cliente e usa a proposta contratada', async () => {
+  const { id, propostaId } = await contratacao();
+  const resposta = await autenticar(request(app).post(`/api/v1/solicitacoes/${id}/custodia/simular`), dono)
+   .send({ metodo_pagamento: 'PIX_TESTE', valor: 0.01, prestador_id: outro.id, proposta_id: randomUUID() }).expect(200);
+  expect(Number(resposta.body.dados.valor)).toBe(propostaValida.valor);
+  expect(resposta.body.dados.proposta_id).toBe(propostaId);
+  expect(await TransacaoCustodia.count({ where: { solicitacao_id: id } })).toBe(1);
+ });
  test.each(['PIX_TESTE', 'CARTAO_TESTE'])('pagamento %s retém exatamente o valor da vencedora', async (metodo) => {
   const { id, propostaId } = await contratacao();
   const resposta = await pagar(id, dono, metodo).expect(200);

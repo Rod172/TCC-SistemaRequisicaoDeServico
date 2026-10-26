@@ -589,20 +589,33 @@ export default function DetalhePropostasPage() {
         </form>
       )}
 
-      {solicitacao.status === 'CONTRATADA' && (
-        <div style={{
+      {(solicitacao.status === 'CONTRATADA' || solicitacao.transacao_custodia) && (
+        <section aria-labelledby="titulo-pagamento" style={{
           background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-          padding: '1.25rem', marginBottom: '1.5rem',
+          padding: '1.25rem', marginBottom: '1.5rem', overflowWrap: 'anywhere', minWidth: 0,
         }}>
-          {solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? (
+          <h2 id="titulo-pagamento" style={{ fontSize: '1.2rem', marginBottom: '.75rem' }}>Pagamento e garantia</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>Demonstração acadêmica: nenhum dinheiro será cobrado ou transferido. Não informe dados bancários ou de cartão.</p>
+          {solicitacao.status === 'CONTRATADA' && solicitacao.propostas.filter(p => p.status === 'ACEITA').map(proposta => (
+            <dl key={proposta.id} style={{ marginBottom: '1rem', display: 'grid', gap: '.5rem' }}>
+              <div><dt>Prestador contratado</dt><dd>{proposta.prestador.nome}</dd></div>
+              <div><dt>Valor total contratado</dt><dd style={{ fontWeight: 700, fontSize: '1.3rem' }}>{formatarValor(proposta.valor)}</dd></div>
+              <div><dt>Situação</dt><dd>{solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? 'Pagamento confirmado e retido em custódia' : 'Aguardando confirmação do pagamento simulado'}</dd></div>
+            </dl>
+          ))}
+          {solicitacao.transacao_custodia && (
+            <div style={{ marginBottom: '1rem', lineHeight: 1.6 }}>
+              <p role="status">{solicitacao.transacao_custodia.status_pagamento === 'LIBERADO' ? 'Pagamento liberado ao prestador após a conclusão' : solicitacao.transacao_custodia.status_pagamento === 'REEMBOLSADO' ? 'Pagamento reembolsado ao solicitante' : 'Valor protegido em custódia'} — {formatarValor(solicitacao.transacao_custodia.valor)}</p>
+              <p>Método: {solicitacao.transacao_custodia.metodo_pagamento === 'PIX_TESTE' ? 'PIX de teste' : 'Cartão de teste'}</p>
+              <p>Referência do comprovante: {solicitacao.transacao_custodia.referencia_simulada}</p>
+            </div>
+          )}
+          {solicitacao.status !== 'CONTRATADA' ? null : solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <ShieldCheck size={24} color="#34d399" />
               <div>
-                <strong style={{ display: 'block', fontSize: '0.95rem' }}>
-                  Pagamento retido em custódia — {formatarValor(solicitacao.transacao_custodia.valor)}
-                </strong>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                  O valor será liberado ao prestador quando o serviço for concluído. Referência: {solicitacao.transacao_custodia.referencia_simulada}
+                  O valor será liberado ao prestador quando o serviço for concluído.
                 </span>
               </div>
             </div>
@@ -623,7 +636,8 @@ export default function DetalhePropostasPage() {
           ) : (
             <form onSubmit={simularPagamento}>
               <strong style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.95rem' }}>Checkout simulado</strong>
-              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+              <fieldset style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', border: 0, padding: 0 }}>
+                <legend style={{ marginBottom: '.5rem' }}>Escolha o método de teste</legend>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
                   <input type="radio" name="metodo" checked={metodoPagamento === 'CARTAO_TESTE'} onChange={() => setMetodoPagamento('CARTAO_TESTE')} />
                   Cartão de teste
@@ -632,18 +646,18 @@ export default function DetalhePropostasPage() {
                   <input type="radio" name="metodo" checked={metodoPagamento === 'PIX_TESTE'} onChange={() => setMetodoPagamento('PIX_TESTE')} />
                   PIX de teste
                 </label>
-              </div>
-              <div style={{ display: 'flex', gap: '0.6rem' }}>
+              </fieldset>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <button type="submit" disabled={processandoPagamento} style={{ ...botaoBase, background: '#3b82f6' }}>
                   {processandoPagamento ? 'Processando...' : 'Confirmar pagamento simulado'}
                 </button>
-                <button type="button" onClick={() => setPagando(false)} style={{ ...botaoBase, background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>
+                <button type="button" disabled={processandoPagamento} onClick={() => setPagando(false)} style={{ ...botaoBase, background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>
                   Voltar
                 </button>
               </div>
             </form>
           )}
-        </div>
+        </section>
       )}
 
       {/* Confirmação de conclusão do serviço (US17) e cancelamento de uma contratação já aceita (US34

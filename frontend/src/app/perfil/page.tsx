@@ -497,16 +497,17 @@ export default function PerfilPage() {
 /* ── Subcomponentes e estilos compartilhados ──────────────────────── */
 
 function Campo({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
+  const campoId = React.useId();
   return (
     <div>
-      <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+      <label htmlFor={campoId} style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
         {label}
       </label>
       <div style={{ position: 'relative' }}>
         <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', display: 'flex' }}>
           {icon}
         </span>
-        {children}
+        {React.isValidElement(children) ? React.cloneElement(children as React.ReactElement<{ id?: string }>, { id: campoId }) : children}
       </div>
     </div>
   );

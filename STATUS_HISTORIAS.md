@@ -54,7 +54,7 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 - O limite de login utiliza armazenamento em memória por processo. Uma implantação com várias instâncias precisaria de armazenamento compartilhado.
 - A auditoria de dependências do backend ficou com dois avisos moderados ligados a `uuid` transitivo do Sequelize. A atualização automática proposta faria downgrade incompatível do ORM; essa troca não foi aplicada.
 
-Validação final: **11 suítes e 199 testes aprovados**, além do build de produção do frontend e verificação do diff.
+Validação final: **11 suítes e 200 testes aprovados**, além do build de produção do frontend e verificação do diff.
 
 
 ## Leitura conjunta das histórias e termos legados
@@ -67,3 +67,8 @@ Validação final: **11 suítes e 199 testes aprovados**, além do build de prod
 ## Verificação adicional das páginas — 25/10/2026
 
 Consulte `VERIFICACAO_FLUXOS.md` para os passos realmente executados e os limites da conferência. A implementação das histórias e a aprovação dos testes não significam que todas as ações de todas as telas passaram por uma validação manual completa. Na primeira conferência, a confirmação nativa travou a ferramenta. Em 26/10 ela foi substituída por diálogo próprio (US23); conclusão, avaliação/perfil público e cancelamento foram retomados e aprovados pela interface, com liberação/reembolso também conferidos pela API. As demais pendências continuam discriminadas no relatório.
+
+
+### Complemento de 26/10/2026 — pagamentos e fluxos pendentes
+
+Checkout da US13 apresenta resumo antes da confirmação e mantém comprovante após liberação/reembolso. Cartão e PIX simulados, carteira antes/depois, desistência, dashboard do solicitante, notificação/navegação, persistência de preferências, edição de perfil com restauração, cadastros dos dois perfis e suspensão/reativação de conta fictícia foram exercitados pela interface. Denúncia fictícia resolvida por admin; detalhes de terceiros permanecem somente leitura. Consulte a matriz datada em `VERIFICACAO_FLUXOS.md` para passos, valores e limites. Conferência de largura em 14 páginas a 390px, administração a 390px e checkout a 320px. Resultado técnico: 200 testes e build aprovados. A simulação acadêmica não realiza pagamentos reais.

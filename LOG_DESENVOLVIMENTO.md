@@ -541,3 +541,22 @@ Nenhuma biblioteca ou API externa nova adicionada. Reutilizadas as dependências
 |---|---|---|---|
 | React | 18.3.1 | Estado e ciclo de vida da confirmação assíncrona | https://react.dev/reference/react |
 | HTML dialog | Plataforma Web | Modal no DOM, foco e fundo inativo, sem `window.confirm` | https://html.spec.whatwg.org/multipage/interactive-elements.html#the-dialog-element |
+
+
+## 26/10/2026 — US13: apresentação do checkout e validação dos fluxos pendentes
+
+- Conferência real de Cartão de teste e PIX de teste nas páginas. A área existente de pagamento não mostrava resumo suficiente antes da confirmação e sumia após conclusão/cancelamento. Complementada em `frontend/src/app/minhas-solicitacoes/[id]/page.tsx`: seção rotulada “Pagamento e garantia”, prestador/valor/situação, grupo de métodos acessível e flexível, bloqueio do botão Voltar durante processamento e comprovante persistente para retenção/liberação/reembolso. Nenhuma cobrança real ou coleta de dados financeiros.
+- Backend já calcula pelo valor da proposta aceita e serializa pagamentos pela solicitação. Acrescentado teste em `backend/tests/fluxos.integracao.test.js` contra tentativa de trocar valor, prestador e proposta no corpo da requisição; valor/vínculo contratados prevalecem. Sem alteração do endpoint ou regra de negócio.
+- `frontend/src/app/perfil/page.tsx`: rótulos dos campos associados aos inputs com IDs React, corrigindo controles sem nome acessível encontrados na conferência de edição.
+- Validação manual: cartão R$ 120 retido, conclusão e liberação; saldo do prestador R$ 340→460 e custódia R$ 620→500. PIX R$ 120, desistência e reembolso sem crédito ao prestador. Solicitante viu comprovantes; profissional viu indicadores próprios. Notificação abriu solicitação correta. Preferência desativada persistiu após reload e foi restaurada; endereço demo editado, recarregado e restaurado.
+- Denúncia explicitamente fictícia enviada e resolvida por admin (pendências 3→2). Cadastro solicitante recusou CPF/senha/consentimento inválidos; os dois cadastros fictícios válidos foram finalizados após autorização explícita do usuário aos aceites, redirecionaram e autenticaram. Cadastro profissional incluiu foto PNG e bio/categoria. Conta fictícia de solicitante suspensa: login recusado; reativada em seguida. Contas anteriores preservadas.
+- Inspeção de largura em 390×844: início, painéis, perfil, configurações, solicitações/propostas, formulário novo, feed/detalhe, perfil público, status, cadastros e login; administração filtrada também conferida. Checkout/detalhe do solicitante em 320×740, sem transbordamento. Não equivale a ensaio em aparelho físico nem a todas as combinações de estado.
+- Fixtures principais: `787fcd22-3b42-4573-b377-f9c3b0d66851` (concluída/cartão/liberado), `8b4051fb-6ba0-4117-a1b5-f014e36c31f4` (PIX/desistência/reembolso). Pré-condições de contratação preparadas pela API. Contas e solicitações fictícias mantidas para revisão; credenciais não incluídas nos arquivos versionados.
+- `VERIFICACAO_FLUXOS.md` e `STATUS_HISTORIAS.md` atualizados com evidências e limites. Escopo coberto por US13, US04, US23 e testes US26; nenhuma história existente ou seus critérios foram alterados.
+- Resultado: **11 suítes e 200 testes aprovados**, incluindo MySQL isolado; build de produção Next.js e checagem TypeScript aprovados; `git diff --check` aprovado. Nenhuma dependência ou migration nova.
+
+| Biblioteca | Versão | Uso nesta etapa | Documentação oficial |
+|---|---|---|---|
+| React | 18.3.1 | Apresentação dos estados de pagamento e associação acessível dos campos via useId | https://react.dev/reference/react/useId |
+| Jest | 30.5.2 | Regressão de integridade do pagamento | https://jestjs.io/docs/api |
+| Supertest | 7.3.1 | Teste da rota real de custódia | https://github.com/forwardemail/supertest |
