@@ -203,7 +203,7 @@ export default function LoginPage() {
           </details>
 
           <LinksRodape />
-          <SeletorTema />
+          <SeletorTema compacto />
         </div>
       </main>
     </div>

@@ -523,3 +523,7 @@ select.campo { padding: 0 .7rem; }
 .seletor-tema-opcao:hover { color: var(--text-primary); }
 .seletor-tema-opcao:has(input:checked) { background: var(--primary-color); color: var(--on-primary); }
 .seletor-tema-opcao:has(input:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+/* Variante compacta (rodapé e login): rótulo à esquerda, botões à direita, na mesma linha. */
+.seletor-tema.compacto { flex-direction: row; align-items: center; gap: .6rem; }
+.seletor-tema.compacto .seletor-tema-opcoes { align-self: auto; }
+.seletor-tema.compacto .seletor-tema-opcao { min-width: 36px; min-height: 36px; border-radius: 8px; }

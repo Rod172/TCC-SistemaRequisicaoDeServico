@@ -1099,3 +1099,20 @@ Nenhuma biblioteca nova adicionada.
   - A conta demo terminou deslogada, e o tema ficou em "Automático".
 - **Bibliotecas:** nenhuma nova. Só APIs nativas do navegador (Web Storage e `matchMedia`), documentadas no topo de `tema.ts`.
 - **US42 concluída:** os oito critérios de aceite foram marcados no `historia.md` e sincronizados no Jira (TCC-55). Fica para depois só a tarefa de documentação de tirar capturas em tema claro para a monografia, que é feita na redação.
+
+## 27/10/2026 — US42, ajuste: seletor de tema alinhado no rodapé
+
+- **Problema:** no rodapé, o seletor de tema ficava ao lado dos links, com o rótulo "Tema" em cima dos botões. O bloco ficava mais alto que os links e parecia solto, desalinhado da linha.
+- **Mudança:**
+  - **Variante `compacto` em `components/ui/SeletorTema.tsx`:** põe o rótulo e os botões na mesma linha, com botões de 36 px. Isso continua acima do mínimo de 24 px do WCAG 2.5.8.
+  - **Texto visível:** a variante compacta mostra só "Tema: Automático". O "segue o sistema" continua no nome falado da opção e na dica.
+  - **Novo layout do rodapé (`Rodape`, em `components/ui/Pagina.tsx`):** a primeira linha tem a marca à esquerda e o tema à direita, e os links vão para a linha de baixo. No celular, os três blocos se empilham, alinhados à esquerda.
+  - **Login:** usa a mesma variante compacta. O menu da conta continua com o rótulo em cima, que cabe melhor no painel estreito.
+  - **`globals.css`:** novos estilos `.seletor-tema.compacto`.
+- **Arquivos modificados:** `frontend/src/components/ui/SeletorTema.tsx`, `frontend/src/components/ui/Pagina.tsx`, `frontend/src/app/login/page.tsx` e `frontend/src/app/globals.css`.
+- **Validação:**
+  - **Tela larga (1477 px):** marca e seletor ficam centralizados na mesma altura (y = 1494), e a borda direita do seletor coincide com a do conteúdo (1200 px).
+  - **Celular (375 px):** não há rolagem horizontal.
+  - **Login:** seletor em uma linha, abaixo dos links.
+  - **Tipos:** `npx tsc --noEmit` passou sem erros.
+- **Bibliotecas:** nenhuma nova.

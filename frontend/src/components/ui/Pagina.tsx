@@ -53,18 +53,15 @@ export function LinksRodape() {
 export function Rodape() {
   return (
     <footer style={{ borderTop: '1px solid var(--card-border)', padding: '1.5rem' }}>
-      <div style={{
-        maxWidth: '1200px', margin: '0 auto',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem',
-      }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Logo tamanho={24} />
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>TCC Ciência da Computação · UNIP</span>
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem 1.25rem', flexWrap: 'wrap' }}>
-          <LinksRodape />
-          <SeletorTema />
-        </span>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem 1.5rem' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <Logo tamanho={24} />
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>TCC Ciência da Computação · UNIP</span>
+          </span>
+          <SeletorTema compacto />
+        </div>
+        <LinksRodape />
       </div>
     </footer>
   );

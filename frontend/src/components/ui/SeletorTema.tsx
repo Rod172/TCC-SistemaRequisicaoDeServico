@@ -6,6 +6,7 @@
  * login. São botões de rádio de verdade, então o teclado funciona como em qualquer grupo de opções
  * (Tab entra no grupo, as setas trocam a opção). Os ícones têm o nome escondido para leitores de
  * tela, e o tema escolhido aparece por extenso ao lado de "Tema", sem depender só do ícone.
+ * A variante `compacto` (rodapé e login) põe o rótulo e os botões na mesma linha.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. React (^18.3.1): estado da opção marcada e ouvinte do evento de troca.
@@ -24,7 +25,7 @@ const OPCOES: { valor: PreferenciaTema; rotulo: string; Icone: typeof Sun }[] = 
   { valor: 'escuro', rotulo: 'Escuro', Icone: Moon },
 ];
 
-export default function SeletorTema() {
+export default function SeletorTema({ compacto = false }: { compacto?: boolean }) {
   const nomeGrupo = useId();
   // Começa em "Automático" no servidor e lê a escolha salva ao montar, sem divergir na hidratação.
   const [preferencia, setPreferencia] = useState<PreferenciaTema>('automatico');
@@ -41,10 +42,10 @@ export default function SeletorTema() {
   const atual = OPCOES.find((o) => o.valor === preferencia) ?? OPCOES[0];
 
   return (
-    <fieldset className="seletor-tema">
+    <fieldset className={compacto ? 'seletor-tema compacto' : 'seletor-tema'}>
       <legend className="sr-only">Tema da interface</legend>
       <span className="seletor-tema-legenda" aria-hidden="true">
-        Tema: <strong>{atual.rotulo}</strong>{preferencia === 'automatico' && ' (segue o sistema)'}
+        Tema: <strong>{atual.rotulo}</strong>{preferencia === 'automatico' && !compacto && ' (segue o sistema)'}
       </span>
       <div className="seletor-tema-opcoes">
         {OPCOES.map(({ valor, rotulo, Icone }) => {
