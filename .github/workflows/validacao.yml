@@ -20,13 +20,13 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: tcc_servico_facil_test
+          MYSQL_DATABASE: tcc_eloserv_test
         ports: ['3306:3306']
         options: >-
           --health-cmd="mysqladmin ping -h localhost -proot"
           --health-interval=5s --health-timeout=5s --health-retries=20
     env:
-      DB_NAME_TEST: tcc_servico_facil_test
+      DB_NAME_TEST: tcc_eloserv_test
       DB_HOST_TEST: 127.0.0.1
       DB_PORT_TEST: 3306
       DB_USER_TEST: root

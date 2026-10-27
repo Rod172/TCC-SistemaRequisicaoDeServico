@@ -4,6 +4,8 @@
  * @file status/page.tsx
  * @description Página de status técnico do sistema: saúde da API backend e stack tecnológica
  * utilizada, para fins de demonstração acadêmica (movida para fora da home em 08/09/2026).
+ * Layout da US39: cartão de saúde da API com hora da verificação, botão para verificar de novo e
+ * link para a documentação Swagger, seguido da grade de tecnologias.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones vetoriais em React/TypeScript.
@@ -14,10 +16,11 @@
  *    Doc Oficial: https://axios-http.com/docs/intro
  */
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Activity, CheckCircle2, Server, Layers } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Activity, ArrowUpRight, CheckCircle2, RefreshCw } from 'lucide-react';
 import api from '@/services/api';
+import Pagina, { CabecalhoPagina } from '@/components/ui/Pagina';
+import { Aviso } from '@/components/ui/Elementos';
 
 interface HealthStatus {
   status: string;
@@ -26,132 +29,114 @@ interface HealthStatus {
   environment: string;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const ORIGEM_API = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+const STACK = [
+  { name: 'Next.js 14', sub: 'App Router + React 18', color: 'var(--text-primary)' },
+  { name: 'TypeScript 5', sub: 'Tipagem ponta a ponta', color: 'var(--accent-indigo)' },
+  { name: 'Node.js + Express', sub: 'API REST & Middlewares', color: 'var(--success-strong)' },
+  { name: 'Sequelize + MySQL', sub: 'ORM & Banco Relacional', color: 'var(--violet-strong)' },
+  { name: 'JWT + Bcrypt', sub: 'Autenticação segura', color: 'var(--warning-strong)' },
+  { name: 'Docker Compose', sub: 'Conteinerização', color: 'var(--brand-sky)' },
+];
+
 export default function StatusPage() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [healthData, setHealthData] = useState<HealthStatus | null>(null);
+  const [verificadoEm, setVerificadoEm] = useState<Date | null>(null);
 
-  useEffect(() => {
-    async function checkBackendHealth() {
-      try {
-        const response = await api.get<HealthStatus>('/health');
-        setHealthData(response.data);
-        setApiStatus('online');
-      } catch {
-        setApiStatus('offline');
-      }
+  const checkBackendHealth = useCallback(async () => {
+    setApiStatus('checking');
+    try {
+      const response = await api.get<HealthStatus>('/health');
+      setHealthData(response.data);
+      setApiStatus('online');
+    } catch {
+      setApiStatus('offline');
+    } finally {
+      setVerificadoEm(new Date());
     }
-    checkBackendHealth();
   }, []);
 
-  return (
-    <main style={{ maxWidth: '960px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
-      <Link href="/" style={{
-        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-        marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem',
-      }}>
-        <ArrowLeft size={16} />
-        Voltar para a página inicial
-      </Link>
+  useEffect(() => {
+    checkBackendHealth();
+  }, [checkBackendHealth]);
 
-      <header style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.4rem' }}>Status do Sistema</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Diagnóstico técnico da API e da stack utilizada no projeto, para fins de demonstração.
-        </p>
-      </header>
+  const cor = apiStatus === 'online' ? 'var(--success-strong)' : apiStatus === 'offline' ? 'var(--danger-strong)' : 'var(--text-secondary)';
+
+  return (
+    <Pagina largura="estreita">
+      <CabecalhoPagina
+        area="Para a banca e para desenvolvimento"
+        titulo="Status do sistema"
+        subtitulo="Diagnóstico técnico da API e da stack utilizada no projeto, para fins de demonstração."
+      />
 
       {/* ── STATUS DA API ──────────────────────── */}
-      <section style={{
-        background: 'rgba(15,23,42,0.7)',
-        border: '1px solid #1e293b',
-        borderRadius: '16px',
-        padding: '1.5rem 2rem',
-        marginBottom: '1.5rem',
-        backdropFilter: 'blur(8px)'
-      }}>
+      <section aria-labelledby="titulo-api" aria-busy={apiStatus === 'checking'} className={`card grande empilhado ${apiStatus === 'online' ? 'sucesso' : apiStatus === 'offline' ? 'perigo' : ''}`} style={{ gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Server size={20} color="#60a5fa" />
-            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Status da API Backend</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span aria-hidden="true" style={{ width: 52, height: 52, borderRadius: 16, background: apiStatus === 'online' ? 'var(--success-bg)' : apiStatus === 'offline' ? 'var(--danger-bg)' : 'var(--bg-color)', color: cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Activity size={26} />
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+              <h2 id="titulo-api" className="titulo-secao" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                API {apiStatus === 'online' ? 'online' : apiStatus === 'offline' ? 'fora do ar' : 'verificando…'}
+                <span role="status" className="chip" style={{ background: apiStatus === 'online' ? 'var(--success-tint)' : apiStatus === 'offline' ? 'var(--danger-tint)' : 'var(--neutral-tint)', color: cor }}>
+                  {apiStatus === 'online' ? 'Operacional' : apiStatus === 'offline' ? 'Offline' : 'Verificando'}
+                </span>
+              </h2>
+              <span className="texto-apoio" style={{ fontSize: '0.85rem', overflowWrap: 'anywhere' }}>
+                {verificadoEm ? `Verificado às ${verificadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · ` : ''}{API_BASE_URL}
+              </span>
+            </div>
           </div>
-
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-            padding: '0.35rem 0.9rem', borderRadius: '20px',
-            background: apiStatus === 'online' ? 'rgba(16,185,129,0.15)' : apiStatus === 'offline' ? 'rgba(239,68,68,0.15)' : 'rgba(148,163,184,0.15)',
-            color: apiStatus === 'online' ? '#34d399' : apiStatus === 'offline' ? '#f87171' : '#94a3b8',
-            fontWeight: 600, fontSize: '0.8rem'
-          }}>
-            <span style={{
-              width: '8px', height: '8px', borderRadius: '50%',
-              background: apiStatus === 'online' ? '#34d399' : apiStatus === 'offline' ? '#f87171' : '#94a3b8',
-              boxShadow: apiStatus === 'online' ? '0 0 6px #34d399' : 'none'
-            }} />
-            <Activity size={14} />
-            {apiStatus === 'online' ? 'ONLINE' : apiStatus === 'offline' ? 'OFFLINE' : 'VERIFICANDO...'}
-          </div>
+          <button type="button" onClick={checkBackendHealth} disabled={apiStatus === 'checking'} className="btn btn-secundario">
+            <RefreshCw size={16} aria-hidden="true" /> Verificar de novo
+          </button>
         </div>
 
         {apiStatus === 'online' && healthData && (
-          <div style={{
-            marginTop: '1rem', paddingTop: '1rem',
-            borderTop: '1px solid #1e293b',
-            display: 'flex', gap: '2rem', flexWrap: 'wrap'
-          }}>
-            {[
-              { label: 'SERVIÇO', value: healthData.service },
-              { label: 'VERSÃO', value: healthData.version },
-              { label: 'AMBIENTE', value: healthData.environment.toUpperCase() },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <div style={{ fontSize: '0.7rem', color: '#64748b', letterSpacing: '0.08em', marginBottom: '2px' }}>{label}</div>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#e2e8f0' }}>{value}</div>
-              </div>
-            ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', color: '#34d399', fontSize: '0.85rem' }}>
-              <CheckCircle2 size={16} /> Conexão com MySQL estabelecida
+          <>
+            <dl className="dados">
+              <div><dt>Serviço</dt><dd>{healthData.service}</dd></div>
+              <div><dt>Versão</dt><dd>{healthData.version}</dd></div>
+              <div><dt>Ambiente</dt><dd>{healthData.environment.toUpperCase()}</dd></div>
+            </dl>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--success-strong)', fontSize: '0.9rem' }}>
+                <CheckCircle2 size={17} aria-hidden="true" /> Conexão com MySQL estabelecida
+              </span>
+              <a href={`${ORIGEM_API}/api-docs`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', fontWeight: 600 }}>
+                Documentação da API (Swagger) <ArrowUpRight size={15} aria-hidden="true" />
+              </a>
             </div>
-          </div>
+          </>
         )}
 
         {apiStatus === 'offline' && (
-          <p style={{ color: '#f87171', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-            ⚠️ Não foi possível conectar à API em <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px' }}>http://localhost:3001</code>. Verifique se o backend está rodando.
-          </p>
+          <Aviso tipo="erro">
+            Não foi possível conectar à API em <code style={{ background: 'var(--bg-color)', padding: '2px 6px', borderRadius: '4px' }}>{ORIGEM_API}</code>. Verifique se o backend está rodando.
+          </Aviso>
         )}
       </section>
 
       {/* ── TECH STACK ──────────────────────────── */}
-      <section style={{
-        background: 'rgba(15,23,42,0.7)',
-        border: '1px solid #1e293b',
-        borderRadius: '16px',
-        padding: '1.5rem 2rem',
-        backdropFilter: 'blur(8px)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <Layers size={20} color="#10b981" />
-          <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Stack Tecnológica</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
-          {[
-            { name: 'Next.js 14', sub: 'App Router + React 18', color: '#60a5fa' },
-            { name: 'TypeScript 5', sub: 'Tipagem ponta a ponta', color: '#10b981' },
-            { name: 'Node.js + Express', sub: 'API REST & Middlewares', color: '#f59e0b' },
-            { name: 'Sequelize + MySQL', sub: 'ORM & Banco Relacional', color: '#a78bfa' },
-            { name: 'JWT + Bcrypt', sub: 'Autenticação segura', color: '#ec4899' },
-            { name: 'Docker Compose', sub: 'Conteinerização', color: '#38bdf8' },
-          ].map(({ name, sub, color }) => (
-            <div key={name} style={{
-              background: '#0f172a', border: '1px solid #1e293b',
-              borderRadius: '10px', padding: '0.85rem 1rem'
-            }}>
-              <div style={{ fontWeight: 700, color, fontSize: '0.9rem', marginBottom: '2px' }}>{name}</div>
-              <div style={{ color: '#64748b', fontSize: '0.78rem' }}>{sub}</div>
-            </div>
+      <section aria-labelledby="titulo-stack" className="empilhado" style={{ gap: '0.85rem' }}>
+        <h2 id="titulo-stack" className="titulo-secao">Tecnologias</h2>
+        <ul style={{ listStyle: 'none', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '0.75rem' }}>
+          {STACK.map(({ name, sub, color }) => (
+            <li key={name} className="card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', padding: '1rem 1.1rem' }}>
+              <span aria-hidden="true" style={{ width: 10, height: 36, borderRadius: 999, background: color, flexShrink: 0 }} />
+              <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <strong style={{ fontSize: '0.95rem' }}>{name}</strong>
+                <span className="texto-apoio" style={{ fontSize: '0.8rem' }}>{sub}</span>
+              </span>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
-    </main>
+    </Pagina>
   );
 }

@@ -3,8 +3,10 @@
 /**
  * @file login/page.tsx
  * @description Tela de Login de Usuários (Solicitantes e Prestadores) com autenticação JWT e validação no Next.js 14.
- * Inclui um painel de "login rápido" com as contas de demonstração do seeder (US25), pra facilitar
- * testar os três perfis (Solicitante/Prestador/Admin) sem digitar credenciais toda hora.
+ * Layout em duas colunas (US39): marca e benefícios de um lado, formulário do outro, com opção de
+ * mostrar a senha. O "login rápido" com as contas de demonstração do seeder (US25) fica num bloco
+ * secundário, pra facilitar testar os perfis sem competir com o login de verdade. Como a tela não usa
+ * o rodapé compartilhado, os links dos documentos legais (US40) ficam no fim da coluna do formulário.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones para campos do formulário.
@@ -18,16 +20,26 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogIn, Mail, Lock, CheckCircle, AlertCircle, ArrowLeft, Zap, User, Briefcase, ShieldCheck, Wrench } from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff, MessageCircle, ShieldCheck, Star } from 'lucide-react';
 import api from '@/services/api';
+import Logo from '@/components/Logo';
+import { Aviso } from '@/components/ui/Elementos';
+import { LinksRodape } from '@/components/ui/Pagina';
+import SeletorTema from '@/components/ui/SeletorTema';
 
 const CONTAS_DEMO = [
-  { rotulo: 'Solicitante', email: 'demo.solicitante@servicofacil.com', icone: <User size={16} />, cor: '#3b82f6' },
-  { rotulo: 'Prestador (Elétrica)', email: 'demo.prestador.eletrica@servicofacil.com', icone: <Briefcase size={16} />, cor: '#10b981' },
-  { rotulo: 'Prestador (Encanamento)', email: 'demo.prestador.encanamento@servicofacil.com', icone: <Wrench size={16} />, cor: '#10b981' },
-  { rotulo: 'Admin', email: 'demo.admin@servicofacil.com', icone: <ShieldCheck size={16} />, cor: '#8b5cf6' },
+  { rotulo: 'Solicitante', email: 'demo.solicitante@servicofacil.com' },
+  { rotulo: 'Admin', email: 'demo.admin@servicofacil.com' },
+  { rotulo: 'Prestador · Elétrica', email: 'demo.prestador.eletrica@servicofacil.com' },
+  { rotulo: 'Prestador · Encanamento', email: 'demo.prestador.encanamento@servicofacil.com' },
 ];
 const SENHA_DEMO = 'Demo@123';
+
+const BENEFICIOS = [
+  { icone: <ShieldCheck size={17} />, texto: 'Pagamento retido com garantia até você confirmar o serviço.' },
+  { icone: <MessageCircle size={17} />, texto: 'Chat com cada prestador antes de contratar.' },
+  { icone: <Star size={17} />, texto: 'Avaliações reais de outros clientes.' },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,6 +48,7 @@ export default function LoginPage() {
     email: '',
     senha: '',
   });
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState<string | null>(null);
@@ -83,228 +96,116 @@ export default function LoginPage() {
     setLoadingDemo(null);
   }
 
+  const ocupado = loading || loadingDemo !== null;
+
   return (
-    <main style={{ maxWidth: '650px', margin: '2rem auto', padding: '0 1.5rem' }}>
-      <Link href="/" style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        marginBottom: '1.5rem',
-        color: 'var(--text-secondary)',
-        fontSize: '0.9rem'
+    <div style={{ minHeight: '100vh', display: 'flex', flexWrap: 'wrap' }}>
+      {/* ── Lado da marca ───────────────────── */}
+      <section style={{
+        flex: '1 1 460px', minWidth: 0, background: 'var(--bg-highlight)', borderRight: '1px solid var(--card-border)',
+        padding: '2.5rem clamp(1.25rem, 5vw, 4.5rem)', display: 'flex', flexDirection: 'column', gap: '3rem',
       }}>
-        <ArrowLeft size={16} />
-        Voltar para a página inicial
-      </Link>
-
-      <div style={{
-        background: 'var(--card-bg)',
-        border: '1px solid var(--card-border)',
-        borderRadius: 'var(--border-radius)',
-        padding: 'clamp(1.25rem, 6vw, 2.5rem) clamp(1rem, 5vw, 2rem)',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            background: 'rgba(236, 72, 153, 0.15)',
-            color: '#ec4899',
-            marginBottom: '1rem'
-          }}>
-            <LogIn size={24} />
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Entrar na Plataforma
+        <Link href="/" aria-label="Eloserv — página inicial" style={{ alignSelf: 'flex-start', display: 'inline-flex' }}>
+          <Logo tamanho={36} corFundo="var(--bg-highlight)" />
+        </Link>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '460px', margin: 'auto 0' }}>
+          <h1 style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)', lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.03em' }}>
+            Que bom ver você de novo.
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            Acesse sua conta de Solicitante ou Prestador com e-mail e senha.
+          <p style={{ fontSize: '1.05rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+            Entre para acompanhar seus pedidos, responder propostas e conversar com quem vai fazer o serviço.
           </p>
-        </div>
-
-        {errorMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--danger-color)',
-            color: '#fca5a5',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            fontSize: '0.9rem'
-          }}>
-            <AlertCircle size={20} style={{ flexShrink: 0 }} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {successMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid var(--accent-color)',
-            color: '#6ee7b7',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            fontSize: '0.9rem'
-          }}>
-            <CheckCircle size={20} style={{ flexShrink: 0 }} />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        {/* ── Login rápido (contas de demonstração) ─────────── */}
-        <div style={{
-          background: '#0f172a', border: '1px solid #334155', borderRadius: '10px',
-          padding: '1rem 1.1rem', marginBottom: '1.75rem',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}>
-            <Zap size={14} color="#fbbf24" />
-            <strong style={{ fontSize: '0.82rem' }}>Login rápido</strong>
-            <span style={{ color: '#64748b', fontSize: '0.78rem' }}>— contas de demonstração, para testes</span>
-          </div>
-          <div className="grid-2-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-            {CONTAS_DEMO.map((conta) => (
-              <button
-                key={conta.email}
-                type="button"
-                onClick={() => loginRapido(conta.email)}
-                disabled={loadingDemo !== null || loading}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.4rem',
-                  padding: '0.55rem 0.7rem', background: '#1e293b', border: `1px solid ${conta.cor}55`,
-                  borderRadius: '8px', color: conta.cor, fontSize: '0.8rem', fontWeight: 600,
-                  cursor: loadingDemo !== null || loading ? 'not-allowed' : 'pointer',
-                  opacity: loadingDemo && loadingDemo !== conta.email ? 0.5 : 1,
-                }}
-              >
-                {conta.icone} {loadingDemo === conta.email ? 'Entrando...' : conta.rotulo}
-              </button>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.75rem' }}>
+            {BENEFICIOS.map((b) => (
+              <li key={b.texto} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', fontSize: '0.95rem', lineHeight: 1.5 }}>
+                <span aria-hidden="true" style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--sky-bg)', color: 'var(--brand-sky)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {b.icone}
+                </span>
+                {b.texto}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
+        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>TCC Ciência da Computação · UNIP</span>
+      </section>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* E-mail */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-              E-mail *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+      {/* ── Formulário ──────────────────────── */}
+      <main style={{ flex: '1 1 460px', minWidth: 0, padding: '2.5rem clamp(1.25rem, 5vw, 4.5rem)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <Link href="/" className="link-voltar"><ChevronLeft size={16} aria-hidden="true" /> Página inicial</Link>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            <h2 className="titulo-pagina">Entrar</h2>
+            <p className="subtitulo-pagina">Use o e-mail e a senha da sua conta de cliente ou de prestador.</p>
+          </div>
+
+          {errorMsg && <Aviso tipo="erro">{errorMsg}</Aviso>}
+          {successMsg && <Aviso tipo="sucesso">{successMsg}</Aviso>}
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="campo-grupo">
+              <label htmlFor="login-email" className="rotulo">E-mail</label>
               <input
-                type="email"
-                name="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="seu.email@exemplo.com"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                  background: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '0.95rem'
-                }}
+                id="login-email" type="email" name="email" required autoComplete="email" className="campo"
+                value={formData.email} onChange={handleChange} placeholder="seu.email@exemplo.com"
               />
+            </div>
+            <div className="campo-grupo">
+              <label htmlFor="login-senha" className="rotulo">Senha</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="login-senha" type={mostrarSenha ? 'text' : 'password'} name="senha" required autoComplete="current-password"
+                  className="campo" style={{ paddingRight: '3.2rem' }}
+                  value={formData.senha} onChange={handleChange}
+                />
+                <button
+                  type="button" onClick={() => setMostrarSenha((v) => !v)}
+                  aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'} aria-pressed={mostrarSenha}
+                  style={{ position: 'absolute', right: '2px', top: '2px', width: '44px', height: '44px', border: 0, background: 'transparent', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                >
+                  {mostrarSenha ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                </button>
+              </div>
+            </div>
+            <button type="submit" disabled={ocupado} className="btn btn-primario btn-grande btn-bloco">
+              {loading ? 'Entrando...' : 'Entrar'}
+            </button>
+          </form>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', paddingTop: '1.25rem', borderTop: '1px solid var(--card-border)' }}>
+            <span className="texto-apoio">Ainda não tem conta?</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.6rem' }}>
+              <Link href="/register-solicitante" className="card" style={{ padding: '0.75rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '2px', color: 'var(--text-primary)', background: 'transparent' }}>
+                <strong style={{ fontSize: '0.9rem' }}>Sou cliente</strong>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Quero contratar</span>
+              </Link>
+              <Link href="/register-prestador" className="card" style={{ padding: '0.75rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '2px', color: 'var(--text-primary)', background: 'transparent' }}>
+                <strong style={{ fontSize: '0.9rem' }}>Sou prestador</strong>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Quero atender</span>
+              </Link>
             </div>
           </div>
 
-          {/* Senha */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-              Senha *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-              <input
-                type="password"
-                name="senha"
-                required
-                value={formData.senha}
-                onChange={handleChange}
-                placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                  background: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '0.95rem'
-                }}
-              />
+          {/* ── Login rápido (contas de demonstração do seeder, US25) ── */}
+          <details open style={{ border: '1px dashed var(--card-border)', borderRadius: '12px', padding: '0.75rem 0.9rem' }}>
+            <summary style={{ minHeight: '28px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--warning-text)', cursor: 'pointer' }}>
+              Contas de demonstração (para a banca)
+            </summary>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem', marginTop: '0.6rem' }}>
+              {CONTAS_DEMO.map((conta) => (
+                <button
+                  key={conta.email} type="button" onClick={() => loginRapido(conta.email)} disabled={ocupado}
+                  className="btn btn-secundario" style={{ minHeight: '40px', fontSize: '0.8rem', padding: '0 0.5rem', whiteSpace: 'normal', background: 'var(--card-bg)' }}
+                >
+                  {loadingDemo === conta.email ? 'Entrando...' : conta.rotulo}
+                </button>
+              ))}
             </div>
-          </div>
+          </details>
 
-          {/* Botão de Submissão */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: '0.5rem',
-              padding: '0.875rem',
-              background: loading ? '#475569' : '#ec4899',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '1rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background var(--transition-speed)'
-            }}
-          >
-            {loading ? 'Autenticando...' : 'Entrar na Conta'}
-          </button>
-        </form>
-
-        {/* Links de Cadastro */}
-        <div style={{
-          marginTop: '1.5rem',
-          paddingTop: '1.25rem',
-          borderTop: '1px solid #334155',
-          textAlign: 'center'
-        }}>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-            Ainda não possui uma conta?
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/register-solicitante" style={{
-              padding: '0.5rem 1rem',
-              border: '1px solid var(--primary-color)',
-              color: 'var(--primary-color)',
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              textDecoration: 'none'
-            }}>
-              Criar conta de Cliente
-            </Link>
-            <Link href="/register-prestador" style={{
-              padding: '0.5rem 1rem',
-              border: '1px solid var(--accent-color)',
-              color: 'var(--accent-color)',
-              borderRadius: '8px',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              textDecoration: 'none'
-            }}>
-              Criar conta de Prestador
-            </Link>
-          </div>
+          <LinksRodape />
+          <SeletorTema />
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

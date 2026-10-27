@@ -4,14 +4,14 @@
     "versao_privacidade": "2026-10-26.1",
     "publicado_em": "2026-10-26",
     "responsavel": "Rodrigo Fernando Melo Dias da Silva",
-    "email_privacidade": "rodrigogofernandomelo15@gmail.com",
+    "email_privacidade": "rodrigofernandomelo15@gmail.com",
     "termos_url": "/termos-de-uso/2026-10-26.1",
     "privacidade_url": "/politica-de-privacidade/2026-10-26.1"
   },
   "termos": [
     [
       "1. Plataforma e responsável",
-      "Eloserv (anteriormente ServiçoFácil) é um protótipo acadêmico de intermediação entre pessoas que solicitam serviços e profissionais que apresentam propostas. O responsável pelo atendimento desta versão é Rodrigo Fernando Melo Dias da Silva, pelo e-mail rodrigogofernandomelo15@gmail.com. A instituição de ensino não é apresentada como operadora do serviço."
+      "Eloserv é um protótipo acadêmico de intermediação entre pessoas que solicitam serviços e profissionais que apresentam propostas. O responsável pelo atendimento desta versão é Rodrigo Fernando Melo Dias da Silva, pelo e-mail rodrigofernandomelo15@gmail.com. A instituição de ensino não é apresentada como operadora do serviço."
     ],
     [
       "2. Cadastro e uso da conta",
@@ -43,13 +43,13 @@
     ],
     [
       "9. Documentos e alterações",
-      "O cadastro registra a versão dos Termos aceita e a versão da Política de Privacidade conhecida, com a data do servidor. Ciência da Política não é autorização irrestrita para tratamento. Mudanças relevantes devem ser comunicadas e versões anteriores preservadas pela equipe; o sistema não atribui um novo aceite automaticamente a contas existentes. Consulte a Central de Privacidade para verificar o registro e enviar pedidos."
+      "O tratamento de dados pessoais é descrito na Política de Privacidade, elaborada com base na Lei Geral de Proteção de Dados Pessoais (LGPD, Lei nº 13.709/2018). O cadastro registra a versão dos Termos aceita e a versão da Política de Privacidade conhecida, com a data do servidor. Ciência da Política não é autorização irrestrita para tratamento. Mudanças relevantes devem ser comunicadas e versões anteriores preservadas pela equipe; o sistema não atribui um novo aceite automaticamente a contas existentes. Consulte a Central de Privacidade para verificar o registro e enviar pedidos."
     ]
   ],
   "privacidade": [
     [
       "1. Quem atende seus pedidos",
-      "O responsável informado para a operação deste protótipo é Rodrigo Fernando Melo Dias da Silva. Contato: rodrigogofernandomelo15@gmail.com. Pessoas com conta ativa também podem usar a Central de Privacidade. Sem acesso à conta, use o e-mail; a equipe poderá verificar sua identidade antes de fornecer ou alterar dados, solicitando apenas o necessário."
+      "Esta Política segue a Lei Geral de Proteção de Dados Pessoais (LGPD, Lei nº 13.709/2018). O responsável pelas decisões sobre o tratamento dos dados neste protótipo (controlador, nos termos do art. 5º, VI, da LGPD) e pelo atendimento aos titulares é Rodrigo Fernando Melo Dias da Silva. Contato: rodrigofernandomelo15@gmail.com. Pessoas com conta ativa também podem usar a Central de Privacidade. Sem acesso à conta, use o e-mail; a equipe poderá verificar sua identidade antes de fornecer ou alterar dados, solicitando apenas o necessário."
     ],
     [
       "2. Dados utilizados e finalidades",
@@ -57,7 +57,7 @@
     ],
     [
       "3. Fundamentos e escolhas",
-      "O tratamento necessário ao cadastro, às interações solicitadas e à execução do serviço é relacionado à execução de contrato ou procedimentos pedidos pelo titular. Atividades de segurança, defesa de direitos ou cumprimento de obrigações devem observar a hipótese legal aplicável e a necessidade. Aceitar os Termos é uma manifestação contratual; declarar ciência da Política é um aviso de transparência. Nenhuma dessas escolhas autoriza qualquer uso futuro dos dados. Tratamentos opcionais que dependam de consentimento precisam de finalidade específica e possibilidade de revogação. Esta versão não solicita consentimento para publicidade ou venda de dados."
+      "O tratamento necessário ao cadastro, às interações solicitadas e à execução do serviço se baseia na execução de contrato ou de procedimentos preliminares a pedido do titular (art. 7º, V, da LGPD). Atividades de segurança e prevenção a fraudes podem se apoiar no legítimo interesse (art. 7º, IX), a defesa em processos no exercício regular de direitos (art. 7º, VI) e o atendimento a exigências legais no cumprimento de obrigação legal (art. 7º, II), sempre limitadas ao mínimo necessário (art. 6º, III). Aceitar os Termos é uma manifestação contratual; declarar ciência da Política é um aviso de transparência. Nenhuma dessas escolhas autoriza qualquer uso futuro dos dados. Tratamentos opcionais que dependam de consentimento precisam de finalidade específica e possibilidade de revogação (art. 7º, I, e art. 8º). Esta versão não solicita consentimento para publicidade ou venda de dados."
     ],
     [
       "4. O que outras pessoas podem ver",
@@ -81,11 +81,11 @@
     ],
     [
       "9. Seus direitos e como solicitar",
-      "Você pode pedir confirmação/acesso, correção, informações sobre compartilhamento e finalidades, ou solicitar análise de exclusão, anonimização, bloqueio, portabilidade ou revogação de consentimento, conforme o caso. A Central de Privacidade registra o tipo, descrição, protocolo e resposta. Para direitos sem opção específica, use Informações e explique o pedido. O atendimento é gratuito e manual, sujeito aos prazos legais aplicáveis, incluindo os relativos à confirmação e ao acesso. Registrar ou responder um protocolo não executa automaticamente exclusão ou portabilidade. Também é possível recorrer à ANPD e aos órgãos competentes."
+      "A LGPD (art. 18) garante a você, como titular, os direitos de pedir confirmação/acesso, correção, informações sobre compartilhamento e finalidades, ou solicitar análise de exclusão, anonimização, bloqueio, portabilidade ou revogação de consentimento, conforme o caso. A Central de Privacidade registra o tipo, descrição, protocolo e resposta. Para direitos sem opção específica, use Informações e explique o pedido. O atendimento é gratuito e manual, sujeito aos prazos legais aplicáveis, incluindo os relativos à confirmação e ao acesso (art. 19 da LGPD). Registrar ou responder um protocolo não executa automaticamente exclusão ou portabilidade. Também é possível peticionar à Autoridade Nacional de Proteção de Dados (ANPD), conforme o art. 18, § 1º, e recorrer aos órgãos de defesa do consumidor."
     ],
     [
       "10. Segurança, incidentes e atualizações",
-      "A aplicação protege senhas com hash, autentica acessos e aplica regras por participante/perfil, mas não oferece garantia de risco zero. Comunique incidente ou uso indevido ao contato informado, sem enviar senhas. A equipe deve avaliar o caso e cumprir os deveres de comunicação aplicáveis. Novas finalidades e mudanças relevantes devem ser informadas com clareza. A versão conhecida no cadastro fica registrada; contas antigas sem versão não recebem aceite retroativo."
+      "A aplicação protege senhas com hash, autentica acessos e aplica regras por participante/perfil, como medidas de segurança previstas no art. 46 da LGPD, mas não oferece garantia de risco zero. Comunique incidente ou uso indevido ao contato informado, sem enviar senhas. A equipe deve avaliar o caso e cumprir os deveres de comunicação aplicáveis, incluindo avisar a ANPD e os titulares quando o incidente puder acarretar risco ou dano relevante (art. 48). Novas finalidades e mudanças relevantes devem ser informadas com clareza. A versão conhecida no cadastro fica registrada; contas antigas sem versão não recebem aceite retroativo."
     ]
   ]
 }

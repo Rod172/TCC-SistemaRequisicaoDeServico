@@ -3,7 +3,9 @@
 /**
  * @file nova-solicitacao/page.tsx
  * @description Formulário de publicação de nova solicitação de serviço (US05), com upload de
- * anexos (fotos/documentos) por arrastar-e-soltar.
+ * anexos (fotos/documentos) por arrastar-e-soltar. Layout da US39: etapas no topo, formulário à
+ * esquerda e, ao lado, a prévia de como os prestadores verão o pedido e dicas para receber boas
+ * propostas.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones para campos, upload e status.
@@ -17,15 +19,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft, ClipboardList, Tag, MapPin, Clock, DollarSign,
-  UploadCloud, X, FileText, Image as ImageIcon, AlertCircle, CheckCircle,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, FileText, Image as ImageIcon, MapPin, UploadCloud, X } from 'lucide-react';
 import api from '@/services/api';
+import { lerRascunhoPedido, limparRascunhoPedido } from '@/components/home/comum';
+import Pagina, { CabecalhoPagina } from '@/components/ui/Pagina';
+import { Aviso, Chip, Etapas, STATUS_SOLICITACAO } from '@/components/ui/Elementos';
 
 const CATEGORIAS = ['Elétrica', 'Encanamento', 'Pintura', 'Limpeza', 'Marcenaria', 'Jardinagem', 'T.I.', 'Outro'];
 const MAX_ARQUIVOS = 5;
 const MAX_TAMANHO_MB = 10;
+const ETAPAS = [{ nome: 'Descreva o serviço' }, { nome: 'Fotos e documentos' }, { nome: 'Revise e publique' }];
 
 const FORM_INICIAL = {
   titulo: '',
@@ -36,6 +39,10 @@ const FORM_INICIAL = {
   prazo_desejado_dias: '',
   orcamento_cliente: '',
 };
+
+function formatarReais(valor: string) {
+  return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
 
 export default function NovaSolicitacaoPage() {
   const router = useRouter();
@@ -52,6 +59,23 @@ export default function NovaSolicitacaoPage() {
     const token = localStorage.getItem('@ServicoFacil:token');
     if (!token) router.replace('/login');
   }, [router]);
+
+  // US38: pedido começado na página inicial — título e categoria chegam pela URL ou, se o visitante
+  // precisou entrar na conta antes, pelo rascunho guardado. O rascunho é consumido aqui.
+  useEffect(() => {
+    if (!localStorage.getItem('@ServicoFacil:token')) return;
+    const params = new URLSearchParams(window.location.search);
+    const rascunho = lerRascunhoPedido();
+    const titulo = params.get('titulo') || rascunho?.titulo || '';
+    const categoria = params.get('categoria') || rascunho?.categoria || '';
+    limparRascunhoPedido();
+    if (!titulo && !categoria) return;
+    setFormulario((atual) => ({
+      ...atual,
+      titulo: atual.titulo || titulo.slice(0, 120),
+      categoria: CATEGORIAS.includes(categoria) ? categoria : atual.categoria,
+    }));
+  }, []);
 
   function alterarCampo(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const { name, value } = e.target;
@@ -127,201 +151,185 @@ export default function NovaSolicitacaoPage() {
     }
   }
 
+  const tamanhoDescricao = formulario.descricao.trim().length;
+  const local = [formulario.bairro, formulario.cidade].map((v) => v.trim()).filter(Boolean).join(', ');
+
   return (
-    <main style={{ maxWidth: '760px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
-      <Link href="/minhas-solicitacoes" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-        <ArrowLeft size={16} /> Voltar para minhas solicitações
-      </Link>
+    <Pagina>
+      <CabecalhoPagina
+        voltar={{ href: '/minhas-solicitacoes', rotulo: 'Minhas solicitações' }}
+        titulo="Publicar um pedido"
+        subtitulo="Prestadores da região veem seu pedido e mandam propostas. Você escolhe com calma."
+      />
+      <Etapas etapas={ETAPAS} atual={etapa - 1} rotulo="Etapas da publicação" />
+      <p className="sr-only" aria-live="polite">Etapa {etapa} de 3: {ETAPAS[etapa - 1].nome}</p>
 
-      <header style={{ marginBottom: '1.5rem' }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          width: '48px', height: '48px', borderRadius: '50%',
-          background: 'rgba(59,130,246,0.15)', color: '#60a5fa', marginBottom: '1rem',
-        }}>
-          <ClipboardList size={24} />
-        </div>
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.4rem' }}>Publicar Nova Solicitação</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Descreva o serviço que você precisa para que prestadores possam enviar propostas.
-        </p>
-      </header>
+      <div className="layout-lateral">
+        <form onSubmit={handleSubmit} className="principal card grande" style={{ gap: '1.25rem' }}>
+          {erro && <Aviso tipo="erro">{erro}</Aviso>}
 
-      {erro && (
-        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          <AlertCircle size={20} /> <span>{erro}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} style={{
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-        borderRadius: 'var(--border-radius)', padding: '2rem',
-        display: 'flex', flexDirection: 'column', gap: '1.25rem',
-      }}>
-        <ol aria-label="Etapas da publicação" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', listStyle: 'none' }}>
-          {['Descreva o serviço', 'Adicione anexos', 'Revise e publique'].map((nome, i) => (
-            <li key={nome} aria-current={etapa === i + 1 ? 'step' : undefined} style={{ color: etapa === i + 1 ? '#93c5fd' : '#94a3b8', fontWeight: etapa === i + 1 ? 700 : 400 }}>
-              {i + 1}. {nome}
-            </li>
-          ))}
-        </ol>
-        <p aria-live="polite">Etapa {etapa} de 3</p>
-        <fieldset hidden={etapa !== 1} disabled={etapa !== 1 || enviando} style={{ border: 0, minWidth: 0 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <Campo label="Título *" icon={<ClipboardList size={18} />}>
-          <input name="titulo" required minLength={5} value={formulario.titulo} onChange={alterarCampo} placeholder="Ex.: Instalação de 3 tomadas na cozinha" style={estiloInput} />
-        </Campo>
-
-        <div className="grid-2-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <Campo label="Categoria" icon={<Tag size={18} />}>
-            <select name="categoria" value={formulario.categoria} onChange={alterarCampo} style={estiloInput}>
-              <option value="">Selecione...</option>
-              {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </Campo>
-          <Campo label="Prazo desejado (dias)" icon={<Clock size={18} />}>
-            <input name="prazo_desejado_dias" type="number" min={1} max={365} value={formulario.prazo_desejado_dias} onChange={alterarCampo} placeholder="Ex.: 7" style={estiloInput} />
-          </Campo>
-        </div>
-
-        <div className="grid-2-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <Campo label="Cidade" icon={<MapPin size={18} />}>
-            <input name="cidade" value={formulario.cidade} onChange={alterarCampo} placeholder="Ex.: São Paulo" style={estiloInput} />
-          </Campo>
-          <Campo label="Bairro" icon={<MapPin size={18} />}>
-            <input name="bairro" value={formulario.bairro} onChange={alterarCampo} placeholder="Ex.: Pinheiros" style={estiloInput} />
-          </Campo>
-        </div>
-
-        <Campo label="Orçamento de referência (R$)" icon={<DollarSign size={18} />}>
-          <input name="orcamento_cliente" type="number" min={0} step="0.01" value={formulario.orcamento_cliente} onChange={alterarCampo} placeholder="Opcional — ajuda o prestador a dimensionar a proposta" style={estiloInput} />
-        </Campo>
-
-        <div>
-          <label htmlFor="descricao-solicitacao" style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-            Descrição detalhada *
-          </label>
-          <div style={{
-            background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: '8px',
-            padding: '0.6rem 0.8rem', marginBottom: '0.5rem', fontSize: '0.78rem', color: 'var(--text-secondary)',
-          }}>
-            Quanto mais completo, menos idas e vindas com o prestador. Tente responder: <strong>o que precisa ser feito</strong>,
-            {' '}<strong>desde quando</strong> é um problema, e <strong>algum detalhe que ajude a orçar</strong> (tamanho, quantidade, marca/modelo, se já tentou algo).
-          </div>
-          <textarea
-            id="descricao-solicitacao" name="descricao" required minLength={20} rows={5}
-            value={formulario.descricao} onChange={alterarCampo}
-            placeholder="Ex.: A pia da cozinha está entupindo há 3 dias, mesmo depois de usar desentupidor. É um apartamento, o ralo fica embaixo da pia. Preciso resolver ainda essa semana."
-            style={{ ...estiloInput, paddingLeft: '0.75rem', resize: 'vertical' }}
-          />
-        </div>
-        </div>
-        </fieldset>
-
-        {/* ── Upload de anexos ─────────────────── */}
-        <div hidden={etapa !== 2}>
-          <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-            Fotos ou documentos (opcional, até {MAX_ARQUIVOS} arquivos de {MAX_TAMANHO_MB}MB cada)
-          </label>
-          <div
-            role="button" tabIndex={0} aria-label="Selecionar fotos ou documentos"
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
-            onDragOver={(e) => { e.preventDefault(); setArrastando(true); }}
-            onDragLeave={() => setArrastando(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: `2px dashed ${arrastando ? '#3b82f6' : '#334155'}`,
-              borderRadius: '10px', padding: '2rem', textAlign: 'center',
-              background: arrastando ? 'rgba(59,130,246,0.08)' : '#0f172a',
-              cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
-            }}
-          >
-            <UploadCloud size={28} color="#60a5fa" style={{ marginBottom: '0.5rem' }} />
-            <p style={{ color: '#cbd5e1', fontSize: '0.9rem', margin: 0 }}>
-              Arraste arquivos aqui ou clique para selecionar
-            </p>
-            <p style={{ color: '#64748b', fontSize: '0.78rem', margin: '0.25rem 0 0' }}>JPEG, PNG, WEBP ou PDF</p>
-            <input
-              ref={fileInputRef} type="file" multiple hidden
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              onChange={(e) => e.target.files && adicionarArquivos(e.target.files)}
-            />
-          </div>
-
-          {arquivos.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.9rem' }}>
-              {arquivos.map((arquivo, indice) => (
-                <div key={`${arquivo.name}-${indice}`} style={{
-                  display: 'flex', alignItems: 'center', gap: '0.6rem',
-                  background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '0.6rem 0.9rem',
-                }}>
-                  {arquivo.type === 'application/pdf' ? <FileText size={16} color="#94a3b8" /> : <ImageIcon size={16} color="#94a3b8" />}
-                  <span style={{ flex: 1, fontSize: '0.85rem', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {arquivo.name}
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{(arquivo.size / 1024 / 1024).toFixed(1)}MB</span>
-                  <button type="button" aria-label={`Remover ${arquivo.name}`} onClick={() => removerArquivo(indice)} style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', display: 'flex', padding: '0.5rem' }}>
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
+          <fieldset hidden={etapa !== 1} disabled={etapa !== 1 || enviando} className="secao-form">
+            <div className="campo-grupo">
+              <label htmlFor="solicitacao-titulo" className="rotulo">O que você precisa?</label>
+              <input id="solicitacao-titulo" name="titulo" required minLength={5} value={formulario.titulo} onChange={alterarCampo} placeholder="Ex.: Instalação de 3 tomadas na cozinha" className="campo" style={{ fontWeight: 600 }} aria-describedby="solicitacao-titulo-ajuda" />
+              <span id="solicitacao-titulo-ajuda" className="ajuda">Um título curto e direto, com pelo menos 5 caracteres.</span>
             </div>
+            <div className="grade-campos">
+              <div className="campo-grupo">
+                <label htmlFor="solicitacao-categoria" className="rotulo">Categoria</label>
+                <select id="solicitacao-categoria" name="categoria" value={formulario.categoria} onChange={alterarCampo} className="campo">
+                  <option value="">Selecione...</option>
+                  {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="solicitacao-prazo" className="rotulo">Para quando? <span className="opcional">(dias, opcional)</span></label>
+                <input id="solicitacao-prazo" name="prazo_desejado_dias" type="number" min={1} max={365} value={formulario.prazo_desejado_dias} onChange={alterarCampo} placeholder="Ex.: 7" className="campo" />
+              </div>
+            </div>
+
+            <div className="campo-grupo">
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <label htmlFor="descricao-solicitacao" className="rotulo">Descreva o serviço</label>
+                <span className="ajuda" style={{ color: tamanhoDescricao >= 20 ? 'var(--success-strong)' : undefined }} aria-live="polite">
+                  {tamanhoDescricao >= 20 ? `${tamanhoDescricao} caracteres · ok` : `${tamanhoDescricao} de 20 caracteres mínimos`}
+                </span>
+              </div>
+              <textarea
+                id="descricao-solicitacao" name="descricao" required minLength={20} rows={5} className="campo"
+                value={formulario.descricao} onChange={alterarCampo} aria-describedby="descricao-ajuda"
+                placeholder="Ex.: A pia da cozinha está entupindo há 3 dias, mesmo depois de usar desentupidor. É um apartamento, o ralo fica embaixo da pia. Preciso resolver ainda essa semana."
+              />
+              <span id="descricao-ajuda" className="ajuda">
+                Quanto mais completo, menos idas e vindas: conte <strong>o que precisa ser feito</strong>, <strong>desde quando</strong> é um problema e <strong>detalhes que ajudem a orçar</strong> (tamanho, quantidade, marca/modelo, se já tentou algo).
+              </span>
+            </div>
+
+            <div className="grade-campos">
+              <div className="campo-grupo">
+                <label htmlFor="solicitacao-cidade" className="rotulo">Cidade</label>
+                <input id="solicitacao-cidade" name="cidade" value={formulario.cidade} onChange={alterarCampo} placeholder="Ex.: São Paulo" className="campo" />
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="solicitacao-bairro" className="rotulo">Bairro</label>
+                <input id="solicitacao-bairro" name="bairro" value={formulario.bairro} onChange={alterarCampo} placeholder="Ex.: Pinheiros" className="campo" />
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="solicitacao-orcamento" className="rotulo">Quanto pretende pagar? <span className="opcional">(opcional)</span></label>
+                <div className="campo-com-prefixo">
+                  <span aria-hidden="true">R$</span>
+                  <input id="solicitacao-orcamento" name="orcamento_cliente" type="number" min={0} step="0.01" value={formulario.orcamento_cliente} onChange={alterarCampo} placeholder="0,00" className="campo" />
+                </div>
+              </div>
+            </div>
+            <p className="ajuda" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <MapPin size={14} aria-hidden="true" /> Só a cidade e o bairro aparecem no pedido. O endereço completo você combina no chat com quem contratar.
+            </p>
+          </fieldset>
+
+          {/* ── Upload de anexos ─────────────────── */}
+          <div hidden={etapa !== 2} className="empilhado">
+            <div>
+              <h2 className="titulo-secao" style={{ marginBottom: '0.25rem' }}>Fotos e documentos <span className="opcional" style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-secondary)' }}>(opcional)</span></h2>
+              <p className="texto-apoio">Até {MAX_ARQUIVOS} arquivos de {MAX_TAMANHO_MB}MB cada. Fotos do local ajudam o prestador a orçar sem visita.</p>
+            </div>
+            <div
+              role="button" tabIndex={0} aria-label="Selecionar fotos ou documentos"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
+              onDragOver={(e) => { e.preventDefault(); setArrastando(true); }}
+              onDragLeave={() => setArrastando(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: `2px dashed ${arrastando ? 'var(--accent-indigo)' : 'var(--card-border)'}`,
+                borderRadius: '14px', padding: '2.25rem 1rem', textAlign: 'center',
+                background: arrastando ? 'var(--primary-tint-soft)' : 'var(--bg-color)',
+                cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
+              }}
+            >
+              <UploadCloud size={30} color="var(--link-color)" style={{ marginBottom: '0.5rem' }} aria-hidden="true" />
+              <p style={{ color: 'var(--text-body)', fontSize: '0.95rem', fontWeight: 600 }}>Arraste arquivos aqui ou clique para selecionar</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>JPEG, PNG, WEBP ou PDF</p>
+              <input
+                ref={fileInputRef} type="file" multiple hidden
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={(e) => e.target.files && adicionarArquivos(e.target.files)}
+              />
+            </div>
+
+            {arquivos.length > 0 && (
+              <ul className="lista-simples" style={{ gap: '0.5rem' }}>
+                {arquivos.map((arquivo, indice) => (
+                  <li key={`${arquivo.name}-${indice}`} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'var(--bg-color)', border: '1px solid var(--card-border)', borderRadius: '10px', padding: '0.4rem 0.5rem 0.4rem 0.9rem' }}>
+                    {arquivo.type === 'application/pdf' ? <FileText size={16} color="var(--danger-strong)" aria-hidden="true" /> : <ImageIcon size={16} color="var(--text-secondary)" aria-hidden="true" />}
+                    <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--text-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{arquivo.name}</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{(arquivo.size / 1024 / 1024).toFixed(1)}MB</span>
+                    <button type="button" aria-label={`Remover ${arquivo.name}`} onClick={() => removerArquivo(indice)} className="btn btn-texto perigo" style={{ minWidth: '44px', padding: 0 }}>
+                      <X size={16} aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {etapa === 3 && (
+            <section aria-label="Revisão da solicitação" className="empilhado" style={{ overflowWrap: 'anywhere' }}>
+              <h2 className="titulo-secao">Confira antes de publicar</h2>
+              <dl className="dados">
+                {[
+                  ['Título', formulario.titulo], ['Categoria', formulario.categoria || 'Não informada'],
+                  ['Local', [formulario.cidade, formulario.bairro].filter(Boolean).join(' — ') || 'Não informado'],
+                  ['Prazo desejado', formulario.prazo_desejado_dias ? `${formulario.prazo_desejado_dias} dias` : 'A combinar'],
+                  ['Orçamento', formulario.orcamento_cliente ? formatarReais(formulario.orcamento_cliente) : 'A combinar'],
+                  ['Anexos', arquivos.map(a => a.name).join(', ') || 'Nenhum arquivo'],
+                ].map(([nome, valor]) => <div key={nome}><dt>{nome}</dt><dd>{valor}</dd></div>)}
+              </dl>
+              <div className="dados" style={{ gridTemplateColumns: '1fr' }}>
+                <div><dt>Descrição</dt><dd style={{ whiteSpace: 'pre-wrap', fontWeight: 400, lineHeight: 1.55 }}>{formulario.descricao}</dd></div>
+              </div>
+            </section>
           )}
-        </div>
 
-        {etapa === 3 && (
-          <section aria-label="Revisão da solicitação" style={{ overflowWrap: 'anywhere' }}>
-            <h2 style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>Confira antes de publicar</h2>
-            <dl style={{ display: 'grid', gap: '0.75rem' }}>
-              {[
-                ['Título', formulario.titulo], ['Categoria', formulario.categoria || 'Não informada'],
-                ['Local', [formulario.cidade, formulario.bairro].filter(Boolean).join(' — ') || 'Não informado'],
-                ['Prazo desejado', formulario.prazo_desejado_dias ? `${formulario.prazo_desejado_dias} dias` : 'A combinar'],
-                ['Orçamento', formulario.orcamento_cliente ? Number(formulario.orcamento_cliente).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'A combinar'],
-                ['Descrição', formulario.descricao], ['Anexos', arquivos.map(a => a.name).join(', ') || 'Nenhum arquivo'],
-              ].map(([nome, valor]) => <div key={nome}><dt style={{ color: '#94a3b8' }}>{nome}</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{valor}</dd></div>)}
-            </dl>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.75rem', borderTop: '1px solid var(--card-border)' }}>
+            {etapa > 1
+              ? <button type="button" disabled={enviando} onClick={() => { setErro(''); setEtapa(etapa - 1); }} className="btn btn-secundario"><ArrowLeft size={16} aria-hidden="true" /> Voltar à etapa anterior</button>
+              : <Link href="/minhas-solicitacoes" className="btn btn-texto discreto">Cancelar</Link>}
+            <button type="submit" disabled={enviando} className="btn btn-primario btn-grande">
+              {etapa === 3 ? <CheckCircle size={18} aria-hidden="true" /> : null}
+              {enviando ? 'Publicando...' : etapa === 3 ? 'Publicar solicitação' : etapa === 1 ? 'Continuar para fotos' : 'Revisar pedido'}
+              {etapa < 3 ? <ArrowRight size={16} aria-hidden="true" /> : null}
+            </button>
+          </div>
+        </form>
+
+        <aside className="lateral">
+          <span className="rotulo-area" style={{ color: 'var(--text-secondary)' }}>Prévia — como os prestadores verão</span>
+          <div className="card empilhado" style={{ gap: '0.6rem' }}>
+            <div className="chips">
+              <Chip cor={STATUS_SOLICITACAO.ABERTA} />
+              {formulario.categoria && <span className="chip categoria">{formulario.categoria}</span>}
+            </div>
+            <strong style={{ fontSize: '1rem', lineHeight: 1.35, overflowWrap: 'anywhere', color: formulario.titulo.trim() ? undefined : 'var(--text-muted)' }}>
+              {formulario.titulo.trim() || 'O título do seu pedido aparece aqui'}
+            </strong>
+            <span className="texto-apoio" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.82rem' }}>
+              <MapPin size={14} aria-hidden="true" /> {local || 'Local não informado'}
+            </span>
+            <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', paddingTop: '0.6rem', borderTop: '1px solid var(--card-border)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              Orçamento do cliente <strong style={{ color: 'var(--text-primary)' }}>{formulario.orcamento_cliente ? formatarReais(formulario.orcamento_cliente) : 'A combinar'}</strong>
+            </span>
+          </div>
+          <section className="card destaque empilhado" style={{ gap: '0.6rem' }}>
+            <h2 className="titulo-cartao" style={{ fontSize: '0.95rem' }}>Dicas para receber boas propostas</h2>
+            <ul style={{ paddingLeft: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', lineHeight: 1.5, color: 'var(--text-body)' }}>
+              <li>Fotos do local ajudam o prestador a orçar sem visita.</li>
+              <li>Informar um valor de referência evita propostas fora da sua realidade.</li>
+              <li>Você pode responder perguntas dos prestadores depois de publicar.</li>
+            </ul>
           </section>
-        )}
-        {etapa > 1 && <button type="button" disabled={enviando} onClick={() => { setErro(''); setEtapa(etapa - 1); }} style={{ ...estiloInput, cursor: 'pointer', padding: '0.75rem' }}>Voltar à etapa anterior</button>}
-        <button type="submit" disabled={enviando} style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-          padding: '0.9rem', background: enviando ? '#475569' : '#3b82f6', color: '#fff',
-          border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.95rem',
-          cursor: enviando ? 'not-allowed' : 'pointer', marginTop: '0.5rem',
-        }}>
-          <CheckCircle size={18} /> {enviando ? 'Publicando...' : etapa === 3 ? 'Publicar solicitação' : 'Continuar'}
-        </button>
-      </form>
-    </main>
-  );
-}
-
-function Campo({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
-  const campo = React.isValidElement<{ name?: string; id?: string }>(children) ? children : null;
-  const id = campo?.props.id || `solicitacao-${campo?.props.name}`;
-  return (
-    <div>
-      <label htmlFor={id} style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-        {label}
-      </label>
-      <div style={{ position: 'relative' }}>
-        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', display: 'flex' }}>
-          {icon}
-        </span>
-        {campo ? React.cloneElement(campo, { id }) : children}
+        </aside>
       </div>
-    </div>
+    </Pagina>
   );
 }
-
-const estiloInput: React.CSSProperties = {
-  width: '100%',
-  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-  background: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: '8px',
-  color: '#fff',
-  fontSize: '0.95rem',
-};

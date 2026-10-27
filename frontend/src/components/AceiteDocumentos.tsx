@@ -1,18 +1,62 @@
 'use client';
-/** React 18: dois sinais distintos, sem pré-seleção nem consentimento genérico.
- * https://react.dev/reference/react-dom/components/input
- * Next.js 14 Link: abrir documento sem perder o formulário. https://nextjs.org/docs/14/app/api-reference/components/link */
+
+/**
+ * @file AceiteDocumentos.tsx
+ * @description Seção "Termos e privacidade" dos cadastros (US40), no visual da US39: dois sinais
+ * distintos e desmarcados (aceite dos Termos de Uso e ciência da Política de Privacidade), sem
+ * consentimento genérico, com os documentos abrindo em outra aba para não perder o preenchimento.
+ *
+ * BIBLIOTECAS UTILIZADAS:
+ * 1. React (^18.3.1): Caixas de seleção controladas e `useId` para associar rótulos.
+ *    Doc Oficial: https://react.dev/reference/react-dom/components/input
+ * 2. Next.js (^14.2.3): Navegação com `Link`.
+ *    Doc Oficial: https://nextjs.org/docs/14/app/api-reference/components/link
+ * 3. Lucide React (^0.383.0): Ícone dos links externos.
+ *    Doc Oficial: https://lucide.dev/
+ */
+
+import { useId } from 'react';
 import Link from 'next/link';
-import estilosLegais from './legal.module.css';
+import { ArrowUpRight } from 'lucide-react';
 import documentos from '@/conteudo/documentos-legais.json';
-export default function AceiteDocumentos({ termos, ciencia, alterarTermos, alterarCiencia }: {
- termos: boolean; ciencia: boolean; alterarTermos: (valor: boolean)=>void; alterarCiencia: (valor: boolean)=>void;
-}) {
- return <fieldset className={estilosLegais.conteudo} style={{ padding: '1rem', border: '1px solid var(--card-border)', borderRadius: 8, margin: '1rem 0', lineHeight: 1.6 }}>
-  <legend>Documentos do cadastro</legend>
-  <p><Link href={documentos.termos_url} target="_blank" rel="noopener noreferrer">Ler Termos de Uso</Link> · <Link href={documentos.privacidade_url} target="_blank" rel="noopener noreferrer">Ler Política de Privacidade</Link> (abrem em outra aba)</p>
-  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', marginTop: '.75rem' }}><input type="checkbox" checked={termos} onChange={e=>alterarTermos(e.target.checked)} />Aceito os Termos de Uso, versão {documentos.versao_termos}.</label>
-  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '.5rem', marginTop: '.75rem' }}><input type="checkbox" checked={ciencia} onChange={e=>alterarCiencia(e.target.checked)} />Li a Política de Privacidade, versão {documentos.versao_privacidade}, e estou ciente do tratamento descrito.</label>
-  <p style={{ fontSize: '.85rem', marginTop: '.75rem' }}>A ciência da Política não autoriza qualquer uso dos seus dados. Pedidos e dúvidas podem ser enviados pela <Link href="/privacidade" target="_blank" rel="noopener noreferrer">Central de Privacidade</Link>.</p>
- </fieldset>;
+
+interface AceiteDocumentosProps {
+  /** Número da seção no formulário, seguindo as seções numeradas do cadastro. */
+  numero?: number;
+  termos: boolean;
+  ciencia: boolean;
+  alterarTermos: (valor: boolean) => void;
+  alterarCiencia: (valor: boolean) => void;
+}
+
+export default function AceiteDocumentos({ numero, termos, ciencia, alterarTermos, alterarCiencia }: AceiteDocumentosProps) {
+  const id = useId();
+  return (
+    <fieldset className="secao-form">
+      <legend>{numero ? `${numero}. ` : ''}Termos e privacidade</legend>
+      <p className="texto-apoio" style={{ fontSize: '0.875rem', lineHeight: 1.55 }}>
+        Leia os documentos antes de criar a conta. Eles abrem em outra aba, sem perder o que você já preencheu.
+      </p>
+      <div className="grupo-botoes">
+        <Link href={documentos.termos_url} target="_blank" rel="noopener noreferrer" className="btn btn-secundario">
+          Termos de Uso <ArrowUpRight size={15} aria-hidden="true" /><span className="sr-only"> (abre em outra aba)</span>
+        </Link>
+        <Link href={documentos.privacidade_url} target="_blank" rel="noopener noreferrer" className="btn btn-secundario">
+          Política de Privacidade <ArrowUpRight size={15} aria-hidden="true" /><span className="sr-only"> (abre em outra aba)</span>
+        </Link>
+      </div>
+      <label htmlFor={`${id}-termos`} className="caixa-opcao">
+        <input type="checkbox" id={`${id}-termos`} checked={termos} onChange={(e) => alterarTermos(e.target.checked)} />
+        <span>Aceito os Termos de Uso, versão {documentos.versao_termos}.</span>
+      </label>
+      <label htmlFor={`${id}-ciencia`} className="caixa-opcao">
+        <input type="checkbox" id={`${id}-ciencia`} checked={ciencia} onChange={(e) => alterarCiencia(e.target.checked)} />
+        <span>Li a Política de Privacidade, versão {documentos.versao_privacidade}, e estou ciente do tratamento descrito.</span>
+      </label>
+      <p className="ajuda">
+        A ciência da Política não autoriza qualquer uso dos seus dados. Os direitos de titular previstos na LGPD (Lei nº 13.709/2018) podem ser exercidos pela{' '}
+        <Link href="/privacidade" target="_blank" rel="noopener noreferrer">Central de Privacidade</Link>.
+      </p>
+    </fieldset>
+  );
 }

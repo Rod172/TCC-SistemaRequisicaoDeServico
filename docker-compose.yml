@@ -8,7 +8,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: tcc_servico_facil
+      MYSQL_DATABASE: tcc_eloserv
     ports:
       - '3306:3306'
     volumes:
@@ -35,7 +35,7 @@ services:
       DB_HOST: db
       DB_USER: root
       DB_PASSWORD: root
-      DB_NAME: tcc_servico_facil
+      DB_NAME: tcc_eloserv
       DB_PORT: 3306
       NODE_ENV: development
     volumes:
@@ -60,6 +60,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      # Diagramas lidos pela página /arquitetura (US41).
+      - ./docs/diagramas:/docs/diagramas:ro
     depends_on:
       - backend
     command: npm run dev

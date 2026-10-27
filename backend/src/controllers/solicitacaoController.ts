@@ -397,6 +397,8 @@ export class SolicitacaoController {
    *         description: Usuário não participa desta contratação.
    *       404:
    *         description: Solicitação não encontrada ou não está contratada.
+   *       409:
+   *         description: O pagamento simulado da proposta aceita ainda não está retido em custódia, ou a custódia não corresponde à contratação atual.
    */
   async concluir(req: Request, res: Response): Promise<Response> {
     try {

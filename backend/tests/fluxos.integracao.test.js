@@ -250,6 +250,7 @@ describe('US26 — chat privado e avaliação', () => {
   await avaliar(dono).expect(409);
   expect(await Avaliacao.count({ where: { solicitacao_id: id } })).toBe(0);
   await autenticar(request(app).patch(`/api/v1/solicitacoes/${id}/concluir`), outro).expect(403);
+  await pagar(id).expect(200);
   await autenticar(request(app).patch(`/api/v1/solicitacoes/${id}/concluir`), dono).expect(200);
   await avaliar(outro).expect(404); await avaliar(prestador).expect(404);
   await avaliar(dono, 6).expect(400);
@@ -423,6 +424,39 @@ describe('US26 — retenção, reembolso e nova contratação', () => {
   expect(liberada.proposta_id).toBe(novaId);
   expect(await TransacaoCustodia.count({ where: { solicitacao_id: id } })).toBe(1);
  });
+ test('conclusão sem pagamento simulado retorna 409 para as duas partes e mantém a contratação', async () => {
+  const { id, propostaId } = await contratacao();
+  const notificacoes = await Notificacao.count({ where: { titulo: 'Serviço concluído' } });
+  for (const ator of [dono, prestador]) {
+   const resposta = await concluir(id, ator).expect(409);
+   expect(resposta.body.message).toMatch(/pagamento simulado/);
+  }
+  expect((await Solicitacao.findByPk(id)).status).toBe('CONTRATADA');
+  expect((await Proposta.findByPk(propostaId)).status).toBe('ACEITA');
+  expect(await custodia(id)).toBeNull();
+  expect(await Notificacao.count({ where: { titulo: 'Serviço concluído' } })).toBe(notificacoes);
+  await pagar(id).expect(200); await concluir(id, prestador).expect(200);
+  expect((await custodia(id)).status_pagamento).toBe('LIBERADO');
+ });
+ test('custódia reembolsada da contratação anterior não autoriza concluir a nova', async () => {
+  const { id } = await contratacao(); await pagar(id).expect(200); await cancelarContratacao(id).expect(200);
+  const resposta = await enviar(id, terceiroPrestador, { ...propostaValida, valor: 430 }).expect(201);
+  await aceitar(id, resposta.body.dados.id).expect(200);
+  await concluir(id, terceiroPrestador).expect(409);
+  expect((await custodia(id)).status_pagamento).toBe('REEMBOLSADO');
+  expect((await Solicitacao.findByPk(id)).status).toBe('CONTRATADA');
+  await pagar(id).expect(200); await concluir(id, terceiroPrestador).expect(200);
+ });
+ test('detalhe da oportunidade informa o pagamento só ao prestador contratado', async () => {
+  const { id } = await contratacao();
+  const detalhe = ator => autenticar(request(app).get(`/api/v1/prestador/oportunidades/${id}`), ator).expect(200);
+  expect((await detalhe(prestador)).body.dados.pagamento_contratacao).toBeNull();
+  await pagar(id).expect(200);
+  expect((await detalhe(prestador)).body.dados.pagamento_contratacao).toBe('RETIDO');
+  expect((await detalhe(outro)).body.dados.pagamento_contratacao).toBeNull();
+  const publico = await request(app).get(`/api/v1/prestador/oportunidades/${id}`).expect(200);
+  expect(publico.body.dados.pagamento_contratacao).toBeNull();
+ });
  test('conclusão libera custódia uma vez e impede reembolso ou nova retenção', async () => {
   const { id } = await contratacao(); await pagar(id).expect(200); await concluir(id, prestador).expect(200);
   const antes = (await custodia(id)).toJSON(); expect(antes.status_pagamento).toBe('LIBERADO');
@@ -450,7 +484,7 @@ describe('US26 — transições e avaliações concorrentes', () => {
   }
  });
  test('duas avaliações simultâneas da mesma solicitação gravam uma só e uma reputação correta', async () => {
-  const { id } = await contratacao(); await concluir(id).expect(200);
+  const { id } = await contratacao(); await pagar(id).expect(200); await concluir(id).expect(200);
   const avaliar = nota => autenticar(request(app).post(`/api/v1/solicitacoes/${id}/avaliar`), dono).send({ nota });
   const respostas = await Promise.all([avaliar(2), avaliar(5)]);
   expect(respostas.map(r => r.status).sort()).toEqual([201, 409]);
@@ -464,6 +498,7 @@ describe('US26 — transições e avaliações concorrentes', () => {
  });
  test('avaliações de serviços distintos para o mesmo prestador não perdem atualização da média', async () => {
   const primeira = await contratacao(); const segunda = await contratacao();
+  await pagar(primeira.id).expect(200); await pagar(segunda.id).expect(200);
   await concluir(primeira.id).expect(200); await concluir(segunda.id).expect(200);
   const avaliar = (id, nota) => autenticar(request(app).post(`/api/v1/solicitacoes/${id}/avaliar`), dono).send({ nota });
   const respostas = await Promise.all([avaliar(primeira.id, 1), avaliar(segunda.id, 5)]);

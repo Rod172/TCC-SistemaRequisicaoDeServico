@@ -3,7 +3,11 @@
 /**
  * @file register-solicitante/page.tsx
  * @description Formulário de cadastro de usuário Solicitante (Cliente) em Next.js 14 / React com TypeScript.
- * 
+ * Organizado em seções numeradas (US39), com erros de CPF, senha e confirmação mostrados embaixo
+ * do próprio campo e a regra real da senha (mínimo de 8 caracteres, a mesma do backend) visível.
+ * Desde a US40, o aceite dos Termos de Uso e a ciência da Política de Privacidade são dois sinais
+ * separados, enviados com as versões vigentes dos documentos.
+ *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones para campos do formulário.
  *    Doc Oficial: https://lucide.dev/
@@ -14,14 +18,18 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText } from 'lucide-react';
+import { AlertCircle, ArrowRight, Check, Lock } from 'lucide-react';
 import api from '@/services/api';
+import { normalizarDocumento, validarCPF } from '@/utils/documento';
+import Pagina, { CabecalhoPagina } from '@/components/ui/Pagina';
+import { Aviso } from '@/components/ui/Elementos';
 import AceiteDocumentos from '@/components/AceiteDocumentos';
 import documentos from '@/conteudo/documentos-legais.json';
-import { normalizarDocumento, validarCPF } from '@/utils/documento';
+
+/** Mesmo mínimo exigido pelo backend no cadastro (authService). */
+const SENHA_MINIMA = 8;
 
 export default function RegisterSolicitantePage() {
-  const [privacidadeCiente, setPrivacidadeCiente] = useState(false);
   const router = useRouter();
   const [formData, setFormData] = useState({
     nome: '',
@@ -31,8 +39,11 @@ export default function RegisterSolicitantePage() {
     endereco: '',
     senha: '',
     confirmarSenha: '',
-    termoLgpdAceito: false,
+    termosAceitos: false,
   });
+  // Ciência da Política separada do aceite dos Termos (US40): nenhum dos dois vem marcado.
+  const [privacidadeCiente, setPrivacidadeCiente] = useState(false);
+  const [cpfTocado, setCpfTocado] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -46,6 +57,10 @@ export default function RegisterSolicitantePage() {
     }));
   };
 
+  const cpfInvalido = cpfTocado && formData.cpf.trim() !== '' && !validarCPF(formData.cpf);
+  const faltamNaSenha = Math.max(0, SENHA_MINIMA - formData.senha.length);
+  const senhasDiferentes = formData.confirmarSenha !== '' && formData.senha !== formData.confirmarSenha;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -53,17 +68,23 @@ export default function RegisterSolicitantePage() {
 
     // Impede o envio de CPF inválido antes de iniciar a requisição de cadastro.
     if (!validarCPF(formData.cpf)) {
+      setCpfTocado(true);
       setErrorMsg('CPF inválido. Confira os 11 dígitos e tente novamente.');
       return;
     }
 
     // Validações no cliente
+    if (formData.senha.length < SENHA_MINIMA) {
+      setErrorMsg(`A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.`);
+      return;
+    }
+
     if (formData.senha !== formData.confirmarSenha) {
       setErrorMsg('As senhas digitadas não coincidem.');
       return;
     }
 
-    if (!formData.termoLgpdAceito || !privacidadeCiente) {
+    if (!formData.termosAceitos || !privacidadeCiente) {
       setErrorMsg('Aceite os Termos de Uso e confirme a leitura da Política de Privacidade para prosseguir.');
       return;
     }
@@ -78,7 +99,7 @@ export default function RegisterSolicitantePage() {
         telefone: formData.telefone,
         endereco: formData.endereco,
         senha: formData.senha,
-        termos_uso_aceitos: formData.termoLgpdAceito,
+        termos_uso_aceitos: formData.termosAceitos,
         privacidade_ciente: privacidadeCiente,
         termos_uso_versao: documentos.versao_termos,
         privacidade_versao: documentos.versao_privacidade,
@@ -99,302 +120,104 @@ export default function RegisterSolicitantePage() {
   };
 
   return (
-    <main style={{ maxWidth: '650px', margin: '2rem auto', padding: '0 1.5rem' }}>
-      <Link href="/" style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        marginBottom: '1.5rem',
-        color: 'var(--text-secondary)',
-        fontSize: '0.9rem'
-      }}>
-        <ArrowLeft size={16} />
-        Voltar para a página inicial
-      </Link>
+    <Pagina largura="estreita">
+      <CabecalhoPagina
+        voltar={{ href: '/', rotulo: 'Página inicial' }}
+        area="Conta de cliente"
+        titulo="Criar conta para contratar serviços"
+        subtitulo="Leva menos de 2 minutos. Depois é só publicar o que você precisa."
+        acoes={<Link href="/register-prestador" className="btn btn-secundario">Sou prestador de serviço <ArrowRight size={16} aria-hidden="true" /></Link>}
+      />
 
-      <div style={{
-        background: 'var(--card-bg)',
-        border: '1px solid var(--card-border)',
-        borderRadius: 'var(--border-radius)',
-        padding: 'clamp(1.25rem, 6vw, 2.5rem) clamp(1rem, 5vw, 2rem)',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            background: 'rgba(59, 130, 246, 0.15)',
-            color: 'var(--primary-color)',
-            marginBottom: '1rem'
-          }}>
-            <User size={24} />
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Cadastro de Solicitante
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            Crie sua conta de Cliente para publicar solicitações e receber orçamentos de prestadores.
-          </p>
-        </div>
-
-        {errorMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--danger-color)',
-            color: '#fca5a5',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            fontSize: '0.9rem'
-          }}>
-            <AlertCircle size={20} style={{ flexShrink: 0 }} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {successMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid var(--accent-color)',
-            color: '#6ee7b7',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            fontSize: '0.9rem'
-          }}>
-            <CheckCircle size={20} style={{ flexShrink: 0 }} />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Nome Completo */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-              Nome Completo *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <User size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+      <div className="layout-lateral">
+        <form onSubmit={handleSubmit} className="principal card grande" style={{ gap: '1.75rem' }}>
+          <fieldset className="secao-form">
+            <legend>1. Seus dados</legend>
+            <div className="campo-grupo">
+              <label htmlFor="cad-nome" className="rotulo">Nome completo</label>
+              <input id="cad-nome" type="text" name="nome" required autoComplete="name" className="campo" value={formData.nome} onChange={handleChange} placeholder="Ex.: Carlos Eduardo Silva" />
+            </div>
+            <div className="campo-grupo">
+              <label htmlFor="cad-cpf" className="rotulo">CPF</label>
               <input
-                type="text"
-                name="nome"
-                required
-                value={formData.nome}
-                onChange={handleChange}
-                placeholder="Ex: Carlos Eduardo Silva"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                  background: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '0.95rem'
-                }}
+                id="cad-cpf" type="text" name="cpf" required inputMode="numeric" className="campo"
+                value={formData.cpf} onChange={handleChange} onBlur={() => setCpfTocado(true)} placeholder="123.456.789-00"
+                aria-invalid={cpfInvalido} aria-describedby={cpfInvalido ? 'cad-cpf-erro cad-cpf-ajuda' : 'cad-cpf-ajuda'}
               />
+              {cpfInvalido && <span id="cad-cpf-erro" className="erro-campo"><AlertCircle size={14} aria-hidden="true" />CPF inválido: confira os 11 dígitos.</span>}
+              <span id="cad-cpf-ajuda" className="ajuda">Usado só para validar sua identidade. Não aparece para os prestadores.</span>
             </div>
+          </fieldset>
+
+          <fieldset className="secao-form">
+            <legend>2. Contato</legend>
+            <div className="grade-campos">
+              <div className="campo-grupo">
+                <label htmlFor="cad-email" className="rotulo">E-mail</label>
+                <input id="cad-email" type="email" name="email" required autoComplete="email" className="campo" value={formData.email} onChange={handleChange} placeholder="voce@email.com" />
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="cad-tel" className="rotulo">Telefone / WhatsApp</label>
+                <input id="cad-tel" type="tel" name="telefone" required autoComplete="tel" className="campo" value={formData.telefone} onChange={handleChange} placeholder="(16) 99876-5432" />
+              </div>
+            </div>
+            <div className="campo-grupo">
+              <label htmlFor="cad-end" className="rotulo">Endereço <span className="opcional">(opcional)</span></label>
+              <input id="cad-end" type="text" name="endereco" autoComplete="street-address" className="campo" value={formData.endereco} onChange={handleChange} placeholder="Rua, número, bairro" aria-describedby="cad-end-ajuda" />
+              <span id="cad-end-ajuda" className="ajuda">Você também informa o local em cada pedido, então pode deixar em branco.</span>
+            </div>
+          </fieldset>
+
+          <fieldset className="secao-form">
+            <legend>3. Acesso</legend>
+            <div className="grade-campos">
+              <div className="campo-grupo">
+                <label htmlFor="cad-senha" className="rotulo">Senha</label>
+                <input id="cad-senha" type="password" name="senha" required minLength={SENHA_MINIMA} autoComplete="new-password" className="campo" value={formData.senha} onChange={handleChange} aria-describedby="cad-senha-regra" />
+                <span id="cad-senha-regra" className="ajuda" style={{ color: formData.senha && faltamNaSenha === 0 ? 'var(--success-strong)' : undefined }}>
+                  {formData.senha === '' ? `No mínimo ${SENHA_MINIMA} caracteres.` : faltamNaSenha > 0 ? `Faltam ${faltamNaSenha} caracteres.` : 'Tamanho ok.'}
+                </span>
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="cad-senha2" className="rotulo">Confirmar senha</label>
+                <input id="cad-senha2" type="password" name="confirmarSenha" required autoComplete="new-password" className="campo" value={formData.confirmarSenha} onChange={handleChange} aria-invalid={senhasDiferentes} aria-describedby={senhasDiferentes ? 'cad-senha2-erro' : undefined} />
+                {senhasDiferentes && <span id="cad-senha2-erro" className="erro-campo"><AlertCircle size={14} aria-hidden="true" />As senhas não coincidem.</span>}
+              </div>
+            </div>
+          </fieldset>
+
+          <AceiteDocumentos
+            numero={4} termos={formData.termosAceitos} ciencia={privacidadeCiente}
+            alterarTermos={(valor) => setFormData((prev) => ({ ...prev, termosAceitos: valor }))}
+            alterarCiencia={setPrivacidadeCiente}
+          />
+
+          {errorMsg && <Aviso tipo="erro">{errorMsg}</Aviso>}
+          {successMsg && <Aviso tipo="sucesso">{successMsg}</Aviso>}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button type="submit" disabled={loading} className="btn btn-primario btn-grande btn-bloco">
+              {loading ? 'Criando conta...' : 'Criar minha conta'}
+            </button>
+            <span className="texto-apoio" style={{ textAlign: 'center' }}>Já tem conta? <Link href="/login" style={{ fontWeight: 600 }}>Entrar</Link></span>
           </div>
-
-          {/* E-mail e CPF (2 Colunas) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                E-mail *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="carlos@email.com"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                CPF *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Shield size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="text"
-                  name="cpf"
-                  required
-                  value={formData.cpf}
-                  onChange={handleChange}
-                  placeholder="123.456.789-00"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Telefone e Endereço */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Telefone / WhatsApp *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Phone size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="text"
-                  name="telefone"
-                  required
-                  value={formData.telefone}
-                  onChange={handleChange}
-                  placeholder="(16) 99876-5432"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Endereço
-              </label>
-              <div style={{ position: 'relative' }}>
-                <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="text"
-                  name="endereco"
-                  value={formData.endereco}
-                  onChange={handleChange}
-                  placeholder="Rua, número, bairro"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Senha e Confirmar Senha */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Senha *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="password"
-                  name="senha"
-                  required
-                  value={formData.senha}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Confirmar Senha *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="password"
-                  name="confirmarSenha"
-                  required
-                  value={formData.confirmarSenha}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Checkbox Termo LGPD */}
-          <AceiteDocumentos termos={formData.termoLgpdAceito} ciencia={privacidadeCiente}
-              alterarTermos={valor => setFormData(prev => ({ ...prev, termoLgpdAceito: valor }))}
-              alterarCiencia={setPrivacidadeCiente} />
-
-          {/* Botão de Submissão */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: '1rem',
-              padding: '0.875rem',
-              background: loading ? '#475569' : 'var(--primary-color)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '1rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background var(--transition-speed)'
-            }}
-          >
-            {loading ? 'Cadastrando...' : 'Finalizar Cadastro de Solicitante'}
-          </button>
         </form>
+
+        <aside className="lateral">
+          <section className="card destaque empilhado" style={{ gap: '0.75rem' }}>
+            <h2 className="titulo-cartao">Com a conta você pode</h2>
+            <ul className="lista-simples" style={{ gap: '0.6rem', fontSize: '0.9rem', color: 'var(--text-body)' }}>
+              {['Publicar pedidos com fotos', 'Comparar propostas lado a lado', 'Negociar valores pelo chat', 'Pagar com garantia e avaliar'].map((item) => (
+                <li key={item} style={{ display: 'flex', gap: '0.5rem' }}><Check size={18} color="var(--success-strong)" aria-hidden="true" style={{ flexShrink: 0 }} />{item}</li>
+              ))}
+            </ul>
+          </section>
+          <section className="card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', background: 'transparent' }}>
+            <Lock size={20} color="var(--brand-sky)" aria-hidden="true" style={{ flexShrink: 0 }} />
+            <p className="texto-apoio" style={{ fontSize: '0.82rem', lineHeight: 1.55 }}>Sua senha é guardada com criptografia (bcrypt) e nunca é exibida. Você pode desativar a conta quando quiser, em Meu perfil › Desativar conta.</p>
+          </section>
+        </aside>
       </div>
-    </main>
+    </Pagina>
   );
 }

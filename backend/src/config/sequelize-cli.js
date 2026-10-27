@@ -15,7 +15,7 @@ module.exports = {
   development: {
     username: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'tcc_servico_facil',
+    database: process.env.DB_NAME || 'tcc_eloserv',
     host: process.env.DB_HOST || '127.0.0.1',
     port: Number(process.env.DB_PORT) || 3306,
     dialect: 'mysql',
@@ -27,14 +27,14 @@ module.exports = {
   test: {
     username: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME_TEST || 'tcc_servico_facil_test',
+    database: process.env.DB_NAME_TEST || 'tcc_eloserv_test',
     host: process.env.DB_HOST || '127.0.0.1',
     dialect: 'mysql'
   },
   production: {
     username: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'tcc_servico_facil',
+    database: process.env.DB_NAME || 'tcc_eloserv',
     host: process.env.DB_HOST || '127.0.0.1',
     dialect: 'mysql'
   }

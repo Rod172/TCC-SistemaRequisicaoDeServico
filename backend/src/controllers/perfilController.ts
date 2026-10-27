@@ -190,11 +190,13 @@ export class PerfilController {
    *                 type: string
    *               nova_senha:
    *                 type: string
+   *                 minLength: 8
+   *                 description: No mínimo 8 caracteres e no máximo 72 bytes UTF-8 (limite bcrypt).
    *     responses:
    *       200:
    *         description: Senha alterada com sucesso.
    *       400:
-   *         description: Senha atual incorreta.
+   *         description: Senha atual incorreta ou nova senha fora da regra de tamanho.
    *       401:
    *         description: Não autorizado.
    */
@@ -207,8 +209,9 @@ export class PerfilController {
         return res.status(400).json({ error: 'Bad Request', message: 'Informe a senha atual e a nova senha.' });
       }
 
-      if (nova_senha.length < 6) {
-        return res.status(400).json({ error: 'Bad Request', message: 'A nova senha deve ter no mínimo 6 caracteres.' });
+      // Mesma regra do cadastro (authService): 8 caracteres e no máximo 72 bytes, o limite do bcrypt.
+      if (typeof nova_senha !== 'string' || nova_senha.length < 8 || Buffer.byteLength(nova_senha, 'utf8') > 72) {
+        return res.status(400).json({ error: 'Bad Request', message: 'A nova senha deve ter pelo menos 8 caracteres e no máximo 72 bytes.' });
       }
 
       const usuario = await Usuario.findByPk(usuarioId);

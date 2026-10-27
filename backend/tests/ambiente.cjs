@@ -2,7 +2,7 @@
 function configurarAmbiente() {
  const banco = process.env.DB_NAME_TEST;
  if (!banco || !/^[a-zA-Z0-9_]+_test$/.test(banco)) {
-  throw new Error('Defina explicitamente DB_NAME_TEST=tcc_servico_facil_test; somente nomes com sufixo _test são permitidos.');
+  throw new Error('Defina explicitamente DB_NAME_TEST=tcc_eloserv_test; somente nomes com sufixo _test são permitidos.');
  }
  process.env.NODE_ENV = 'test';
  process.env.DB_NAME = banco;

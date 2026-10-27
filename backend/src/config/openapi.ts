@@ -104,7 +104,7 @@ export const schemas: Record<string, Schema> = {
   LoginDTO: objeto({ email: { type: 'string', format: 'email' }, senha: { type: 'string', format: 'password', writeOnly: true } }),
   AutenticacaoDTO: objeto({ token: texto, usuario: ref('UsuarioComPerfilDTO') }),
   AtualizarPerfilDTO: objeto({ nome: texto, telefone: texto, endereco: texto }, []),
-  AlterarSenhaDTO: objeto({ senha_atual: { type: 'string', format: 'password', writeOnly: true }, nova_senha: { type: 'string', format: 'password', writeOnly: true, minLength: 6 } }),
+  AlterarSenhaDTO: objeto({ senha_atual: { type: 'string', format: 'password', writeOnly: true }, nova_senha: { type: 'string', format: 'password', writeOnly: true, minLength: 8, description: 'No mínimo 8 caracteres e no máximo 72 bytes UTF-8 (limite bcrypt).' } }),
   FotoPerfilDTO: objeto({ foto: { ...binario, description: 'JPEG, PNG ou WEBP; até 5 MB.' } }),
   PreferenciaNotificacaoDTO: objeto({ tipo_evento: evento, ativo: booleano }),
   AtualizarPreferenciasDTO: objeto({ preferencias: { ...lista(ref('PreferenciaNotificacaoDTO')), minItems: 1 } }),
@@ -141,7 +141,9 @@ export const schemas: Record<string, Schema> = {
   OportunidadeResumoDTO: escolher(solicitacao, ['id', 'titulo', 'categoria', 'cidade', 'bairro', 'descricao', 'orcamento_cliente', 'status', 'created_at']),
   OportunidadeDTO: comCampos(escolher(solicitacao, ['id', 'titulo', 'categoria', 'cidade', 'bairro', 'descricao', 'orcamento_cliente', 'prazo_desejado_dias', 'status', 'motivo_cancelamento', 'created_at']),
     { solicitante: pessoa, anexos: lista(ref('AnexoSolicitacaoDTO')), perguntas: lista(ref('PerguntaDTO')),
-      pode_enviar_proposta: booleano, minha_proposta: { ...resumoProposta, nullable: true } }),
+      pode_enviar_proposta: booleano, minha_proposta: { ...resumoProposta, nullable: true },
+      pagamento_contratacao: { type: 'string', enum: ['RETIDO', 'LIBERADO', 'REEMBOLSADO'], nullable: true,
+        description: 'Situação da custódia, informada só ao prestador contratado; null antes do pagamento simulado (US17).' } }),
   MinhaPropostaDTO: comCampos(escolher(proposta, ['id', 'valor', 'prazo_dias', 'validade_ate', 'status', 'created_at']), { solicitacao: resumoSolicitacao }),
   PropostaComparacaoDTO: comCampos(proposta, { prestador: comCampos(pessoa,
     { perfil_prestador: { ...escolher(perfil, ['nota_media_reputacao', 'total_avaliacoes', 'descricao_bio', 'categorias']), nullable: true } }) }),
@@ -259,7 +261,7 @@ export function criarDocumentoOpenApi(): Schema {
   const documento = swaggerJsDoc({
     definition: {
       openapi: '3.0.0',
-      info: { title: 'API ServiçoFácil - Plataforma de Requisição de Serviços (TCC)', version: '1.0.0',
+      info: { title: 'API Eloserv - Plataforma de Requisição de Serviços (TCC)', version: '1.0.0',
         description: 'Contratos da API REST de serviços, propostas, comunicação, administração e indicadores pessoais.',
         contact: { name: 'Equipe de TCC (UNIP)' } },
       servers: [{ url: 'http://localhost:3001/api/v1', description: 'Servidor Local de Desenvolvimento' }],

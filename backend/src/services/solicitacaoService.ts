@@ -389,8 +389,9 @@ export class SolicitacaoService {
 
   /**
    * Marca uma solicitação `CONTRATADA` como `CONCLUIDA` (US17) — tanto o Solicitante quanto o
-   * Prestador contratado podem confirmar. Libera o valor retido em custódia (US13), se houver, e
-   * abre caminho pro Solicitante avaliar o serviço (US18). Notifica o outro lado da confirmação.
+   * Prestador contratado podem confirmar. Exige o pagamento simulado da proposta aceita retido em
+   * custódia (US13) e o libera ao prestador; abre caminho pro Solicitante avaliar o serviço (US18).
+   * Notifica o outro lado da confirmação.
    */
   async concluir(usuarioId: string, solicitacaoId: string) {
     return sequelize.transaction(async (transaction) => {
@@ -418,8 +419,6 @@ export class SolicitacaoService {
         throw new HttpError(403, 'Você não participa desta contratação.');
       }
 
-      await solicitacao.update({ status: 'CONCLUIDA' }, { transaction });
-
       const transacao = await TransacaoCustodia.findOne({
         where: { solicitacao_id: solicitacaoId }, transaction, lock: transaction.LOCK.UPDATE,
       });
@@ -427,9 +426,13 @@ export class SolicitacaoService {
           (transacao.proposta_id !== proposta.id || transacao.status_pagamento !== 'RETIDO')) {
         throw new HttpError(409, 'A custódia não corresponde à contratação atual.');
       }
-      if (transacao && transacao.status_pagamento === 'RETIDO') {
-        await transacao.update({ status_pagamento: 'LIBERADO', liberado_em: new Date() }, { transaction });
+      // Sem custódia, ou com a de uma contratação anterior já reembolsada, ainda não houve pagamento desta proposta.
+      if (!transacao || transacao.status_pagamento !== 'RETIDO') {
+        throw new HttpError(409, 'O pagamento simulado ainda não foi confirmado. Ele precisa estar retido em custódia antes da conclusão do serviço.');
       }
+
+      await solicitacao.update({ status: 'CONCLUIDA' }, { transaction });
+      await transacao.update({ status_pagamento: 'LIBERADO', liberado_em: new Date() }, { transaction });
 
       const outroId = ehSolicitante ? proposta.prestador_id : solicitacao.solicitante_id;
       const tipoEvento = ehSolicitante ? 'PROPOSTA_ACEITA_RECUSADA' : 'PROPOSTA_ACEITA_RECUSADA';

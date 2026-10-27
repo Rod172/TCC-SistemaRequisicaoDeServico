@@ -106,7 +106,7 @@ export default function NotificationBell() {
         onClick={() => setAberto((v) => !v)}
         aria-label="Notificações" title="Notificações"
         style={{
-          position: 'relative', background: 'transparent', border: 'none', color: '#94a3b8',
+          position: 'relative', background: 'transparent', border: 'none', color: 'var(--text-secondary)',
           cursor: 'pointer', display: 'flex', padding: '4px',
         }}
       >
@@ -114,7 +114,7 @@ export default function NotificationBell() {
         {naoLidas > 0 && (
           <span style={{
             position: 'absolute', top: '-2px', right: '-2px', minWidth: '16px', height: '16px',
-            borderRadius: '999px', background: '#ef4444', color: '#fff', fontSize: '0.65rem', fontWeight: 700,
+            borderRadius: '999px', background: 'var(--danger-color)', color: 'var(--on-primary)', fontSize: '0.65rem', fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
           }}>
             {naoLidas > 9 ? '9+' : naoLidas}
@@ -125,12 +125,12 @@ export default function NotificationBell() {
       {aberto && (
         <div className="notif-dropdown" style={{
           position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: '320px', maxHeight: '420px',
-          overflowY: 'auto', background: '#0f172a', border: '1px solid #334155', borderRadius: '10px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.4)', zIndex: 50,
+          overflowY: 'auto', background: 'var(--bg-color)', border: '1px solid var(--card-border)', borderRadius: '10px',
+          boxShadow: 'var(--shadow-menu)', zIndex: 50,
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0.75rem 1rem', borderBottom: '1px solid #1e293b',
+            padding: '0.75rem 1rem', borderBottom: '1px solid var(--card-bg)',
           }}>
             <strong style={{ fontSize: '0.85rem' }}>Notificações</strong>
             {naoLidas > 0 && (
@@ -138,7 +138,7 @@ export default function NotificationBell() {
                 onClick={marcarTodasComoLidas}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'transparent',
-                  border: 'none', color: '#60a5fa', fontSize: '0.75rem', cursor: 'pointer',
+                  border: 'none', color: 'var(--link-color)', fontSize: '0.75rem', cursor: 'pointer',
                 }}
               >
                 <Check size={13} /> Marcar todas como lidas
@@ -158,16 +158,16 @@ export default function NotificationBell() {
               onClick={() => abrirNotificacao(n)}
               style={{
                 display: 'block', width: '100%', textAlign: 'left', padding: '0.75rem 1rem',
-                background: n.lida ? 'transparent' : 'rgba(59,130,246,0.08)', border: 'none',
-                borderBottom: '1px solid #1e293b', cursor: 'pointer',
+                background: n.lida ? 'transparent' : 'var(--primary-tint-soft)', border: 'none',
+                borderBottom: '1px solid var(--card-bg)', cursor: 'pointer',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                {!n.lida && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />}
-                <strong style={{ fontSize: '0.82rem', color: '#f1f5f9' }}>{n.titulo}</strong>
+                {!n.lida && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary-color)', flexShrink: 0 }} />}
+                <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>{n.titulo}</strong>
               </div>
-              <p style={{ margin: '0 0 2px', fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.3 }}>{n.mensagem}</p>
-              <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{formatarRelativo(n.createdAt)}</span>
+              <p style={{ margin: '0 0 2px', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{n.mensagem}</p>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{formatarRelativo(n.createdAt)}</span>
             </button>
           ))}
         </div>

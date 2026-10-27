@@ -168,9 +168,9 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
         <span style={{
           display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem',
-          color: conectado ? '#34d399' : '#f87171',
+          color: conectado ? 'var(--success-strong)' : 'var(--danger-strong)',
         }}>
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: conectado ? '#34d399' : '#f87171' }} />
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: conectado ? 'var(--success-strong)' : 'var(--danger-strong)' }} />
           {conectado ? 'Conectado' : 'Conectando...'}
         </span>
       </div>
@@ -178,8 +178,8 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
       {erro && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '0.6rem',
-          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)',
-          color: '#fca5a5', padding: '0.85rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem',
+          background: 'var(--danger-tint)', border: '1px solid var(--danger-color)',
+          color: 'var(--danger-text)', padding: '0.85rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem',
         }}>
           <AlertCircle size={18} /> <span>{erro}</span>
         </div>
@@ -202,14 +202,14 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
             <div key={m.id} style={{ display: 'flex', justifyContent: minha ? 'flex-end' : 'flex-start' }}>
               <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: minha ? 'flex-end' : 'flex-start' }}>
                 {!minha && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b', fontSize: '0.72rem', marginBottom: '2px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: '2px' }}>
                     <User size={11} /> {m.emissor.nome}
                   </span>
                 )}
                 <div style={{
                   padding: m.anexo_url && ehImagem(m.anexo_url) ? '4px' : '0.6rem 0.85rem',
                   borderRadius: minha ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                  background: minha ? '#3b82f6' : '#1e293b', color: '#fff', fontSize: '0.88rem', lineHeight: 1.4,
+                  background: minha ? 'var(--primary-color)' : 'var(--card-bg)', color: minha ? 'var(--on-primary)' : 'var(--text-primary)', fontSize: '0.88rem', lineHeight: 1.4,
                   wordBreak: 'break-word',
                 }}>
                   {m.anexo_url && ehImagem(m.anexo_url) && (
@@ -226,7 +226,7 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
                       href={`${BACKEND_ORIGIN}${m.anexo_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#fff', textDecoration: 'none' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'inherit', textDecoration: 'none' }}
                     >
                       <FileText size={16} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
@@ -240,9 +240,9 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
                     </span>
                   )}
                 </div>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#64748b', fontSize: '0.7rem', marginTop: '2px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '2px' }}>
                   {formatarHora(m.createdAt)}
-                  {minha && (m.lida ? <CheckCheck size={12} color="#60a5fa" /> : <Check size={12} />)}
+                  {minha && (m.lida ? <CheckCheck size={12} color="var(--link-color)" /> : <Check size={12} />)}
                 </span>
               </div>
             </div>
@@ -254,14 +254,14 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
       {arquivo && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem',
-          background: '#0f172a', border: '1px solid #334155', borderRadius: '8px',
-          padding: '0.5rem 0.75rem', marginBottom: '0.6rem', fontSize: '0.82rem', color: '#cbd5e1',
+          background: 'var(--bg-color)', border: '1px solid var(--card-border)', borderRadius: '8px',
+          padding: '0.5rem 0.75rem', marginBottom: '0.6rem', fontSize: '0.82rem', color: 'var(--text-body)',
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
             <Paperclip size={14} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{arquivo.name}</span>
           </span>
-          <button type="button" aria-label="Remover anexo" onClick={() => setArquivo(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}>
+          <button type="button" aria-label="Remover anexo" onClick={() => setArquivo(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
             <X size={16} />
           </button>
         </div>
@@ -275,8 +275,8 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
           title="Anexar imagem ou PDF"
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: '44px', height: '44px', borderRadius: '10px', border: '1px solid #334155',
-            background: 'transparent', color: '#94a3b8', cursor: 'pointer', flexShrink: 0,
+            width: '44px', height: '44px', borderRadius: '10px', border: '1px solid var(--card-border)',
+            background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0,
           }}
         >
           <Paperclip size={17} />
@@ -287,8 +287,8 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
           placeholder="Escreva uma mensagem..."
           maxLength={2000}
           style={{
-            flex: 1, minWidth: 0, padding: '0.7rem 0.9rem', background: '#0f172a', border: '1px solid #334155',
-            borderRadius: '10px', color: '#fff', fontSize: '0.88rem',
+            flex: 1, minWidth: 0, padding: '0.7rem 0.9rem', background: 'var(--bg-color)', border: '1px solid var(--field-border)',
+            borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.88rem',
           }}
         />
         <button
@@ -298,7 +298,7 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: '44px', height: '44px', borderRadius: '10px', border: 'none',
-            background: (!texto.trim() && !arquivo) ? '#475569' : '#3b82f6', color: '#fff',
+            background: (!texto.trim() && !arquivo) ? 'var(--card-border-strong)' : 'var(--primary-color)', color: 'var(--on-primary)',
             cursor: (!texto.trim() && !arquivo) ? 'not-allowed' : 'pointer', flexShrink: 0,
           }}
         >
@@ -306,14 +306,14 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
         </button>
       </form>
 
-      {leituraApenas && <p role="status" style={{ padding: '0.75rem', color: '#94a3b8' }}>Negociação encerrada. Conversa disponível somente para leitura.</p>}
+      {leituraApenas && <p role="status" style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>Negociação encerrada. Conversa disponível somente para leitura.</p>}
 
       {/* ── Modal de ampliação da imagem ─────────────── */}
       {imagemAmpliada && (
         <div
           onClick={() => setImagemAmpliada(null)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200,
+            position: 'fixed', inset: 0, background: 'var(--overlay-media)', zIndex: 200,
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', cursor: 'zoom-out',
           }}
         >
@@ -321,7 +321,7 @@ export default function ChatPanel({ propostaId, somenteLeitura = false }: { prop
             onClick={() => setImagemAmpliada(null)}
             style={{
               position: 'absolute', top: '1.25rem', right: '1.25rem', background: 'transparent',
-              border: 'none', color: '#fff', cursor: 'pointer', display: 'flex',
+              border: 'none', color: 'var(--on-overlay-media)', cursor: 'pointer', display: 'flex',
             }}
           >
             <X size={28} />

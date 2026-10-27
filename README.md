@@ -99,6 +99,8 @@ docker-compose up --build
 
 Todas as adições técnicas, referências oficiais de bibliotecas e registros de execução de testes são obrigatoriamente documentados no arquivo [LOG_DESENVOLVIMENTO.md](file:///wsl.localhost/Ubuntu/home/rod/projetos/TCC-SistemaRequisicaoDeServico/LOG_DESENVOLVIMENTO.md).
 
+Os diagramas de modelagem (casos de uso, classes, MER e sequência da contratação), em Mermaid e gerados a partir do código atual, estão em [docs/diagramas](docs/diagramas/README.md) e podem ser vistos no próprio sistema em `http://localhost:3000/arquitetura` (US41).
+
 Desenvolvido para o curso de Ciência da Computação da Universidade Paulista (UNIP) - 2026.
 
 
@@ -136,9 +138,9 @@ A migração de documentos remove pontuação dos registros existentes e aborta 
 ```bash
 cd backend
 npm run test:unit
-DB_NAME_TEST=tcc_servico_facil_test npm test
+DB_NAME_TEST=tcc_eloserv_test npm test
 # Somente integração:
-DB_NAME_TEST=tcc_servico_facil_test npm run test:integration
+DB_NAME_TEST=tcc_eloserv_test npm run test:integration
 cd ../frontend
 npx tsc --noEmit
 npm run build

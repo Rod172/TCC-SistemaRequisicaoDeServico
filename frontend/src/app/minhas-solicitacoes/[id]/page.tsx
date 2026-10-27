@@ -3,7 +3,10 @@
 /**
  * @file minhas-solicitacoes/[id]/page.tsx
  * @description Comparação de propostas recebidas (US11) e aceite/recusa/renegociação (US12) para
- * uma solicitação específica do solicitante autenticado.
+ * uma solicitação específica do solicitante autenticado. Layout da US39: linha do andamento do
+ * pedido, propostas comparáveis (valor, prazo e validade alinhados, com ordenação) e, na lateral,
+ * o pedido e as perguntas dos prestadores; depois do aceite, pagamento com garantia, conclusão e
+ * avaliação aparecem em sequência.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones de status, estrelas de reputação e ações.
@@ -18,12 +21,16 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, Star, CheckCircle, XCircle, Handshake, AlertCircle, User, Paperclip, FileText,
-  Ban, ShieldCheck, CreditCard, MessageCircle, HelpCircle, Clock, Flag,
+  Star, CheckCircle, XCircle, Handshake, Paperclip, FileText,
+  Ban, ShieldCheck, CreditCard, MessageCircle, HelpCircle, Clock, Flag, Lock,
 } from 'lucide-react';
 import api from '@/services/api';
 import useConfirmacao from '@/components/useConfirmacao';
 import ChatDrawer from '@/components/ChatDrawer';
+import Pagina, { CabecalhoPagina } from '@/components/ui/Pagina';
+import {
+  Aviso, Avatar, Chip, Etapas, EstadoLista, STATUS_PAGAMENTO, STATUS_PROPOSTA, STATUS_SOLICITACAO,
+} from '@/components/ui/Elementos';
 
 const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/api\/v1\/?$/, '');
 
@@ -99,21 +106,6 @@ interface SolicitacaoDetalhe {
   transacao_custodia?: TransacaoCustodia | null;
 }
 
-const STATUS_SOLICITACAO_LABEL: Record<string, string> = {
-  ABERTA: 'Aberta',
-  EM_NEGOCIACAO: 'Em negociação',
-  CONTRATADA: 'Contratada',
-  CONCLUIDA: 'Concluída',
-  CANCELADA: 'Cancelada',
-};
-
-const STATUS_PROPOSTA: Record<string, { label: string; bg: string; fg: string }> = {
-  ENVIADA: { label: 'Enviada', bg: 'rgba(148,163,184,0.15)', fg: '#cbd5e1' },
-  EM_ANALISE: { label: 'Em análise', bg: 'rgba(245,158,11,0.15)', fg: '#fbbf24' },
-  ACEITA: { label: 'Aceita', bg: 'rgba(16,185,129,0.15)', fg: '#34d399' },
-  RECUSADA: { label: 'Recusada', bg: 'rgba(239,68,68,0.15)', fg: '#f87171' },
-};
-
 function formatarValor(valor: string | number) {
   return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -140,6 +132,7 @@ export default function DetalhePropostasPage() {
   const [sucesso, setSucesso] = useState('');
   const [processandoId, setProcessandoId] = useState<string | null>(null);
 
+  const [ordenacao, setOrdenacao] = useState<'preco' | 'nota' | 'prazo' | 'recentes'>('preco');
   const [renegociandoId, setRenegociandoId] = useState<string | null>(null);
   const [novoValor, setNovoValor] = useState('');
   const [novaMensagem, setNovaMensagem] = useState('');
@@ -403,638 +396,446 @@ export default function DetalhePropostasPage() {
     }
   }
 
+  const voltar = isAdmin
+    ? { href: '/admin', rotulo: 'Painel administrativo' }
+    : { href: '/minhas-solicitacoes', rotulo: 'Minhas solicitações' };
+
   if (carregando) {
     return (
-      <main style={{ maxWidth: '860px', margin: '4rem auto', padding: '0 1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        Carregando propostas...
-      </main>
+      <Pagina>
+        <EstadoLista tipo="carregando">Carregando propostas...</EstadoLista>
+      </Pagina>
     );
   }
 
   if (!solicitacao) {
     return (
-      <main style={{ maxWidth: '860px', margin: '2rem auto', padding: '0 1.5rem' }}>
-        <Link href={isAdmin ? '/admin' : '/minhas-solicitacoes'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-          <ArrowLeft size={16} /> {isAdmin ? 'Voltar para o painel administrativo' : 'Voltar para minhas solicitações'}
-        </Link>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)',
-          color: '#fca5a5', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem',
-        }}>
-          <AlertCircle size={20} />
-          <span>{erro}</span>
-        </div>
-      </main>
+      <Pagina>
+        <CabecalhoPagina voltar={voltar} titulo="Solicitação" />
+        <EstadoLista tipo="erro" acao={<button type="button" className="btn btn-secundario" onClick={carregar}>Tentar novamente</button>}>{erro}</EstadoLista>
+      </Pagina>
     );
   }
 
   const menorPreco = Math.min(...solicitacao.propostas.map((p) => Number(p.valor)));
+  const aberta = ['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status);
+  const propostaAceita = solicitacao.propostas.find((p) => p.status === 'ACEITA');
+  const perguntasPendentes = (solicitacao.perguntas || []).filter((p) => !p.resposta).length;
+  const etapaAtual = solicitacao.status === 'CONTRATADA' ? 2
+    : solicitacao.status === 'CONCLUIDA' ? (avaliacao ? 5 : 4)
+      : 1;
+  const propostasOrdenadas = [...solicitacao.propostas].sort((a, b) => {
+    if (ordenacao === 'nota') return Number(b.prestador.perfil_prestador?.nota_media_reputacao || 0) - Number(a.prestador.perfil_prestador?.nota_media_reputacao || 0);
+    if (ordenacao === 'prazo') return a.prazo_dias - b.prazo_dias;
+    if (ordenacao === 'recentes') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return Number(a.valor) - Number(b.valor);
+  });
+  const custodia = solicitacao.transacao_custodia;
+  const chipPagamento = custodia
+    ? STATUS_PAGAMENTO[custodia.status_pagamento]
+    : { bg: 'var(--warning-tint)', fg: 'var(--warning-strong)', label: 'Aguardando pagamento' };
 
   return (
-    <main style={{ maxWidth: '860px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+    <Pagina>
       {dialogo}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <Link href={isAdmin ? '/admin' : '/minhas-solicitacoes'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          <ArrowLeft size={16} /> {isAdmin ? 'Voltar para o painel administrativo' : 'Voltar para minhas solicitações'}
-        </Link>
-        {!isAdmin && (
-          <button onClick={() => setDenunciando(true)} title="Denunciar esta solicitação" style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'transparent',
-            border: 'none', color: '#64748b', fontSize: '0.8rem', cursor: 'pointer',
-          }}>
-            <Flag size={14} /> Denunciar
-          </button>
-        )}
-      </div>
-
-      {denunciando && (
-        <form onSubmit={denunciarSolicitacao} style={{
-          background: '#0f172a', border: '1px solid var(--danger-color)', borderRadius: '8px',
-          padding: '1rem', marginBottom: '1.5rem',
-        }}>
-          <strong style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Denunciar esta solicitação</strong>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginBottom: '0.6rem' }}>
-            Conte o que está errado (golpe, informação falsa, conteúdo impróprio no chat etc.). A administração vai revisar.
-          </p>
-          <input
-            value={motivoDenuncia}
-            onChange={(e) => setMotivoDenuncia(e.target.value)}
-            placeholder="Motivo da denúncia"
-            maxLength={1000}
-            style={{ width: '100%', padding: '0.55rem 0.7rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff', marginBottom: '0.6rem' }}
-          />
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="submit" disabled={processandoDenuncia || !motivoDenuncia.trim()} style={{
-              padding: '0.55rem 1rem', background: 'var(--danger-color)', color: '#fff', border: 'none',
-              borderRadius: '6px', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer',
-            }}>
-              {processandoDenuncia ? 'Enviando...' : 'Enviar denúncia'}
-            </button>
-            <button type="button" onClick={() => setDenunciando(false)} style={{
-              padding: '0.55rem 0.8rem', background: 'transparent', border: '1px solid #334155', color: '#94a3b8',
-              borderRadius: '6px', fontSize: '0.82rem', cursor: 'pointer',
-            }}>
-              Cancelar
-            </button>
+      <CabecalhoPagina
+        voltar={voltar}
+        antes={(
+          <div className="chips">
+            <Chip status={solicitacao.status} mapa={STATUS_SOLICITACAO} />
+            {isAdmin && <span className="chip" style={{ background: 'var(--violet-tint)', color: 'var(--violet-text)' }}><ShieldCheck size={13} aria-hidden="true" /> Modo administrativo — somente leitura</span>}
           </div>
-        </form>
+        )}
+        titulo={solicitacao.titulo}
+        subtitulo={solicitacao.propostas.length === 1 ? '1 proposta recebida' : `${solicitacao.propostas.length} propostas recebidas`}
+        acoes={!isAdmin && (
+          <>
+            <button type="button" onClick={() => setDenunciando(true)} className="btn btn-texto discreto"><Flag size={15} aria-hidden="true" /> Denunciar</button>
+            {aberta && !cancelando && (
+              <button type="button" onClick={() => setCancelando(true)} className="btn btn-perigo"><Ban size={15} aria-hidden="true" /> Cancelar pedido</button>
+            )}
+          </>
+        )}
+      />
+
+      {solicitacao.status !== 'CANCELADA' && (
+        <Etapas
+          rotulo="Andamento do pedido" atual={etapaAtual}
+          etapas={[
+            { nome: 'Publicado' },
+            { nome: 'Propostas', detalhe: `${solicitacao.propostas.length} recebida${solicitacao.propostas.length === 1 ? '' : 's'}` },
+            { nome: 'Contratado', detalhe: 'pagamento com garantia' },
+            { nome: 'Concluído', detalhe: 'você confirma' },
+            { nome: 'Avaliado', detalhe: 'nota e comentário' },
+          ]}
+        />
       )}
-
-      {isAdmin && (
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1rem',
-          padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600,
-          background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
-        }}>
-          <ShieldCheck size={14} /> Modo administrativo — visualização somente leitura
-        </div>
-      )}
-
-      {/* ── Cabeçalho da Solicitação ─────────────── */}
-      <div style={{
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-        borderRadius: 'var(--border-radius)', padding: '1.5rem', marginBottom: '1.5rem',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap',
-      }}>
-        <div>
-          <span style={{
-            display: 'inline-block', padding: '0.25rem 0.7rem', borderRadius: '20px', marginBottom: '0.6rem',
-            fontSize: '0.75rem', fontWeight: 600, background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
-          }}>
-            {STATUS_SOLICITACAO_LABEL[solicitacao.status] || solicitacao.status}
-          </span>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 700, margin: '0 0 0.4rem' }}>{solicitacao.titulo}</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '520px' }}>{solicitacao.descricao}</p>
-
-          {solicitacao.anexos && solicitacao.anexos.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.9rem' }}>
-              {solicitacao.anexos.map((anexo) => (
-                <a
-                  key={anexo.id}
-                  href={`${BACKEND_ORIGIN}${anexo.url_arquivo}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={anexo.nome_original}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-                    padding: '0.35rem 0.7rem', borderRadius: '6px',
-                    background: '#0f172a', border: '1px solid #334155',
-                    color: '#94a3b8', fontSize: '0.78rem', textDecoration: 'none', maxWidth: '160px',
-                  }}
-                >
-                  {anexo.url_arquivo.endsWith('.pdf') ? <FileText size={13} /> : <Paperclip size={13} />}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexo.nome_original}</span>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <strong style={{ fontSize: '1.5rem' }}>{solicitacao.propostas.length}</strong>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>propostas recebidas</div>
-          {!isAdmin && ['ABERTA', 'EM_NEGOCIACAO'].includes(solicitacao.status) && !cancelando && (
-            <button
-              onClick={() => setCancelando(true)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem',
-                background: 'transparent', border: '1px solid var(--danger-color)', color: '#f87171',
-                borderRadius: '8px', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              <Ban size={14} /> Cancelar solicitação
-            </button>
-          )}
-        </div>
-      </div>
 
       {solicitacao.status === 'CANCELADA' && solicitacao.motivo_cancelamento && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)',
-          color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem',
-        }}>
-          <Ban size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
-          <span>{isAdmin ? 'Esta solicitação foi cancelada' : 'Você cancelou esta solicitação'}. Motivo: {solicitacao.motivo_cancelamento}</span>
-        </div>
+        <Aviso tipo="erro">{isAdmin ? 'Esta solicitação foi cancelada' : 'Você cancelou esta solicitação'}. Motivo: {solicitacao.motivo_cancelamento}</Aviso>
+      )}
+      {sucesso && <Aviso tipo="sucesso">{sucesso}</Aviso>}
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+      {denunciando && (
+        <form onSubmit={denunciarSolicitacao} className="card perigo empilhado" style={{ gap: '0.75rem' }}>
+          <h2 className="titulo-cartao">Denunciar esta solicitação</h2>
+          <p className="texto-apoio">Conte o que está errado (golpe, informação falsa, conteúdo impróprio no chat etc.). A administração vai revisar.</p>
+          <label htmlFor="motivo-denuncia" className="sr-only">Motivo da denúncia</label>
+          <input id="motivo-denuncia" value={motivoDenuncia} onChange={(e) => setMotivoDenuncia(e.target.value)} placeholder="Motivo da denúncia" maxLength={1000} className="campo" />
+          <div className="grupo-botoes">
+            <button type="submit" disabled={processandoDenuncia || !motivoDenuncia.trim()} className="btn btn-perigo">{processandoDenuncia ? 'Enviando...' : 'Enviar denúncia'}</button>
+            <button type="button" onClick={() => setDenunciando(false)} className="btn btn-secundario">Cancelar</button>
+          </div>
+        </form>
       )}
 
       {cancelando && (
-        <form onSubmit={cancelarSolicitacao} style={{
-          background: 'var(--card-bg)', border: '1px solid var(--danger-color)', borderRadius: 'var(--border-radius)',
-          padding: '1.25rem', marginBottom: '1.5rem',
-        }}>
-          <strong style={{ display: 'block', marginBottom: '0.6rem', fontSize: '0.95rem' }}>Cancelar esta solicitação</strong>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-            Os prestadores que já enviaram proposta serão notificados do cancelamento.
-          </p>
-          <label style={{ fontSize: '0.85rem', display: 'block', marginBottom: '0.9rem' }}>
-            <span style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Motivo do cancelamento</span>
-            <input
-              type="text" minLength={5} required
-              value={motivoCancelamento}
-              onChange={(e) => setMotivoCancelamento(e.target.value)}
-              placeholder="Ex: Consegui resolver de outra forma"
-              style={{ width: '100%', padding: '0.55rem 0.7rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff' }}
-            />
-          </label>
-          <div style={{ display: 'flex', gap: '0.6rem' }}>
-            <button type="submit" disabled={processandoCancelamento} style={{ ...botaoBase, background: 'var(--danger-color)' }}>
-              {processandoCancelamento ? 'Cancelando...' : 'Confirmar cancelamento'}
-            </button>
-            <button type="button" onClick={() => setCancelando(false)} style={{ ...botaoBase, background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>
-              Voltar
-            </button>
+        <form onSubmit={cancelarSolicitacao} className="card perigo empilhado" style={{ gap: '0.75rem' }}>
+          <h2 className="titulo-cartao">Cancelar esta solicitação</h2>
+          <p className="texto-apoio">Os prestadores que já enviaram proposta serão notificados do cancelamento.</p>
+          <div className="campo-grupo">
+            <label htmlFor="motivo-cancelamento" className="rotulo">Motivo do cancelamento</label>
+            <input id="motivo-cancelamento" type="text" minLength={5} required value={motivoCancelamento} onChange={(e) => setMotivoCancelamento(e.target.value)} placeholder="Ex: Consegui resolver de outra forma" className="campo" />
+          </div>
+          <div className="grupo-botoes">
+            <button type="submit" disabled={processandoCancelamento} className="btn btn-perigo">{processandoCancelamento ? 'Cancelando...' : 'Confirmar cancelamento'}</button>
+            <button type="button" onClick={() => setCancelando(false)} className="btn btn-secundario">Voltar</button>
           </div>
         </form>
       )}
 
-      {(solicitacao.status === 'CONTRATADA' || solicitacao.transacao_custodia) && (
-        <section aria-labelledby="titulo-pagamento" style={{
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-          padding: '1.25rem', marginBottom: '1.5rem', overflowWrap: 'anywhere', minWidth: 0,
-        }}>
-          <h2 id="titulo-pagamento" style={{ fontSize: '1.2rem', marginBottom: '.75rem' }}>Pagamento e garantia</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>Demonstração acadêmica: nenhum dinheiro será cobrado ou transferido. Não informe dados bancários ou de cartão.</p>
-          {solicitacao.status === 'CONTRATADA' && solicitacao.propostas.filter(p => p.status === 'ACEITA').map(proposta => (
-            <dl key={proposta.id} style={{ marginBottom: '1rem', display: 'grid', gap: '.5rem' }}>
-              <div><dt>Prestador contratado</dt><dd>{proposta.prestador.nome}</dd></div>
-              <div><dt>Valor total contratado</dt><dd style={{ fontWeight: 700, fontSize: '1.3rem' }}>{formatarValor(proposta.valor)}</dd></div>
-              <div><dt>Situação</dt><dd>{solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? 'Pagamento confirmado e retido em custódia' : 'Aguardando confirmação do pagamento simulado'}</dd></div>
-            </dl>
-          ))}
-          {solicitacao.transacao_custodia && (
-            <div style={{ marginBottom: '1rem', lineHeight: 1.6 }}>
-              <p role="status">{solicitacao.transacao_custodia.status_pagamento === 'LIBERADO' ? 'Pagamento liberado ao prestador após a conclusão' : solicitacao.transacao_custodia.status_pagamento === 'REEMBOLSADO' ? 'Pagamento reembolsado ao solicitante' : 'Valor protegido em custódia'} — {formatarValor(solicitacao.transacao_custodia.valor)}</p>
-              <p>Método: {solicitacao.transacao_custodia.metodo_pagamento === 'PIX_TESTE' ? 'PIX de teste' : 'Cartão de teste'}</p>
-              <p>Referência do comprovante: {solicitacao.transacao_custodia.referencia_simulada}</p>
-            </div>
-          )}
-          {solicitacao.status !== 'CONTRATADA' ? null : solicitacao.transacao_custodia?.status_pagamento === 'RETIDO' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <ShieldCheck size={24} color="#34d399" />
-              <div>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                  O valor será liberado ao prestador quando o serviço for concluído.
-                </span>
+      <div className="layout-lateral">
+        <div className="principal">
+          {/* ── Pagamento com garantia (US13) ─────────── */}
+          {(solicitacao.status === 'CONTRATADA' || custodia) && (
+            <section aria-labelledby="titulo-pagamento" className={`card grande empilhado ${solicitacao.status === 'CONTRATADA' && !custodia ? 'foco' : ''}`} style={{ overflowWrap: 'anywhere', minWidth: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <h2 id="titulo-pagamento" className="titulo-secao">Pagamento com garantia</h2>
+                <Chip cor={chipPagamento} />
               </div>
-            </div>
-          ) : isAdmin ? (
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>O pagamento desta contratação ainda não foi simulado pelo solicitante.</span>
-          ) : !pagando ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <div>
-                <strong style={{ display: 'block', fontSize: '0.95rem', marginBottom: '2px' }}>Proteja o pagamento deste serviço</strong>
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  Simule o checkout para reter o valor em custódia até a conclusão do serviço.
-                </span>
-              </div>
-              <button onClick={() => setPagando(true)} style={{ ...botaoBase, background: '#3b82f6' }}>
-                <CreditCard size={15} /> Simular pagamento
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={simularPagamento}>
-              <strong style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.95rem' }}>Checkout simulado</strong>
-              <fieldset style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', border: 0, padding: 0 }}>
-                <legend style={{ marginBottom: '.5rem' }}>Escolha o método de teste</legend>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
-                  <input type="radio" name="metodo" checked={metodoPagamento === 'CARTAO_TESTE'} onChange={() => setMetodoPagamento('CARTAO_TESTE')} />
-                  Cartão de teste
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
-                  <input type="radio" name="metodo" checked={metodoPagamento === 'PIX_TESTE'} onChange={() => setMetodoPagamento('PIX_TESTE')} />
-                  PIX de teste
-                </label>
-              </fieldset>
-              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <button type="submit" disabled={processandoPagamento} style={{ ...botaoBase, background: '#3b82f6' }}>
-                  {processandoPagamento ? 'Processando...' : 'Confirmar pagamento simulado'}
-                </button>
-                <button type="button" disabled={processandoPagamento} onClick={() => setPagando(false)} style={{ ...botaoBase, background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}>
-                  Voltar
-                </button>
-              </div>
-            </form>
-          )}
-        </section>
-      )}
-
-      {/* Confirmação de conclusão do serviço (US17) e cancelamento de uma contratação já aceita (US34
-          — antes disso, aceitar era irreversível). */}
-      {!isAdmin && solicitacao.status === 'CONTRATADA' && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap',
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-          padding: '1rem 1.25rem', marginBottom: '1.5rem',
-        }}>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-            O serviço já foi realizado? Confirme a conclusão para liberar o pagamento e a avaliação.
-          </span>
-          <div style={{ display: 'flex', gap: '0.6rem', flexShrink: 0 }}>
-            <button onClick={concluirServico} disabled={processandoConclusao} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-              background: '#10b981', color: '#fff', border: 'none',
-              borderRadius: '8px', padding: '0.5rem 0.9rem', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
-            }}>
-              <CheckCircle size={14} /> {processandoConclusao ? 'Confirmando...' : 'Marcar como concluído'}
-            </button>
-            <button onClick={cancelarContratacao} disabled={processandoCancelContratacao} style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-              background: 'transparent', border: '1px solid var(--danger-color)', color: '#f87171',
-              borderRadius: '8px', padding: '0.5rem 0.9rem', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
-            }}>
-              <Ban size={14} /> {processandoCancelContratacao ? 'Cancelando...' : 'Cancelar contratação'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Avaliação de satisfação (US18) — liberada depois que o serviço é concluído (US17). */}
-      {!isAdmin && solicitacao.status === 'CONCLUIDA' && (
-        <div style={{
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-          padding: '1.25rem', marginBottom: '1.5rem',
-        }}>
-          {avaliacao ? (
-            <div>
-              <strong style={{ display: 'block', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Sua avaliação</strong>
-              <div style={{ display: 'flex', gap: '2px', marginBottom: '0.5rem' }}>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star key={n} size={18} color="#fbbf24" fill={n <= avaliacao.nota ? '#fbbf24' : 'none'} />
-                ))}
-              </div>
-              {avaliacao.comentario && <p style={{ color: '#cbd5e1', fontSize: '0.88rem', margin: 0 }}>{avaliacao.comentario}</p>}
-            </div>
-          ) : (
-            <form onSubmit={enviarAvaliacao}>
-              <strong style={{ display: 'block', fontSize: '0.95rem', marginBottom: '0.75rem' }}>Como foi o serviço de {solicitacao.propostas.find((p) => p.status === 'ACEITA')?.prestador.nome || 'o prestador'}?</strong>
-              <div style={{ display: 'flex', gap: '4px', marginBottom: '0.9rem' }}>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n} type="button" onClick={() => setNotaAvaliacao(n)}
-                    aria-label={`Avaliar com ${n} ${n === 1 ? 'estrela' : 'estrelas'}`}
-                    aria-pressed={notaAvaliacao === n}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
-                  >
-                    <Star size={26} color="#fbbf24" fill={n <= notaAvaliacao ? '#fbbf24' : 'none'} />
-                  </button>
-                ))}
-              </div>
-              <textarea
-                value={comentarioAvaliacao}
-                onChange={(e) => setComentarioAvaliacao(e.target.value)}
-                placeholder="Conte como foi a experiência (opcional)"
-                rows={3}
-                style={{ width: '100%', padding: '0.6rem 0.7rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '0.85rem', marginBottom: '0.75rem', resize: 'vertical' }}
-              />
-              <button type="submit" disabled={enviandoAvaliacao || notaAvaliacao < 1} style={{
-                ...botaoBase, background: notaAvaliacao < 1 ? '#475569' : '#3b82f6',
-                cursor: notaAvaliacao < 1 ? 'not-allowed' : 'pointer',
-              }}>
-                {enviandoAvaliacao ? 'Enviando...' : 'Enviar avaliação'}
-              </button>
-            </form>
-          )}
-        </div>
-      )}
-
-      {sucesso && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--accent-color)',
-          color: '#6ee7b7', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem',
-        }}>
-          <CheckCircle size={20} />
-          <span>{sucesso}</span>
-        </div>
-      )}
-      {erro && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)',
-          color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem',
-        }}>
-          <AlertCircle size={20} />
-          <span>{erro}</span>
-        </div>
-      )}
-
-      {(solicitacao.perguntas || []).length > 0 && (
-        <div style={{
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-          padding: '1.5rem', marginBottom: '1.5rem',
-        }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.05rem', fontWeight: 700, marginBottom: '1rem' }}>
-            <HelpCircle size={18} /> Perguntas de prestadores
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {(solicitacao.perguntas || []).map((p) => (
-              <div key={p.id} style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
-                  <User size={11} /> {p.prestador.nome} perguntou · {formatarData(p.createdAt)}
-                </div>
-                <p style={{ color: '#e2e8f0', fontSize: '0.9rem', margin: '0 0 0.6rem' }}>{p.pergunta}</p>
-
-                {p.resposta ? (
-                  <div style={{ paddingLeft: '0.9rem', borderLeft: '2px solid #3b82f6' }}>
-                    <div style={{ color: '#60a5fa', fontSize: '0.75rem', marginBottom: '0.2rem', fontWeight: 600 }}>Sua resposta</div>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.88rem', margin: 0 }}>{p.resposta}</p>
-                  </div>
-                ) : isAdmin ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#fbbf24', fontSize: '0.78rem' }}>
-                    <Clock size={12} /> Aguardando resposta do solicitante
-                  </span>
-                ) : respondendoId === p.id ? (
-                  <form onSubmit={(e) => responderPergunta(e, p.id)} style={{ display: 'flex', gap: '0.6rem' }}>
-                    <input
-                      value={textoResposta}
-                      onChange={(e) => setTextoResposta(e.target.value)}
-                      placeholder="Escreva sua resposta..."
-                      maxLength={1000}
-                      autoFocus
-                      style={{ flex: 1, padding: '0.5rem 0.7rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
-                    />
-                    <button type="submit" disabled={enviandoResposta || !textoResposta.trim()} style={{
-                      padding: '0 1rem', background: !textoResposta.trim() ? '#475569' : '#3b82f6', color: '#fff',
-                      border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '0.82rem',
-                      cursor: !textoResposta.trim() ? 'not-allowed' : 'pointer',
-                    }}>
-                      Enviar
-                    </button>
-                    <button type="button" onClick={() => setRespondendoId(null)} style={{
-                      padding: '0 0.8rem', background: 'transparent', border: '1px solid #334155', color: '#94a3b8',
-                      borderRadius: '6px', fontSize: '0.82rem', cursor: 'pointer',
-                    }}>
-                      Cancelar
-                    </button>
-                  </form>
-                ) : (
-                  <button onClick={() => abrirResposta(p)} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'transparent',
-                    border: '1px solid #3b82f6', color: '#60a5fa', borderRadius: '6px', padding: '0.35rem 0.7rem',
-                    fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-                  }}>
-                    Responder
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Propostas recebidas</h2>
-
-      {solicitacao.propostas.length === 0 && (
-        <div style={{
-          textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-secondary)',
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-        }}>
-          Esta solicitação ainda não recebeu propostas.
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {solicitacao.propostas.map((proposta) => {
-          const expirada = !(new Date(proposta.validade_ate).getTime() > agora);
-          const podeAlterar = !['ACEITA', 'RECUSADA'].includes(proposta.status)
-            && !['CONTRATADA', 'CONCLUIDA', 'CANCELADA'].includes(solicitacao.status);
-          const cor = STATUS_PROPOSTA[proposta.status];
-          const ehMelhorPreco = Number(proposta.valor) === menorPreco && solicitacao.propostas.length > 1;
-          const nota = proposta.prestador.perfil_prestador ? Number(proposta.prestador.perfil_prestador.nota_media_reputacao) : 0;
-
-          return (
-            <article key={proposta.id} style={{
-              background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-              borderRadius: 'var(--border-radius)', padding: '1.5rem',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{
-                    width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
-                    background: '#0f172a', border: '1px solid #334155',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {proposta.prestador.foto_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={proposta.prestador.foto_url} alt={proposta.prestador.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <User size={20} color="#8b5cf6" />
-                    )}
-                  </div>
+              <Aviso tipo="alerta">Demonstração acadêmica: nenhum dinheiro será cobrado ou transferido. Não informe dados bancários ou de cartão.</Aviso>
+              {solicitacao.status === 'CONTRATADA' && propostaAceita && (
+                <dl className="dados">
+                  <div><dt>Prestador contratado</dt><dd>{propostaAceita.prestador.nome}</dd></div>
+                  <div><dt>Valor total contratado</dt><dd style={{ fontSize: '1.3rem' }}>{formatarValor(propostaAceita.valor)}</dd></div>
+                  <div><dt>Situação</dt><dd>{custodia?.status_pagamento === 'RETIDO' ? 'Pagamento confirmado e retido em custódia' : 'Aguardando confirmação do pagamento simulado'}</dd></div>
+                </dl>
+              )}
+              {custodia && (
+                <Aviso tipo={custodia.status_pagamento === 'REEMBOLSADO' ? 'info' : 'sucesso'}>
+                  <strong>{custodia.status_pagamento === 'LIBERADO' ? 'Pagamento liberado ao prestador após a conclusão' : custodia.status_pagamento === 'REEMBOLSADO' ? 'Pagamento reembolsado ao solicitante' : 'Valor protegido em custódia'} — {formatarValor(custodia.valor)}.</strong>{' '}
+                  {custodia.metodo_pagamento === 'PIX_TESTE' ? 'PIX de teste' : 'Cartão de teste'} · comprovante {custodia.referencia_simulada}
+                </Aviso>
+              )}
+              {solicitacao.status !== 'CONTRATADA' ? null : custodia?.status_pagamento === 'RETIDO' ? (
+                <p className="texto-apoio" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <ShieldCheck size={18} color="var(--success-strong)" aria-hidden="true" /> O valor será liberado ao prestador quando o serviço for concluído.
+                </p>
+              ) : isAdmin ? (
+                <p className="texto-apoio">O pagamento desta contratação ainda não foi simulado pelo solicitante.</p>
+              ) : !pagando ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <div>
-                    <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Proposta de</span>
-                    <Link href={`/prestadores/${proposta.prestador.id}`} style={{ fontSize: '1rem', fontWeight: 700 }}>
-                      {proposta.prestador.nome} · Ver perfil
-                    </Link>
-                    {nota > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                        <Star size={13} color="#fbbf24" fill="#fbbf24" />
-                        <span style={{ fontSize: '0.8rem', color: '#fbbf24' }}>{nota.toFixed(1)}</span>
-                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                          ({proposta.prestador.perfil_prestador?.total_avaliacoes} avaliações)
-                        </span>
-                      </div>
-                    )}
-                    {proposta.prestador.perfil_prestador?.categorias && proposta.prestador.perfil_prestador.categorias.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                        {proposta.prestador.perfil_prestador.categorias.map((cat) => (
-                          <span key={cat} style={{
-                            padding: '0.1rem 0.5rem', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 600,
-                            background: '#1e293b', color: '#94a3b8',
-                          }}>
-                            {cat}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <strong style={{ display: 'block', marginBottom: '2px' }}>Proteja o pagamento deste serviço</strong>
+                    <span className="texto-apoio">Simule o checkout para reter o valor em custódia até a conclusão do serviço.</span>
                   </div>
+                  <button type="button" onClick={() => setPagando(true)} className="btn btn-primario"><CreditCard size={16} aria-hidden="true" /> Simular pagamento</button>
                 </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  {ehMelhorPreco && (
-                    <span style={{
-                      padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600,
-                      background: 'rgba(16,185,129,0.15)', color: '#34d399',
-                    }}>
-                      Menor preço
-                    </span>
-                  )}
-                  <span style={{
-                    padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600,
-                    background: cor.bg, color: cor.fg,
-                  }}>
-                    {cor.label}
-                  </span>
-                </div>
-              </div>
-
-              {proposta.prestador.perfil_prestador?.descricao_bio && (
-                <p style={{ color: '#94a3b8', fontSize: '0.82rem', fontStyle: 'italic', marginBottom: '0.75rem' }}>
-                  "{proposta.prestador.perfil_prestador.descricao_bio}"
-                </p>
-              )}
-              <p style={{ color: '#cbd5e1', fontSize: '0.9rem', marginBottom: '1rem' }}>{proposta.mensagem}</p>
-
-              <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Valor</span>
-                  <strong style={{ fontSize: '1.1rem' }}>{formatarValor(proposta.valor)}</strong>
-                </div>
-                <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Prazo estimado</span>
-                  <strong style={{ fontSize: '1.1rem' }}>{proposta.prazo_dias} dias</strong>
-                </div>
-                <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Validade comercial até</span>
-                  <strong>{new Date(proposta.validade_ate).toLocaleString('pt-BR')}</strong>
-                </div>
-                <div>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem' }}>Recebida em</span>
-                  <strong style={{ fontSize: '1.1rem' }}>{formatarData(proposta.createdAt)}</strong>
-                </div>
-              </div>
-
-              {expirada && ['ENVIADA', 'EM_ANALISE'].includes(proposta.status) && (
-                <p role="status" style={{ color: '#fbbf24', fontSize: '0.85rem' }}>
-                  Proposta expirada. O aceite e a renegociação estão bloqueados; ainda é possível recusá-la.
-                </p>
-              )}
-
-              {proposta.valor_contraproposta !== null && (
-                <div style={{
-                  background: '#0f172a', border: '1px solid #334155', borderRadius: '8px',
-                  padding: '0.9rem 1rem', marginBottom: '1rem',
-                }}>
-                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.75rem', marginBottom: '2px' }}>Sua contraproposta</span>
-                  <strong style={{ fontSize: '1rem', color: '#fbbf24' }}>{formatarValor(proposta.valor_contraproposta)}</strong>
-                  <p role="status">{proposta.contraproposta_status === 'PENDENTE' ? 'Aguardando resposta do prestador. A contratação fica disponível após a resposta.' : proposta.contraproposta_status === 'ACEITA' ? (proposta.status === 'ACEITA' ? 'Contratação confirmada com o valor da contraproposta.' : 'O prestador aceitou o novo valor. Confira e confirme a contratação.') : proposta.contraproposta_status === 'RECUSADA' ? 'O prestador recusou a contraproposta. O valor anterior foi mantido.' : 'Negociação anterior'}</p>
-                  <p style={{ color: '#cbd5e1', fontSize: '0.85rem', margin: '0.4rem 0 0' }}>{proposta.mensagem_contraproposta}</p>
-                  {proposta.contraproposta_em && (
-                    <small style={{ color: '#64748b' }}>Enviada em {formatarData(proposta.contraproposta_em)}</small>
-                  )}
-                </div>
-              )}
-
-              {!isAdmin && (
-                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: podeAlterar && renegociandoId !== proposta.id ? '0.6rem' : 0 }}>
-                  {/* Chat liberado desde o envio da proposta (US34) — não precisa mais aceitar antes de conversar. */}
-                  <button
-                    onClick={() => setChatPropostaId(proposta.id)}
-                    style={{ ...botaoBase, background: 'transparent', border: '1px solid #3b82f6', color: '#60a5fa' }}
-                  >
-                    <MessageCircle size={15} /> {proposta.status === 'RECUSADA' ? 'Ver conversa' : 'Conversar'}
-                  </button>
-                </div>
-              )}
-
-              {!isAdmin && podeAlterar && renegociandoId !== proposta.id && (
-                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => alterarStatus(proposta, 'ACEITAR')}
-                    disabled={processandoId === proposta.id || expirada || proposta.contraproposta_status === 'PENDENTE'}
-                    title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
-                    style={{ ...botaoBase, background: '#10b981' }}
-                  >
-                    <CheckCircle size={15} /> Aceitar proposta
-                  </button>
-                  <button
-                    onClick={() => abrirRenegociacao(proposta)}
-                    disabled={processandoId === proposta.id || expirada}
-                    title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
-                    style={{ ...botaoBase, background: 'transparent', border: '1px solid #8b5cf6', color: '#a78bfa' }}
-                  >
-                    <Handshake size={15} /> Renegociar valor
-                  </button>
-                  <button
-                    onClick={() => alterarStatus(proposta, 'RECUSAR')}
-                    disabled={processandoId === proposta.id}
-                    style={{ ...botaoBase, background: 'transparent', border: '1px solid var(--danger-color)', color: '#f87171' }}
-                  >
-                    <XCircle size={15} /> Recusar
-                  </button>
-                </div>
-              )}
-
-              {!isAdmin && podeAlterar && renegociandoId === proposta.id && (
-                <form onSubmit={(e) => renegociar(e, proposta)} style={{
-                  background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '1.1rem',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
-                    <strong style={{ fontSize: '0.9rem' }}>Renegociar proposta</strong>
-                    <button type="button" onClick={() => setRenegociandoId(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.85rem' }}>
-                      Cancelar
+              ) : (
+                <form onSubmit={simularPagamento} className="empilhado" style={{ gap: '0.85rem' }}>
+                  <fieldset className="secao-form" style={{ gap: '0.6rem' }}>
+                    <legend style={{ fontSize: '0.95rem', marginBottom: '0.6rem' }}>Escolha o método de teste</legend>
+                    <div className="grade-campos" style={{ gap: '0.6rem' }}>
+                      <label className="caixa-opcao" style={{ borderColor: metodoPagamento === 'CARTAO_TESTE' ? 'var(--accent-indigo)' : undefined }}>
+                        <input type="radio" name="metodo" checked={metodoPagamento === 'CARTAO_TESTE'} onChange={() => setMetodoPagamento('CARTAO_TESTE')} />
+                        <span><strong style={{ display: 'block' }}>Cartão de teste</strong><span className="texto-apoio" style={{ fontSize: '0.8rem' }}>Aprovação imediata, sem dados reais</span></span>
+                      </label>
+                      <label className="caixa-opcao" style={{ borderColor: metodoPagamento === 'PIX_TESTE' ? 'var(--accent-indigo)' : undefined }}>
+                        <input type="radio" name="metodo" checked={metodoPagamento === 'PIX_TESTE'} onChange={() => setMetodoPagamento('PIX_TESTE')} />
+                        <span><strong style={{ display: 'block' }}>PIX de teste</strong><span className="texto-apoio" style={{ fontSize: '0.8rem' }}>Simula a confirmação do PIX</span></span>
+                      </label>
+                    </div>
+                  </fieldset>
+                  <div className="grupo-botoes">
+                    <button type="submit" disabled={processandoPagamento} className="btn btn-primario btn-grande">
+                      <Lock size={16} aria-hidden="true" /> {processandoPagamento ? 'Processando...' : `Confirmar pagamento simulado${propostaAceita ? ` · ${formatarValor(propostaAceita.valor)}` : ''}`}
                     </button>
+                    <button type="button" disabled={processandoPagamento} onClick={() => setPagando(false)} className="btn btn-secundario">Voltar</button>
                   </div>
-                  <div className="grid-2-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', marginBottom: '0.9rem' }}>
-                    <label style={{ fontSize: '0.85rem' }}>
-                      <span style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Novo valor (R$)</span>
-                      <input
-                        type="number" min="0.01" step="0.01" required
-                        value={novoValor}
-                        onChange={(e) => setNovoValor(e.target.value)}
-                        style={{ width: '100%', padding: '0.55rem 0.7rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff' }}
-                      />
-                    </label>
-                    <label style={{ fontSize: '0.85rem' }}>
-                      <span style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '0.3rem' }}>Mensagem para o prestador</span>
-                      <input
-                        type="text" minLength={5} required
-                        value={novaMensagem}
-                        onChange={(e) => setNovaMensagem(e.target.value)}
-                        style={{ width: '100%', padding: '0.55rem 0.7rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: '#fff' }}
-                      />
-                    </label>
+                </form>
+              )}
+            </section>
+          )}
+
+          {/* Confirmação de conclusão do serviço (US17) e cancelamento de uma contratação já aceita (US34
+              — antes disso, aceitar era irreversível). */}
+          {!isAdmin && solicitacao.status === 'CONTRATADA' && (
+            <section aria-labelledby="titulo-conclusao" className="card grande empilhado" style={{ gap: '0.75rem' }}>
+              <h2 id="titulo-conclusao" className="titulo-secao">O serviço foi feito?</h2>
+              {/* A conclusão exige o pagamento simulado retido em custódia (US17). */}
+              {custodia?.status_pagamento === 'RETIDO' ? (
+                <p className="texto-apoio">Quando {propostaAceita?.prestador.nome || 'o prestador'} terminar, confirme aqui. O pagamento é liberado e você pode avaliar o serviço.</p>
+              ) : (
+                <p id="aviso-conclusao-sem-pagamento" className="texto-apoio">Confirme o pagamento simulado na seção de pagamento para poder concluir. O valor fica retido e só é liberado a {propostaAceita?.prestador.nome || 'o prestador'} quando você confirmar a conclusão.</p>
+              )}
+              <div className="grupo-botoes">
+                <button type="button" onClick={concluirServico} disabled={processandoConclusao || custodia?.status_pagamento !== 'RETIDO'}
+                  aria-describedby={custodia?.status_pagamento === 'RETIDO' ? undefined : 'aviso-conclusao-sem-pagamento'} className="btn btn-primario">
+                  <CheckCircle size={16} aria-hidden="true" /> {processandoConclusao ? 'Confirmando...' : 'Confirmar que o serviço foi concluído'}
+                </button>
+                <button type="button" onClick={cancelarContratacao} disabled={processandoCancelContratacao} className="btn btn-perigo">
+                  <Ban size={15} aria-hidden="true" /> {processandoCancelContratacao ? 'Cancelando...' : 'Cancelar contratação'}
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* Avaliação de satisfação (US18) — liberada depois que o serviço é concluído (US17). */}
+          {!isAdmin && solicitacao.status === 'CONCLUIDA' && (
+            <section aria-labelledby="titulo-avaliacao" className={`card grande empilhado ${avaliacao ? '' : 'foco'}`} style={{ gap: '0.85rem' }}>
+              {avaliacao ? (
+                <>
+                  <h2 id="titulo-avaliacao" className="titulo-secao">Sua avaliação</h2>
+                  <div role="img" aria-label={`${avaliacao.nota} de 5 estrelas`} style={{ display: 'flex', gap: '2px' }}>
+                    {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={22} color="var(--warning-strong)" fill={n <= avaliacao.nota ? 'var(--warning-strong)' : 'none'} aria-hidden="true" />)}
                   </div>
-                  <button type="submit" disabled={processandoId === proposta.id || expirada} style={{ ...botaoBase, background: '#8b5cf6' }}>
-                    {processandoId === proposta.id ? 'Enviando...' : 'Enviar contraproposta'}
+                  {avaliacao.comentario && <p style={{ color: 'var(--text-body)', fontSize: '0.92rem' }}>{avaliacao.comentario}</p>}
+                </>
+              ) : (
+                <form onSubmit={enviarAvaliacao} className="empilhado" style={{ gap: '0.85rem' }}>
+                  <h2 id="titulo-avaliacao" className="titulo-secao">Como foi o serviço de {propostaAceita?.prestador.nome || 'o prestador'}?</h2>
+                  <div role="group" aria-label="Nota de 1 a 5 estrelas" style={{ display: 'flex', gap: '2px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n} type="button" onClick={() => setNotaAvaliacao(n)}
+                        aria-label={`Avaliar com ${n} ${n === 1 ? 'estrela' : 'estrelas'}`} aria-pressed={notaAvaliacao === n}
+                        style={{ width: '44px', height: '44px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Star size={30} color="var(--warning-strong)" fill={n <= notaAvaliacao ? 'var(--warning-strong)' : 'none'} aria-hidden="true" />
+                      </button>
+                    ))}
+                    <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', color: 'var(--warning-soft-text)' }}>
+                      {notaAvaliacao ? `${['', 'Ruim', 'Regular', 'Bom', 'Muito bom', 'Excelente'][notaAvaliacao]} · ${notaAvaliacao}/5` : 'Escolha de 1 a 5'}
+                    </span>
+                  </div>
+                  <div className="campo-grupo">
+                    <label htmlFor="comentario-avaliacao" className="rotulo">Comentário <span className="opcional">(opcional — aparece no perfil público do prestador)</span></label>
+                    <textarea id="comentario-avaliacao" value={comentarioAvaliacao} onChange={(e) => setComentarioAvaliacao(e.target.value)} placeholder="Conte como foi a experiência" rows={3} className="campo" />
+                  </div>
+                  <button type="submit" disabled={enviandoAvaliacao || notaAvaliacao < 1} className="btn btn-primario" style={{ alignSelf: 'flex-start' }}>
+                    {enviandoAvaliacao ? 'Enviando...' : 'Enviar avaliação'}
                   </button>
                 </form>
               )}
-            </article>
-          );
-        })}
+            </section>
+          )}
+
+          {/* ── Propostas (US11/US12) ─────────────────── */}
+          <section aria-labelledby="titulo-propostas" className="empilhado" style={{ gap: '0.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <h2 id="titulo-propostas" className="titulo-secao" style={{ fontSize: '1.35rem' }}>
+                {solicitacao.propostas.length === 1 ? '1 proposta recebida' : `${solicitacao.propostas.length} propostas recebidas`}
+              </h2>
+              {solicitacao.propostas.length > 1 && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} className="texto-apoio">
+                  Ordenar por
+                  <select value={ordenacao} onChange={(e) => setOrdenacao(e.target.value as typeof ordenacao)} className="campo" style={{ width: 'auto', minHeight: '40px', fontSize: '0.875rem' }}>
+                    <option value="preco">Menor preço</option>
+                    <option value="nota">Melhor avaliação</option>
+                    <option value="prazo">Menor prazo</option>
+                    <option value="recentes">Mais recentes</option>
+                  </select>
+                </label>
+              )}
+            </div>
+
+            {solicitacao.propostas.length === 0 && (
+              <EstadoLista tipo="vazio" icone={<Clock size={26} aria-hidden="true" />}>Esta solicitação ainda não recebeu propostas.</EstadoLista>
+            )}
+
+            {propostasOrdenadas.map((proposta) => {
+              const expirada = !(new Date(proposta.validade_ate).getTime() > agora);
+              const podeAlterar = !['ACEITA', 'RECUSADA'].includes(proposta.status)
+                && !['CONTRATADA', 'CONCLUIDA', 'CANCELADA'].includes(solicitacao.status);
+              const ehMelhorPreco = Number(proposta.valor) === menorPreco && solicitacao.propostas.length > 1;
+              const nota = proposta.prestador.perfil_prestador ? Number(proposta.prestador.perfil_prestador.nota_media_reputacao) : 0;
+              const destaque = (ehMelhorPreco && podeAlterar) || proposta.status === 'ACEITA';
+
+              return (
+                <article key={proposta.id} className={`card grande empilhado ${destaque ? 'foco' : ''}`} style={{ gap: '0.9rem', opacity: proposta.status === 'RECUSADA' || (expirada && podeAlterar) ? 0.8 : 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                      <Avatar nome={proposta.prestador.nome} foto={proposta.prestador.foto_url} tamanho={48} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
+                        <span className="chips">
+                          <Link href={`/prestadores/${proposta.prestador.id}`} style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{proposta.prestador.nome}</Link>
+                          {ehMelhorPreco && <span className="chip" style={{ background: 'var(--primary-color)', color: 'var(--on-primary)' }}>Menor preço</span>}
+                          <Chip status={proposta.status} mapa={STATUS_PROPOSTA} />
+                        </span>
+                        <span className="texto-apoio" style={{ fontSize: '0.82rem' }}>
+                          {nota > 0 ? <>★ {nota.toFixed(1).replace('.', ',')} · {proposta.prestador.perfil_prestador?.total_avaliacoes} avaliações · </> : 'Sem avaliações · '}
+                          <Link href={`/prestadores/${proposta.prestador.id}`} style={{ fontWeight: 600 }}>Ver perfil</Link>
+                        </span>
+                      </div>
+                    </div>
+                    <dl style={{ display: 'flex', gap: '1.4rem', flexWrap: 'wrap' }}>
+                      <div><dt className="texto-apoio" style={{ fontSize: '0.75rem' }}>Valor</dt><dd style={{ fontSize: '1.35rem', fontWeight: 800 }}>{formatarValor(proposta.valor)}</dd></div>
+                      <div><dt className="texto-apoio" style={{ fontSize: '0.75rem' }}>Prazo</dt><dd style={{ fontSize: '1rem', fontWeight: 700, paddingTop: '4px' }}>{proposta.prazo_dias} {proposta.prazo_dias === 1 ? 'dia' : 'dias'}</dd></div>
+                      <div><dt className="texto-apoio" style={{ fontSize: '0.75rem' }}>Válida até</dt><dd style={{ fontSize: '1rem', fontWeight: 700, paddingTop: '4px', color: expirada && podeAlterar ? 'var(--danger-text)' : undefined }}>{new Date(proposta.validade_ate).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</dd></div>
+                    </dl>
+                  </div>
+
+                  <p style={{ padding: '0.75rem 0.9rem', borderRadius: '12px', background: 'var(--bg-color)', fontSize: '0.92rem', lineHeight: 1.55, color: 'var(--text-body)', overflowWrap: 'anywhere' }}>“{proposta.mensagem}”</p>
+                  {proposta.prestador.perfil_prestador?.descricao_bio && (
+                    <p className="texto-apoio" style={{ fontSize: '0.82rem', fontStyle: 'italic' }}>Sobre: {proposta.prestador.perfil_prestador.descricao_bio}</p>
+                  )}
+                  {proposta.prestador.perfil_prestador?.categorias && proposta.prestador.perfil_prestador.categorias.length > 0 && (
+                    <div className="chips">{proposta.prestador.perfil_prestador.categorias.map((cat) => <span key={cat} className="chip categoria">{cat}</span>)}</div>
+                  )}
+                  <span className="texto-apoio" style={{ fontSize: '0.78rem' }}>Recebida em {formatarData(proposta.createdAt)}</span>
+
+                  {expirada && ['ENVIADA', 'EM_ANALISE'].includes(proposta.status) && (
+                    <Aviso tipo="erro">Proposta expirada. O aceite e a renegociação estão bloqueados; ainda é possível recusá-la.</Aviso>
+                  )}
+
+                  {proposta.valor_contraproposta !== null && (
+                    <div className={`aviso ${proposta.contraproposta_status === 'PENDENTE' ? 'aviso-alerta' : proposta.contraproposta_status === 'ACEITA' ? 'aviso-sucesso' : 'aviso-info'}`} style={{ flexDirection: 'column', gap: '0.3rem' }}>
+                      <span>Sua contraproposta: <strong>{formatarValor(proposta.valor_contraproposta)}</strong>{proposta.contraproposta_em && <> · enviada em {formatarData(proposta.contraproposta_em)}</>}</span>
+                      <span role="status">{proposta.contraproposta_status === 'PENDENTE' ? 'Aguardando resposta do prestador. A contratação fica disponível após a resposta.' : proposta.contraproposta_status === 'ACEITA' ? (proposta.status === 'ACEITA' ? 'Contratação confirmada com o valor da contraproposta.' : 'O prestador aceitou o novo valor. Confira e confirme a contratação.') : proposta.contraproposta_status === 'RECUSADA' ? 'O prestador recusou a contraproposta. O valor anterior foi mantido.' : 'Negociação anterior'}</span>
+                      {proposta.mensagem_contraproposta && <span style={{ color: 'var(--text-body)', fontSize: '0.85rem' }}>“{proposta.mensagem_contraproposta}”</span>}
+                    </div>
+                  )}
+
+                  {!isAdmin && renegociandoId !== proposta.id && (
+                    <div className="grupo-botoes">
+                      {podeAlterar && (
+                        <>
+                          <button
+                            type="button" onClick={() => alterarStatus(proposta, 'ACEITAR')}
+                            disabled={processandoId === proposta.id || expirada || proposta.contraproposta_status === 'PENDENTE'}
+                            title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
+                            className="btn btn-primario"
+                          >
+                            <CheckCircle size={16} aria-hidden="true" /> Aceitar e contratar
+                          </button>
+                          <button
+                            type="button" onClick={() => abrirRenegociacao(proposta)}
+                            disabled={processandoId === proposta.id || expirada}
+                            title={expirada ? 'A validade comercial desta proposta expirou.' : undefined}
+                            className="btn btn-secundario"
+                          >
+                            <Handshake size={16} aria-hidden="true" /> Propor outro valor
+                          </button>
+                        </>
+                      )}
+                      {/* Chat liberado desde o envio da proposta (US34) — não precisa mais aceitar antes de conversar. */}
+                      <button type="button" onClick={() => setChatPropostaId(proposta.id)} className="btn btn-secundario">
+                        <MessageCircle size={16} aria-hidden="true" /> {proposta.status === 'RECUSADA' ? 'Ver conversa' : 'Conversar'}
+                      </button>
+                      {podeAlterar && (
+                        <button type="button" onClick={() => alterarStatus(proposta, 'RECUSAR')} disabled={processandoId === proposta.id} className="btn btn-texto perigo" style={{ marginLeft: 'auto' }}>
+                          <XCircle size={16} aria-hidden="true" /> Recusar
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {!isAdmin && podeAlterar && renegociandoId === proposta.id && (
+                    <form onSubmit={(e) => renegociar(e, proposta)} className="empilhado" style={{ gap: '0.85rem', padding: '1rem', borderRadius: '12px', background: 'var(--bg-color)', border: '1px solid var(--card-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong>Propor outro valor</strong>
+                        <button type="button" onClick={() => setRenegociandoId(null)} className="btn btn-texto discreto">Cancelar</button>
+                      </div>
+                      <div className="grade-campos">
+                        <div className="campo-grupo">
+                          <label htmlFor={`novo-valor-${proposta.id}`} className="rotulo">Novo valor</label>
+                          <div className="campo-com-prefixo">
+                            <span aria-hidden="true">R$</span>
+                            <input id={`novo-valor-${proposta.id}`} type="number" min="0.01" step="0.01" required value={novoValor} onChange={(e) => setNovoValor(e.target.value)} className="campo" style={{ background: 'var(--card-bg)' }} />
+                          </div>
+                        </div>
+                        <div className="campo-grupo">
+                          <label htmlFor={`nova-msg-${proposta.id}`} className="rotulo">Mensagem para o prestador</label>
+                          <input id={`nova-msg-${proposta.id}`} type="text" minLength={5} required value={novaMensagem} onChange={(e) => setNovaMensagem(e.target.value)} className="campo" style={{ background: 'var(--card-bg)' }} />
+                        </div>
+                      </div>
+                      <button type="submit" disabled={processandoId === proposta.id || expirada} className="btn btn-primario" style={{ alignSelf: 'flex-start' }}>
+                        {processandoId === proposta.id ? 'Enviando...' : 'Enviar contraproposta'}
+                      </button>
+                    </form>
+                  )}
+                </article>
+              );
+            })}
+
+            {aberta && solicitacao.propostas.length > 1 && (
+              <details className="card destaque" style={{ padding: '0.9rem 1.1rem' }}>
+                <summary style={{ minHeight: '28px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' }}>Como escolher? <span className="texto-apoio" style={{ fontWeight: 400 }}>Preço não é tudo</span></summary>
+                <p className="texto-apoio" style={{ marginTop: '0.6rem', lineHeight: 1.6, color: 'var(--text-body)' }}>Compare também a nota e os comentários no perfil, o prazo e o que está incluso na mensagem. Na dúvida, converse antes de aceitar — o chat fica disponível para cada proposta.</p>
+              </details>
+            )}
+          </section>
+        </div>
+
+        <aside className="lateral">
+          <section aria-labelledby="titulo-pedido" className="card empilhado" style={{ gap: '0.85rem' }}>
+            <h2 id="titulo-pedido" className="titulo-cartao">{isAdmin ? 'Pedido' : 'Seu pedido'}</h2>
+            <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-body)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{solicitacao.descricao}</p>
+            {solicitacao.anexos && solicitacao.anexos.length > 0 && (
+              <ul className="lista-simples" style={{ gap: '0.4rem' }} aria-label="Anexos">
+                {solicitacao.anexos.map((anexo) => (
+                  <li key={anexo.id}>
+                    <a href={`${BACKEND_ORIGIN}${anexo.url_arquivo}`} target="_blank" rel="noopener noreferrer" title={anexo.nome_original} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: '40px', padding: '0 0.75rem', borderRadius: '10px', background: 'var(--bg-color)', border: '1px solid var(--card-border)', color: 'var(--text-body)', fontSize: '0.82rem' }}>
+                      {anexo.url_arquivo.endsWith('.pdf') ? <FileText size={15} aria-hidden="true" /> : <Paperclip size={15} aria-hidden="true" />}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{anexo.nome_original}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {(solicitacao.perguntas || []).length > 0 && (
+            <section aria-labelledby="titulo-perguntas" className={`card empilhado ${perguntasPendentes > 0 && !isAdmin ? 'alerta' : ''}`} style={{ gap: '0.85rem' }}>
+              <h2 id="titulo-perguntas" className="titulo-cartao" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <HelpCircle size={17} aria-hidden="true" /> Perguntas dos prestadores
+                {perguntasPendentes > 0 && <span className="chip" style={{ background: 'var(--warning-border)', color: 'var(--warning-soft-text)' }}>{perguntasPendentes} sem resposta</span>}
+              </h2>
+              {(solicitacao.perguntas || []).map((p) => (
+                <div key={p.id} className="empilhado" style={{ gap: '0.45rem', paddingTop: '0.75rem', borderTop: '1px solid var(--card-border)' }}>
+                  <span className="texto-apoio" style={{ fontSize: '0.78rem' }}>{p.prestador.nome} · {formatarData(p.createdAt)}</span>
+                  <p style={{ fontSize: '0.9rem', overflowWrap: 'anywhere' }}>{p.pergunta}</p>
+                  {p.resposta ? (
+                    <p style={{ paddingLeft: '0.75rem', borderLeft: '2px solid var(--accent-indigo)', fontSize: '0.875rem', color: 'var(--text-body)', overflowWrap: 'anywhere' }}>
+                      <strong style={{ color: 'var(--link-color)' }}>{isAdmin ? 'Resposta' : 'Sua resposta'}:</strong> {p.resposta}
+                    </p>
+                  ) : isAdmin ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--warning-strong)', fontSize: '0.8rem' }}><Clock size={13} aria-hidden="true" /> Aguardando resposta do solicitante</span>
+                  ) : respondendoId === p.id ? (
+                    <form onSubmit={(e) => responderPergunta(e, p.id)} className="empilhado" style={{ gap: '0.5rem' }}>
+                      <label htmlFor={`resposta-${p.id}`} className="sr-only">Sua resposta</label>
+                      <textarea id={`resposta-${p.id}`} value={textoResposta} onChange={(e) => setTextoResposta(e.target.value)} placeholder="Escreva sua resposta (todos os prestadores verão)" maxLength={1000} autoFocus rows={2} className="campo" style={{ minHeight: '72px', fontSize: '0.9rem' }} />
+                      <div className="grupo-botoes" style={{ justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={() => setRespondendoId(null)} className="btn btn-texto discreto">Cancelar</button>
+                        <button type="submit" disabled={enviandoResposta || !textoResposta.trim()} className="btn btn-primario">Responder</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <button type="button" onClick={() => abrirResposta(p)} className="btn btn-secundario" style={{ alignSelf: 'flex-start', minHeight: '40px' }}>Responder</button>
+                  )}
+                </div>
+              ))}
+            </section>
+          )}
+
+          {aberta && (
+            <section className="card" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', background: 'transparent' }}>
+              <ShieldCheck size={20} color="var(--brand-sky)" aria-hidden="true" style={{ flexShrink: 0 }} />
+              <p className="texto-apoio" style={{ fontSize: '0.82rem', lineHeight: 1.55 }}>Ao aceitar, você paga pela plataforma e o valor fica retido. O prestador só recebe quando você confirmar que o serviço foi concluído.</p>
+            </section>
+          )}
+        </aside>
       </div>
 
       {(() => {
@@ -1057,19 +858,6 @@ export default function DetalhePropostasPage() {
           />
         );
       })()}
-    </main>
+    </Pagina>
   );
 }
-
-const botaoBase: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.4rem',
-  padding: '0.6rem 1rem',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '8px',
-  fontWeight: 600,
-  fontSize: '0.85rem',
-  cursor: 'pointer',
-};

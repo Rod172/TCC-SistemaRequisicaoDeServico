@@ -4,6 +4,9 @@
  * @file admin/page.tsx
  * @description Painel Administrativo (US27): gestão de usuários (listar/filtrar/ativar/desativar) e
  * visão geral de todas as solicitações da plataforma. Acesso restrito a `tipo_perfil = ADMIN`.
+ * Layout da US39: cabeçalho compartilhado, aviso de denúncias pendentes, abas num único cartão e
+ * tabela de usuários com rolagem horizontal em telas estreitas. O atalho "Atendimento de privacidade"
+ * leva à caixa de pedidos dos titulares (US40).
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones para tabelas, filtros e ações.
@@ -17,13 +20,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowLeft, ShieldCheck, Users, ClipboardList, Search,
-  UserCheck, UserX, AlertCircle, CheckCircle, LogOut, Flag, Check,
-} from 'lucide-react';
+import { Users, ClipboardList, Search, UserCheck, UserX, Flag, Check, ShieldCheck } from 'lucide-react';
 import api from '@/services/api';
 import useConfirmacao from '@/components/useConfirmacao';
-import NotificationBell from '@/components/NotificationBell';
+import Pagina, { CabecalhoPagina } from '@/components/ui/Pagina';
+import { Aviso, Chip, EstadoLista, STATUS_SOLICITACAO } from '@/components/ui/Elementos';
 
 type Aba = 'usuarios' | 'solicitacoes' | 'denuncias';
 
@@ -57,14 +58,6 @@ interface DenunciaAdmin {
 }
 
 const TIPO_LABEL: Record<string, string> = { SOLICITANTE: 'Solicitante', PRESTADOR: 'Prestador', ADMIN: 'Admin' };
-
-const STATUS_SOLICITACAO: Record<string, { label: string; bg: string; fg: string }> = {
-  ABERTA: { label: 'Aberta', bg: 'rgba(59,130,246,0.15)', fg: '#60a5fa' },
-  EM_NEGOCIACAO: { label: 'Em negociação', bg: 'rgba(245,158,11,0.15)', fg: '#fbbf24' },
-  CONTRATADA: { label: 'Contratada', bg: 'rgba(139,92,246,0.15)', fg: '#a78bfa' },
-  CONCLUIDA: { label: 'Concluída', bg: 'rgba(16,185,129,0.15)', fg: '#34d399' },
-  CANCELADA: { label: 'Cancelada', bg: 'rgba(239,68,68,0.15)', fg: '#f87171' },
-};
 
 function formatarData(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -205,281 +198,180 @@ export default function AdminPage() {
   }
 
   if (carregando) {
-    return <main style={{ maxWidth: '1000px', margin: '4rem auto', padding: '0 1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Carregando...</main>;
+    return (
+      <Pagina>
+        <EstadoLista tipo="carregando">Carregando...</EstadoLista>
+      </Pagina>
+    );
   }
 
   if (!autorizado) return null;
 
+  const pendentes = denuncias.filter((d) => d.status === 'PENDENTE').length;
+
   return (
-    <main style={{ maxWidth: '1000px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
+    <Pagina>
       {dialogo}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          <ArrowLeft size={16} /> Voltar para a página inicial
-        </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <NotificationBell />
-          <button onClick={() => { localStorage.removeItem('@ServicoFacil:token'); localStorage.removeItem('@ServicoFacil:user'); router.push('/'); }} style={{
-            display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'transparent',
-            border: '1px solid #334155', color: '#94a3b8', borderRadius: '8px', padding: '0.5rem 0.9rem', fontSize: '0.85rem', cursor: 'pointer',
-          }}>
-            <LogOut size={15} /> Sair
-          </button>
-        </div>
-      </div>
+      <CabecalhoPagina
+        area="Administração"
+        titulo="Painel administrativo"
+        subtitulo="Usuários, pedidos e denúncias da plataforma. Cada ação administrativa fica registrada com quem fez e quando."
+        acoes={<Link href="/admin/privacidade" className="btn btn-secundario"><ShieldCheck size={16} aria-hidden="true" /> Atendimento de privacidade</Link>}
+      />
 
-      <header style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <div style={{
-          width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(139,92,246,0.15)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa',
-        }}>
-          <ShieldCheck size={24} />
-        </div>
-        <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>Painel Administrativo</h1>
-      <Link href="/admin/privacidade">Atendimento de privacidade</Link>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Gestão de usuários e visão geral das solicitações da plataforma.</p>
-        </div>
-      </header>
-
-      {sucesso && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--accent-color)', color: '#6ee7b7', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          <CheckCircle size={20} /> <span>{sucesso}</span>
-        </div>
-      )}
-      {erro && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)', color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          <AlertCircle size={20} /> <span>{erro}</span>
+      {sucesso && <Aviso tipo="sucesso">{sucesso}</Aviso>}
+      {erro && <Aviso tipo="erro">{erro}</Aviso>}
+      {pendentes > 0 && abaAtiva !== 'denuncias' && (
+        <div className="aviso aviso-alerta" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <Flag size={18} aria-hidden="true" />
+          <span style={{ flex: '1 1 260px' }}>{pendentes === 1 ? '1 denúncia pendente' : `${pendentes} denúncias pendentes`} aguardando revisão.</span>
+          <button type="button" className="btn btn-texto" style={{ color: 'var(--warning-soft-text)' }} onClick={() => { setAbaAtiva('denuncias'); limparMensagens(); }}>Revisar agora</button>
         </div>
       )}
 
-      {/* ── Abas ─────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #334155', marginBottom: '1.5rem', overflowX: 'auto' }}>
-        {([
-          { id: 'usuarios', label: 'Usuários', icon: <Users size={16} /> },
-          { id: 'solicitacoes', label: 'Solicitações', icon: <ClipboardList size={16} /> },
-          { id: 'denuncias', label: 'Denúncias', icon: <Flag size={16} /> },
-        ] as { id: Aba; label: string; icon: React.ReactNode }[]).map((aba) => (
-          <button
-            key={aba.id}
-            onClick={() => { setAbaAtiva(aba.id); limparMensagens(); }}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
-              background: 'transparent', border: 'none', whiteSpace: 'nowrap',
-              borderBottom: abaAtiva === aba.id ? '2px solid #8b5cf6' : '2px solid transparent',
-              color: abaAtiva === aba.id ? '#fff' : 'var(--text-secondary)',
-              padding: '0.75rem 0.25rem', marginRight: '1.25rem',
-              fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            {aba.icon} {aba.label}
-            {aba.id === 'denuncias' && denuncias.filter((d) => d.status === 'PENDENTE').length > 0 && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                minWidth: '18px', height: '18px', borderRadius: '999px', background: '#ef4444',
-                color: '#fff', fontSize: '0.68rem', fontWeight: 700, padding: '0 4px',
-              }}>
-                {denuncias.filter((d) => d.status === 'PENDENTE').length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <section className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div role="tablist" aria-label="Áreas do painel" className="abas" style={{ padding: '0 0.75rem' }}>
+          {([
+            { id: 'usuarios', label: 'Usuários', icon: <Users size={16} aria-hidden="true" /> },
+            { id: 'solicitacoes', label: 'Solicitações', icon: <ClipboardList size={16} aria-hidden="true" /> },
+            { id: 'denuncias', label: 'Denúncias', icon: <Flag size={16} aria-hidden="true" /> },
+          ] as { id: Aba; label: string; icon: React.ReactNode }[]).map((aba) => (
+            <button key={aba.id} type="button" role="tab" className="aba" aria-selected={abaAtiva === aba.id} onClick={() => { setAbaAtiva(aba.id); limparMensagens(); }} style={{ gap: '0.4rem', minHeight: '50px' }}>
+              {aba.icon} {aba.label}
+              {aba.id === 'denuncias' && pendentes > 0 && <span className="contagem" style={{ background: 'var(--warning-border)', color: 'var(--warning-soft-text)' }}>{pendentes}</span>}
+            </button>
+          ))}
+        </div>
 
-      {/* ── Aba Usuários ─────────────────────── */}
-      {abaAtiva === 'usuarios' && (
-        <>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-            <div style={{ flex: '1 1 220px', position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-              <input
-                value={buscaUsuario}
-                onChange={(e) => setBuscaUsuario(e.target.value)}
-                placeholder="Buscar por nome ou e-mail"
-                style={{ ...campoInput, paddingLeft: '2.2rem' }}
-              />
+        {/* ── Aba Usuários ─────────────────────── */}
+        {abaAtiva === 'usuarios' && (
+          <>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', padding: '1rem 1.25rem', borderBottom: '1px solid var(--card-border)' }}>
+              <div style={{ flex: '1 1 240px', position: 'relative' }}>
+                <label htmlFor="busca-usuario" className="sr-only">Buscar por nome ou e-mail</label>
+                <Search size={16} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                <input id="busca-usuario" type="search" value={buscaUsuario} onChange={(e) => setBuscaUsuario(e.target.value)} placeholder="Buscar por nome ou e-mail" className="campo" style={{ minHeight: '44px', paddingLeft: '2.3rem', fontSize: '0.9rem' }} />
+              </div>
+              <label className="texto-apoio" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem' }}>
+                Perfil
+                <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="campo" style={{ width: 'auto', minHeight: '44px', fontSize: '0.9rem' }}>
+                  <option value="">Todos</option>
+                  <option value="SOLICITANTE">Solicitante</option>
+                  <option value="PRESTADOR">Prestador</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </label>
+              <label className="texto-apoio" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem' }}>
+                Situação
+                <select value={filtroStatusUsuario} onChange={(e) => setFiltroStatusUsuario(e.target.value)} className="campo" style={{ width: 'auto', minHeight: '44px', fontSize: '0.9rem' }}>
+                  <option value="">Todas</option>
+                  <option value="ativo">Ativos</option>
+                  <option value="inativo">Inativos</option>
+                </select>
+              </label>
             </div>
-            <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} style={{ ...campoInput, flex: '0 1 170px' }}>
-              <option value="">Todos os perfis</option>
-              <option value="SOLICITANTE">Solicitante</option>
-              <option value="PRESTADOR">Prestador</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-            <select value={filtroStatusUsuario} onChange={(e) => setFiltroStatusUsuario(e.target.value)} style={{ ...campoInput, flex: '0 1 150px' }}>
-              <option value="">Todos os status</option>
-              <option value="ativo">Ativos</option>
-              <option value="inativo">Inativos</option>
-            </select>
-          </div>
 
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)', overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+            <div className="tabela-rolagem">
+              <table className="tabela" style={{ minWidth: '780px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #334155', textAlign: 'left' }}>
-                    <th style={estiloTh}>Nome</th>
-                    <th style={estiloTh}>E-mail</th>
-                    <th style={estiloTh}>Perfil</th>
-                    <th style={estiloTh}>Status</th>
-                    <th style={estiloTh}>Cadastro</th>
-                    <th style={estiloTh}>Ação</th>
+                  <tr>
+                    <th scope="col" style={{ paddingLeft: '1.25rem' }}>Nome</th>
+                    <th scope="col">E-mail</th>
+                    <th scope="col">Perfil</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col">Cadastro</th>
+                    <th scope="col" style={{ textAlign: 'right', paddingRight: '1.25rem' }}>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
                   {usuarios.map((u) => (
-                    <tr key={u.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                      <td style={estiloTd}>{u.nome}</td>
-                      <td style={{ ...estiloTd, color: '#94a3b8' }}>{u.email}</td>
-                      <td style={estiloTd}>{TIPO_LABEL[u.tipo_perfil] || u.tipo_perfil}</td>
-                      <td style={estiloTd}>
-                        <span style={{
-                          padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600,
-                          background: u.ativo ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                          color: u.ativo ? '#34d399' : '#f87171',
-                        }}>
-                          {u.ativo ? 'Ativo' : 'Inativo'}
+                    <tr key={u.id}>
+                      <td style={{ paddingLeft: '1.25rem', fontWeight: 700 }}>{u.nome}</td>
+                      <td style={{ color: 'var(--text-body)' }}>{u.email}</td>
+                      <td><span className="chip" style={{ background: 'var(--card-border)', color: 'var(--text-body)' }}>{TIPO_LABEL[u.tipo_perfil] || u.tipo_perfil}</span></td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600, color: u.ativo ? 'var(--success-strong)' : 'var(--danger-strong)' }}>
+                          <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: 'currentColor' }} />{u.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
-                      <td style={{ ...estiloTd, color: '#64748b' }}>{formatarData(u.createdAt)}</td>
-                      <td style={estiloTd}>
-                        <button
-                          onClick={() => alterarStatus(u)}
-                          disabled={processandoId === u.id || u.tipo_perfil === 'ADMIN'}
-                          title={u.tipo_perfil === 'ADMIN' ? 'Não é possível alterar outra conta de administrador por aqui' : undefined}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-                            padding: '0.35rem 0.7rem', borderRadius: '6px', border: 'none',
-                            fontSize: '0.8rem', fontWeight: 600, cursor: (processandoId === u.id || u.tipo_perfil === 'ADMIN') ? 'not-allowed' : 'pointer',
-                            opacity: u.tipo_perfil === 'ADMIN' ? 0.4 : 1,
-                            background: u.ativo ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
-                            color: u.ativo ? '#f87171' : '#34d399',
-                          }}
-                        >
-                          {u.ativo ? <UserX size={14} /> : <UserCheck size={14} />}
-                          {u.ativo ? 'Desativar' : 'Ativar'}
-                        </button>
+                      <td style={{ color: 'var(--text-secondary)' }}>{formatarData(u.createdAt)}</td>
+                      <td style={{ textAlign: 'right', paddingRight: '1.25rem' }}>
+                        {u.tipo_perfil === 'ADMIN' ? (
+                          <span className="texto-apoio" style={{ fontSize: '0.78rem' }} title="Não é possível alterar outra conta de administrador por aqui">Conta de administrador</span>
+                        ) : (
+                          <button type="button" onClick={() => alterarStatus(u)} disabled={processandoId === u.id} className={`btn ${u.ativo ? 'btn-perigo' : 'btn-secundario'}`} style={{ minHeight: '38px', fontSize: '0.82rem', color: u.ativo ? undefined : 'var(--success-soft-text)', borderColor: u.ativo ? undefined : 'var(--success-border)' }}>
+                            {u.ativo ? <UserX size={14} aria-hidden="true" /> : <UserCheck size={14} aria-hidden="true" />}
+                            {u.ativo ? 'Desativar' : 'Ativar'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {usuarios.length === 0 && (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Nenhum usuário encontrado.</div>
-            )}
-          </div>
-        </>
-      )}
+            {usuarios.length === 0 && <p className="texto-apoio" style={{ padding: '2rem', textAlign: 'center' }}>Nenhum usuário encontrado.</p>}
+            {usuarios.length > 0 && <p className="texto-apoio" style={{ padding: '0.85rem 1.25rem', borderTop: '1px solid var(--card-border)', fontSize: '0.8rem' }}>{usuarios.length === 1 ? '1 usuário' : `${usuarios.length} usuários`}</p>}
+          </>
+        )}
 
-      {/* ── Aba Solicitações ─────────────────── */}
-      {abaAtiva === 'solicitacoes' && (
-        <>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <select value={filtroStatusSolicitacao} onChange={(e) => setFiltroStatusSolicitacao(e.target.value)} style={{ ...campoInput, width: '220px' }}>
-              <option value="">Todos os status</option>
-              {Object.entries(STATUS_SOLICITACAO).map(([valor, info]) => (
-                <option key={valor} value={valor}>{info.label}</option>
+        {/* ── Aba Solicitações ─────────────────── */}
+        {abaAtiva === 'solicitacoes' && (
+          <div className="empilhado" style={{ padding: '1rem 1.25rem 1.25rem', gap: '0.75rem' }}>
+            <label className="texto-apoio" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', alignSelf: 'flex-start' }}>
+              Status
+              <select value={filtroStatusSolicitacao} onChange={(e) => setFiltroStatusSolicitacao(e.target.value)} className="campo" style={{ width: 'auto', minHeight: '44px', fontSize: '0.9rem' }}>
+                <option value="">Todos</option>
+                {Object.entries(STATUS_SOLICITACAO).map(([valor, info]) => (
+                  <option key={valor} value={valor}>{info.label}</option>
+                ))}
+              </select>
+            </label>
+            <ul className="lista-simples" style={{ gap: '0.6rem' }}>
+              {solicitacoes.map((s) => (
+                <li key={s.id}>
+                  <Link href={`/minhas-solicitacoes/${s.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', padding: '0.9rem 1rem', borderRadius: '12px', background: 'var(--bg-color)', border: '1px solid var(--card-border)', color: 'inherit' }}>
+                    <span style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
+                      <span className="chips">
+                        <Chip status={s.status} mapa={STATUS_SOLICITACAO} />
+                        {s.categoria && <span className="chip categoria">{s.categoria}</span>}
+                      </span>
+                      <strong style={{ fontSize: '0.95rem', overflowWrap: 'anywhere' }}>{s.titulo}</strong>
+                      <span className="texto-apoio" style={{ fontSize: '0.8rem', overflowWrap: 'anywhere' }}>{s.solicitante.nome} ({s.solicitante.email}){s.cidade && ` · ${s.bairro}, ${s.cidade}`}</span>
+                    </span>
+                    <span className="texto-apoio" style={{ fontSize: '0.8rem' }}>{formatarData(s.created_at)}</span>
+                  </Link>
+                </li>
               ))}
-            </select>
+            </ul>
+            {solicitacoes.length === 0 && <EstadoLista tipo="vazio">Nenhuma solicitação encontrada.</EstadoLista>}
           </div>
+        )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {solicitacoes.map((s) => {
-              const cor = STATUS_SOLICITACAO[s.status] || { label: s.status, bg: '#1e293b', fg: '#94a3b8' };
-              return (
-                <Link key={s.id} href={`/minhas-solicitacoes/${s.id}`} style={{
-                  background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-                  borderRadius: 'var(--border-radius)', padding: '1.1rem 1.25rem',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem',
-                  textDecoration: 'none', color: 'inherit', cursor: 'pointer',
-                }}>
-                  <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                      <span style={{ padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, background: cor.bg, color: cor.fg }}>{cor.label}</span>
-                      {s.categoria && <span style={{ padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600, background: '#1e293b', color: '#cbd5e1' }}>{s.categoria}</span>}
-                    </div>
-                    <strong style={{ fontSize: '0.95rem' }}>{s.titulo}</strong>
-                    <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '2px' }}>
-                      {s.solicitante.nome} ({s.solicitante.email}) {s.cidade && `· ${s.bairro}, ${s.cidade}`}
-                    </div>
-                  </div>
-                  <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{formatarData(s.created_at)}</span>
-                </Link>
-              );
-            })}
-            {solicitacoes.length === 0 && (
-              <div style={{
-                textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-secondary)',
-                background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-              }}>
-                Nenhuma solicitação encontrada.
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* ── Aba Denúncias ─────────────────────── */}
-      {abaAtiva === 'denuncias' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {denuncias.map((d) => (
-            <div key={d.id} style={{
-              background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-              borderRadius: 'var(--border-radius)', padding: '1.1rem 1.25rem',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem',
-            }}>
-              <div style={{ flex: '1 1 320px' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{
-                    padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600,
-                    background: d.status === 'PENDENTE' ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
-                    color: d.status === 'PENDENTE' ? '#f87171' : '#34d399',
-                  }}>
+        {/* ── Aba Denúncias ─────────────────────── */}
+        {abaAtiva === 'denuncias' && (
+          <div className="empilhado" style={{ padding: '1rem 1.25rem 1.25rem', gap: '0.6rem' }}>
+            {denuncias.map((d) => (
+              <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', padding: '0.9rem 1rem', borderRadius: '12px', background: 'var(--bg-color)', border: `1px solid ${d.status === 'PENDENTE' ? 'var(--warning-border)' : 'var(--card-border)'}` }}>
+                <div style={{ flex: '1 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <span className="chip" style={{ alignSelf: 'flex-start', background: d.status === 'PENDENTE' ? 'var(--warning-tint)' : 'var(--success-tint)', color: d.status === 'PENDENTE' ? 'var(--warning-strong)' : 'var(--success-strong)' }}>
                     {d.status === 'PENDENTE' ? 'Pendente' : 'Resolvida'}
                   </span>
+                  <p style={{ fontSize: '0.92rem', overflowWrap: 'anywhere' }}>{d.motivo}</p>
+                  <span className="texto-apoio" style={{ fontSize: '0.8rem' }}>Denunciado por {d.denunciante.nome} ({d.denunciante.email}) · {formatarData(d.createdAt)}</span>
+                  <Link href={`/minhas-solicitacoes/${d.solicitacao.id}`} style={{ fontSize: '0.85rem', fontWeight: 600 }}>Ver solicitação: {d.solicitacao.titulo}</Link>
                 </div>
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#e2e8f0' }}>{d.motivo}</p>
-                <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                  Denunciado por {d.denunciante.nome} ({d.denunciante.email}) · {formatarData(d.createdAt)}
-                </div>
-                <Link href={`/minhas-solicitacoes/${d.solicitacao.id}`} style={{ color: '#60a5fa', fontSize: '0.82rem', textDecoration: 'none' }}>
-                  Ver solicitação: {d.solicitacao.titulo}
-                </Link>
+                {d.status === 'PENDENTE' && (
+                  <button type="button" onClick={() => resolverDenuncia(d)} disabled={resolvendoId === d.id} className="btn btn-secundario" style={{ minHeight: '40px' }}>
+                    <Check size={15} aria-hidden="true" /> Marcar como resolvida
+                  </button>
+                )}
               </div>
-              {d.status === 'PENDENTE' && (
-                <button
-                  onClick={() => resolverDenuncia(d)}
-                  disabled={resolvendoId === d.id}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-                    padding: '0.4rem 0.8rem', borderRadius: '6px', border: 'none',
-                    background: 'rgba(16,185,129,0.15)', color: '#34d399',
-                    fontSize: '0.8rem', fontWeight: 600, cursor: resolvendoId === d.id ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  <Check size={14} /> Marcar como resolvida
-                </button>
-              )}
-            </div>
-          ))}
-          {denuncias.length === 0 && (
-            <div style={{
-              textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-secondary)',
-              background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 'var(--border-radius)',
-            }}>
-              Nenhuma denúncia registrada.
-            </div>
-          )}
-        </div>
-      )}
-    </main>
+            ))}
+            {denuncias.length === 0 && <EstadoLista tipo="vazio">Nenhuma denúncia registrada.</EstadoLista>}
+          </div>
+        )}
+      </section>
+    </Pagina>
   );
 }
-
-const campoInput: React.CSSProperties = {
-  padding: '0.6rem 0.75rem', background: '#0f172a', border: '1px solid #334155',
-  borderRadius: '8px', color: '#fff', fontSize: '0.9rem', width: '100%',
-};
-
-const estiloTh: React.CSSProperties = { padding: '0.75rem 1rem', color: '#94a3b8', fontWeight: 600, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.03em' };
-const estiloTd: React.CSSProperties = { padding: '0.75rem 1rem' };

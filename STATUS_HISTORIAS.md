@@ -24,7 +24,7 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 | US14 | Chat Privado em Tempo Real entre Solicitante e Prestador | Implementada | Chat por proposta com autorização dos participantes; integração do isolamento entre concorrentes. |
 | US15 | Troca de Anexos e Imagens no Chat | Implementada | Multer para imagem/PDF e limites de arquivo; formatos inválidos geram erro 400 e extensão é derivada do MIME permitido. |
 | US16 | Notificações no Sistema | Implementada | Notificações persistidas e Socket.io; preferências respeitadas nos eventos existentes. |
-| US17 | Confirmação de Conclusão do Serviço | Implementada | Conclusão por participante da contratação e liberação da custódia; testes de concorrência com cancelamento. |
+| US17 | Confirmação de Conclusão do Serviço | Implementada | Conclusão por participante da contratação, só com o pagamento simulado retido (409 sem custódia), e liberação da custódia; testes de concorrência com cancelamento e de recusa sem pagamento. |
 | US18 | Avaliação de Satisfação e Reputação do Prestador | Implementada | Avaliação única e média real transacionais; testes de duplicação, concorrência e rollback. |
 | US19 | Perfil Público do Prestador e Histórico de Avaliações | Implementada | GET /prestadores/:id/perfil-publico e /prestadores/[id]; dados privados omitidos e avaliações paginadas. |
 | US20 | Dashboard do Solicitante | Implementada | GET /dashboards/solicitante e /dashboard; contadores limitados ao usuário autenticado e testes de isolamento. |
@@ -45,6 +45,11 @@ As principais funcionalidades ausentes eram US19, US20 e US21. Também foram enc
 
 | US35 | Resposta do Prestador à Contraproposta do Solicitante | Implementada | Resposta exclusiva e única, valor atualizado e bloqueio do aceite pendente; integração e aceite manual pela página. |
 | US36 | Descoberta de Oportunidades que Ainda Aceitam Propostas | Implementada | Feed/vitrine incluem negociação; segundo prestador encontrou e enviou proposta pela interface. |
+| US37 | Identidade Visual da Marca Eloserv (Logo, Paleta e Favicon) | Implementada | Logo, favicon, nome e paleta Elo aplicados; checagem TypeScript e conferência no navegador (início, login, oportunidades). |
+| US38 | Nova Página Inicial para Visitante e Usuário Logado | Implementada | Visitante, solicitante e prestador conferidos no navegador em 1280px e 375px; rascunho do pedido preservado através do login; checagem TypeScript. |
+| US39 | Redesign das Telas Internas com Componentes Compartilhados | Implementada | 16 telas conferidas no navegador com as contas demo de solicitante, prestador e admin, em 1280px e 375px; checagem TypeScript. Limites registrados: chat sem dados da proposta, contraproposta só no detalhe, admin sem blocos de indicadores. |
+| US41 | Página de Arquitetura e Modelagem do Sistema | Implementada | `/arquitetura` pública, com 5 abas lidas de `docs/diagramas`, 13 diagramas Mermaid com zoom e SVG válido, conferida em 1280px e 375px; checagem TypeScript. |
+| US42 | Tema Claro e Troca de Tema | Implementada | Tokens de tema nos dois modos, nenhuma cor fixa nas telas, logo nas duas versões da marca, seletor Automático/Claro/Escuro (menu da conta, rodapé e login) aplicado no <head> antes da pintura; 152 pares de contraste, auditoria no navegador em 19 telas e no chat, testes de preferência, troca ao vivo, persistência, teclado e abas; checagem TypeScript. |
 
 ## Alcance da validação
 
@@ -81,3 +86,15 @@ Implementada nesta branch separada: documentos públicos e por versão, contato 
 Validação nesta branch: 13 suítes e 238 testes aprovados, build frontend aprovado, migration e seed aplicados. Documentos, protocolo/resposta e versões legadas conferidos na interface; layout em 390px. Detalhes, limites e fontes oficiais em `docs/PRIVACIDADE.md`. A implementação de documentos e canal não é certificação de conformidade integral, nem acrescenta exclusão automática ou proteção individual aos links de arquivos.
 
 US37–US39 e alterações visuais em andamento na pasta principal não foram incorporadas nem alteradas por esta etapa. A numeração US40 foi reservada após conferir esse backlog paralelo.
+
+### Complemento de 26/10/2026 — US40 integrada ao redesign
+
+A branch `termos-privacidade-lgpd` (publicada em `historias-pendentes` e `main`) foi trazida para a pasta principal junto com o redesign US37–US39. Termos de Uso, Política de Privacidade, Central de Privacidade (do titular e da administração) e a seção de aceite dos cadastros passaram a usar os componentes compartilhados da US39; regras, textos legais, versões e endpoints da US40 não mudaram. Validação: 243 testes (160 unitários e 83 de integração no banco `_test`), checagem TypeScript e conferência no navegador em 1280px e 375px.
+
+### Complemento de 26/10/2026 — conclusão exige pagamento simulado (US17)
+
+A conclusão do serviço passou a exigir o pagamento simulado da proposta aceita retido em custódia. Era possível concluir sem pagar, como registrava o `Notas.md`. O critério novo foi acrescentado à US17 e sincronizado no Jira (TCC-25).
+
+- **API:** a conclusão responde 409 sem a custódia `RETIDO`.
+- **Telas:** as do solicitante e do prestador bloqueiam o botão de conclusão e explicam o motivo.
+- **Validação:** 14 suítes e 246 testes aprovados, além da conferência das duas telas no navegador.

@@ -6,9 +6,9 @@ No diretório backend, com Node 22:
 
 ```sh
 npm run build
-DB_NAME_TEST=tcc_servico_facil_test npx jest --runInBand
+DB_NAME_TEST=tcc_eloserv_test npx jest --runInBand
 # Somente os fluxos reais:
-DB_NAME_TEST=tcc_servico_facil_test npx jest --selectProjects integracao --runInBand
+DB_NAME_TEST=tcc_eloserv_test npx jest --selectProjects integracao --runInBand
 # Segurança, dashboard e perfil, sem exigir banco:
 npx jest --selectProjects unitarios --runInBand
 ```
@@ -27,5 +27,5 @@ Ampliação dos fluxos: validade comercial padrão e limites, aceite/renegociaç
 Após alterações nos services/models, compile novamente antes da integração. Para executar somente esta suíte, sem a suíte independente dos seeds:
 
 ```sh
-DB_NAME_TEST=tcc_servico_facil_test npx jest --selectProjects integracao --runInBand --runTestsByPath tests/fluxos.integracao.test.js
+DB_NAME_TEST=tcc_eloserv_test npx jest --selectProjects integracao --runInBand --runTestsByPath tests/fluxos.integracao.test.js
 ```

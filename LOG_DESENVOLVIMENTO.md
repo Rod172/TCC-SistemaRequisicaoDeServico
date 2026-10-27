@@ -45,6 +45,10 @@ Em estrito cumprimento à **Regra 2**, a tabela abaixo mapeia todas as bibliotec
 | **Axios** | `^1.7.2` | Cliente HTTP com suporte a interceptores para anexar o token JWT | [axios-http.com](https://axios-http.com/docs/intro) |
 | **Lucide React** | `^0.383.0` | Conjunto de ícones vetoriais modernos para a interface | [lucide.dev](https://lucide.dev/) |
 | **Socket.io Client** | `^4.8.3` | Cliente WebSocket para o chat privado em tempo real (US14) | [socket.io/docs/v4/client-api](https://socket.io/docs/v4/client-api/) |
+| **Google Fonts (Inter e Sora)** | CSS API v2 | Fontes carregadas em `globals.css`: Inter na interface e Sora na palavra "eloserv" do logo (US37) | [developers.google.com/fonts/docs/css2](https://developers.google.com/fonts/docs/css2) |
+| **Mermaid** | `11.17.2` (exata) | Desenha em SVG os diagramas de `docs/diagramas` na página `/arquitetura`, com zoom e download (US41). Carregada sob demanda no navegador, com `securityLevel: strict`. A 11.17.2 corrige alertas de segurança das versões anteriores | [mermaid.js.org](https://mermaid.js.org/) |
+| **react-markdown** | `9.0.1` (exata) | Converte os arquivos Markdown dos diagramas em elementos React no servidor, sem interpretar HTML embutido (US41) | [github.com/remarkjs/react-markdown](https://github.com/remarkjs/react-markdown) |
+| **remark-gfm** | `4.0.0` (exata) | Extensão GitHub Flavored Markdown do react-markdown, para as tabelas de rastreabilidade, chaves e estados (US41) | [github.com/remarkjs/remark-gfm](https://github.com/remarkjs/remark-gfm) |
 
 ### 🐳 DevOps & Infraestrutura
 
@@ -606,3 +610,492 @@ Nenhuma biblioteca nova adicionada.
 | Supertest | 7.3.1 | Rotas reais na integração isolada | https://github.com/forwardemail/supertest |
 | LGPD | Lei 13.709/2018, texto compilado consultado em 26/10/2026 | Transparência, finalidade, fundamentos e direitos | https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm |
 | ANPD | Orientação consultada em 26/10/2026 | Direitos e canais do titular | https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados/direito-dos-titulares |
+
+## 26/10/2026 — US37: identidade visual Eloserv (logo, paleta e favicon)
+
+- **Escopo novo, registrado antes de implementar (Regra 6):** US37 criada no Épico 8 do `historia.md`, incluída na Matriz MoSCoW (Could Have, 5 pontos) e importada no Jira como **TCC-49** (filha do Épico TCC-31) com `scripts/jira/importar_historia.py`. Depois da implementação, os critérios foram marcados e a descrição do Jira sincronizada com `--atualizar US37`. Na mesma edição, a linha em branco que separava US35/US36 do restante da Matriz MoSCoW foi removida (ela quebrava a tabela em duas).
+- **Decisão de design:** nome e paleta escolhidos pelo usuário num canvas de design com 6 nomes/logos (Eloserv, Nexoserv, TratoFeito, PropostaCerta e as sugestões Orçaí e Combinado) e 5 paletas, testadas em protótipos da página inicial, da página do usuário logado e de uma tela mobile. Escolhidos: **Eloserv** (dois elos encadeados = cliente e prestador) e a paleta **"Elo"**, derivada das cores do logo.
+- **Decisão de arquitetura:** o logo tem cores fixas (índigo `#4F46E5`/`#818CF8` + azul-céu `#0EA5E9`/`#38BDF8`) e não acompanha a paleta. Foi isolado no componente `Logo.tsx` para ser reutilizado.
+- **Paleta aplicada:** fundo `#0E1024`, superfície `#171A3A`, borda `#2C3166`, texto `#EEF2FF`, texto secundário `#A5ACD6`, texto apagado `#8088B8` e primária `#4F46E5`. Como as telas usam estilos inline sem design system central, a troca foi feita por script, com um mapa de cores slate/azul → paleta Elo nos `.tsx`/`.css` (inclusive nas variações `rgba()`).
+- **Regra de contraste:** o índigo cheio `#4F46E5` só é usado como fundo de botão com texto branco (6,29:1). Em bordas, indicadores e texto sobre fundo escuro, onde ele ficaria com cerca de 2,6:1, usa-se `#818CF8` (6,3:1). Os links ganharam a variável `--link-color: #A5B4FC` (8,46:1 sobre a superfície). Pares conferidos: texto/superfície 15,08:1; texto secundário/fundo 8,47:1; texto apagado/superfície 4,92:1.
+- **Cores preservadas:** as cores semânticas (verde de sucesso, vermelho de erro, âmbar de alerta, violeta de "Contratada") e as cores de destaque próprias de cada tela (rosa do login, verde do perfil profissional) ficaram como estavam.
+- **Nome:** "ServiçoFácil" virou "Eloserv" no título da aba (`layout.tsx`), no cabeçalho e no rodapé da página inicial, na saudação "Bem-vindo à Eloserv" e no link de volta do perfil público. As chaves internas do `localStorage` (`@ServicoFacil:*`) e os e-mails das contas de demonstração (`@servicofacil.com`, usados pelos seeders e pelo login rápido) foram mantidos, por não serem visíveis como marca e para não deslogar sessões nem quebrar os dados de demonstração.
+- **Arquivos criados:** `frontend/src/components/Logo.tsx`, `frontend/src/app/icon.svg` (favicon gerado automaticamente pelo App Router).
+- **Arquivos alterados:** `frontend/src/app/globals.css`, `layout.tsx`, `page.tsx`, `admin`, `configuracoes`, `dashboard`, `login`, `minhas-propostas`, `minhas-solicitacoes` (lista e detalhe), `nova-solicitacao`, `oportunidades` (lista e detalhe), `perfil`, `prestadores/[id]`, `register-prestador`, `register-solicitante`, `status`, e os componentes `ChatDrawer.tsx`, `ChatPanel.tsx` e `NotificationBell.tsx`. Também `historia.md`, `STATUS_HISTORIAS.md` e este log.
+- **Testes e validações:** checagem TypeScript (`tsc --noEmit`) aprovada e `git diff --check` aprovado. Conferência no navegador sobre o servidor de desenvolvimento já em execução: página inicial, login e feed de oportunidades com fundo `rgb(14, 16, 36)`, favicon `icon.svg` servido como `image/svg+xml`, fonte Sora carregada e nenhum erro no console. O build de produção **não** foi executado, porque sobrescreveria a pasta `.next` do servidor de desenvolvimento em uso. As telas autenticadas não foram percorridas uma a uma. Sem alteração de backend: a suíte de testes não foi reexecutada.
+
+| Biblioteca/recurso | Versão | Uso nesta etapa | Documentação oficial |
+|---|---|---|---|
+| React | 18.3.1 | Componente `Logo.tsx` com SVG inline | https://react.dev/ |
+| Next.js (App Router — ícones de metadados) | 14.2.35 | Favicon via `app/icon.svg` e título via `metadata` | https://nextjs.org/docs/app/api-reference/file-conventions/metadata/app-icons |
+| Google Fonts (Sora) | CSS API v2 | Fonte da palavra "eloserv" | https://developers.google.com/fonts/docs/css2 |
+
+
+## 26/10/2026 — US38: nova página inicial (visitante e usuário logado)
+
+- **Escopo novo, registrado antes de implementar (Regra 6):** a US37 aplicou só a identidade visual, e o usuário pediu também o layout da página inicial prototipado no canvas de design. Criada a **US38** no Épico 8 (Should Have, 8 pontos) e importada no Jira como **TCC-50** (filha de TCC-31). Depois da implementação, os critérios foram marcados e a descrição sincronizada com `--atualizar US38`.
+- **Visitante:**
+  - O cabeçalho ficou sem a busca de oportunidades, que confundia com o campo de pedido, e ganhou as âncoras "Como funciona" e "Para prestadores" (escondidas abaixo de 640px).
+  - O destaque tem o campo "O que você precisa?", atalhos de categoria (os mesmos do formulário de nova solicitação), o aviso de pagamento com garantia e um card de propostas fixo, identificado como "Exemplo".
+  - "Como funciona" tem cinco passos.
+  - O bloco "Para prestadores" mostra os pedidos reais do feed público.
+- **Rascunho do pedido:** sem sessão, o texto digitado (e a categoria do atalho) fica no `sessionStorage` e o usuário vai para o login. O login já redirecionava para `/`, onde a página logada mostra o campo preenchido. A tela `nova-solicitacao` passou a aceitar `?titulo=` e `?categoria=`, e consome o rascunho ao abrir.
+- **Logado:**
+  - O cabeçalho tem a busca do perfil, os links do perfil, o sino e o novo **menu da conta** (`MenuConta.tsx`: Meu painel, Meu perfil, Configurações, Sair; fecha com Escape devolvendo o foco e com clique fora). "Meu painel" saiu da barra para o cabeçalho do prestador caber numa linha a 1280px. Abaixo de 640px, os links do perfil também passam para o menu (classes `so-telas-largas`/`so-telas-estreitas`).
+  - **Solicitante:** saudação com propostas pendentes (`/dashboards/solicitante`), campo de novo pedido, "Seus pedidos" (4 mais recentes de `/solicitacoes/minhas`) com status e próxima ação, mensagens recentes e card de garantia.
+  - **Prestador:** indicadores calculados de `/prestador/propostas` (aguardando = ENVIADA/EM_ANALISE; em andamento = ACEITA com solicitação CONTRATADA) e de `/dashboards/prestador` (valor em custódia, nota e total de avaliações), "Oportunidades para você", últimas propostas, mensagens e o atalho da US33.
+  - **Admin:** atalhos para o painel administrativo e para o feed.
+- **Decisão — mensagens sem endpoint novo:** a API não tem rota de conversas recentes, e as notificações não guardam o tipo do evento. O card "Mensagens recentes" filtra as notificações cujo título começa com "Nova mensagem de " (o padrão usado pelo `chatService`). Se esse título mudar no backend, o card precisa acompanhar.
+- **Arquivos criados:** `frontend/src/components/MenuConta.tsx`, `frontend/src/components/home/HomeVisitante.tsx`, `frontend/src/components/home/HomeLogado.tsx` e `frontend/src/components/home/comum.ts` (tipos, cores de status, formatadores, rascunho e estilos compartilhados).
+- **Arquivos alterados:** `frontend/src/app/page.tsx` (reescrita: o `ActionCard` antigo saiu), `frontend/src/app/nova-solicitacao/page.tsx` (pré-preenchimento), `frontend/src/app/globals.css` (classes `.sr-only`, `.so-telas-largas` e `.so-telas-estreitas`), `historia.md`, `STATUS_HISTORIAS.md` e este log.
+- **Testes e validações:** checagem TypeScript (`tsc --noEmit`) aprovada. Validação manual no navegador, sobre o servidor de desenvolvimento em execução:
+  - visitante a 1280px e 375px, sem rolagem horizontal (`scrollWidth` = `innerWidth`);
+  - pedido digitado sem login → `/login` com o rascunho guardado → login rápido da conta demo de solicitante → página logada com o campo preenchido → `nova-solicitacao?titulo=…` com o título no formulário e o rascunho consumido;
+  - página da solicitante com dados reais (11 propostas pendentes, pedidos com "Continuar negociação"/"Ver detalhes", 3 mensagens, 7 serviços em andamento);
+  - menu da conta (abrir, Escape com retorno do foco, Sair);
+  - página do prestador demo a 1280px (cabeçalho numa linha) e a 375px (indicadores em 2 colunas, links do perfil dentro do menu).
+  - Nenhuma solicitação foi publicada nos testes. As duas contas demo terminaram deslogadas. O build de produção não foi executado, porque o servidor de desenvolvimento estava em uso. As mensagens "Module not found" no console foram da recompilação intermediária durante a cópia dos arquivos; a página recarregada respondeu 200, sem erro. Sem alteração de backend.
+- Nenhuma dependência nova: React, Next.js, Axios e Lucide React já estão na tabela de bibliotecas.
+
+## 26/10/2026 — US39: redesign das telas internas com componentes compartilhados
+
+- **Escopo novo, registrado antes de implementar (Regra 6):** depois da página inicial (US38), o usuário pediu o design de todas as telas. As 16 telas e uma prancha de componentes foram prototipadas no canvas de design e aprovadas pelo usuário. Criada a **US39** no Épico 8 (Should Have, 13 pontos) e importada no Jira como **TCC-51** (filha de TCC-31). Depois da implementação, os critérios foram marcados e a descrição sincronizada com `--atualizar US39`.
+- **Resumo:** todas as telas internas passaram a usar o mesmo cabeçalho, o mesmo rodapé e o mesmo conjunto de botões, campos, etiquetas de status, avisos e estados de lista (carregando, vazia e erro). Cada tela destaca o próximo passo do usuário. Nenhuma regra de negócio, endpoint ou chamada à API foi alterada: a lógica (estados, requisições e validações) de cada página foi mantida e só a apresentação foi reescrita.
+  - **Entrada:**
+    - login em duas colunas, com botão para mostrar a senha e as contas de demonstração recolhidas num bloco secundário;
+    - cadastros de cliente e de prestador em seções numeradas, com o erro de CPF exibido ao sair do campo;
+    - no cadastro de prestador, categorias como chips de seleção e prévia ao vivo do perfil público.
+  - **Cliente:**
+    - nova solicitação com etapas, prévia do pedido e dicas;
+    - "Minhas solicitações" com abas por status com contagem, aviso dos pedidos em andamento e a próxima ação de cada card;
+    - detalhe do pedido com a linha do andamento, propostas ordenáveis (preço, nota, prazo e recentes), pagamento com garantia, conclusão, avaliação e denúncia em sequência, e coluna lateral com o pedido e as perguntas.
+  - **Prestador:**
+    - feed de oportunidades com filtros laterais e chips de filtros ativos removíveis;
+    - detalhe da oportunidade com o formulário de proposta ao lado e o resumo "O cliente vai ver…";
+    - "Minhas propostas" com abas (Todas, Aguardando cliente, Aceitas, Recusadas) e uma frase de situação por card;
+    - perfil público com resumo de reputação e avaliações.
+  - **Conta e gestão:**
+    - painel com seletor Prestador/Solicitante;
+    - "Minha conta" (perfil e notificações) com navegação lateral;
+    - notificações com interruptores;
+    - chat com cartão lateral;
+    - painel administrativo com aviso de denúncias pendentes, abas e tabela com rolagem horizontal;
+    - status do sistema com "Verificar de novo", hora da verificação e link para o Swagger.
+- **Decisões de arquitetura:**
+  - **Design system em classes CSS** no `globals.css` (`.pagina`, `.card`, `.btn-*`, `.campo`, `.chip`, `.aviso-*`, `.abas`, `.etapas`, `.tabela` etc.), e não em uma biblioteca de componentes, para manter a stack sem dependência nova. Também entrou `[hidden]{display:none!important}`, porque as classes de exibição sobrescreviam o atributo `hidden`.
+  - **Cores de status num lugar só:** `STATUS_SOLICITACAO`, `STATUS_PROPOSTA` e `STATUS_PAGAMENTO` foram para `components/ui/Elementos.tsx`, e as cópias locais de cada página saíram. `components/home/comum.ts` reexporta esses mapas e passa a concentrar `proximaAcao` e `precisaDeAcao`, para a página inicial e "Minhas solicitações" mostrarem o mesmo próximo passo.
+  - **Contagem das abas no navegador:** "Minhas solicitações" e "Minhas propostas" carregam a lista sem filtro de status e filtram no cliente, para as abas mostrarem a contagem de cada status sem rota nova.
+  - **Texto honesto no aviso de pedidos:** `propostas_recebidas` conta todas as propostas, inclusive as recusadas. Por isso o aviso diz "pedidos em andamento" (com propostas recebidas ou serviço contratado), e não "precisam de você".
+  - **Senha:** os cadastros mostram e validam no cliente o mínimo de 8 caracteres, igual ao `authService`. A troca de senha em "Minha conta" também exige 8 no cliente, mas o backend (`perfilController`, `nova_senha.length < 6`) aceita 6. A divergência foi corrigida logo depois, na entrada seguinte deste log.
+  - **Limites aceitos (sem endpoint novo):**
+    - o chat não mostra os dados da proposta, porque a rota recebe só o id da conversa;
+    - a lista de "Minhas propostas" não tem os campos de contraproposta (o destaque fica no detalhe da oportunidade);
+    - o painel administrativo ficou sem os blocos de indicadores, porque as listagens vêm filtradas e não há rota de totais.
+  - Os componentes internos de `ChatPanel`, `ChatDrawer` e `NotificationBell` não foram redesenhados.
+- **Arquivos criados:**
+  - `frontend/src/components/ui/Cabecalho.tsx`: cabeçalho por perfil, link ativo com `aria-current`, busca, sino, menu da conta e "Nova solicitação";
+  - `frontend/src/components/ui/Pagina.tsx`: `Pagina`, `Rodape` e `CabecalhoPagina`;
+  - `frontend/src/components/ui/Elementos.tsx`: mapas de status, `Chip`, `Aviso`, `Etapas`, `EstadoLista` e `Avatar`;
+  - `frontend/src/components/ui/LayoutConta.tsx`.
+- **Arquivos alterados:**
+  - `frontend/src/app/globals.css`: seção de componentes da US39;
+  - `frontend/src/components/home/comum.ts` e `frontend/src/components/home/HomeLogado.tsx`;
+  - `frontend/src/app/page.tsx`: passa a usar o `Cabecalho` compartilhado;
+  - páginas reescritas: `login`, `register-solicitante`, `register-prestador`, `nova-solicitacao`, `minhas-solicitacoes`, `minhas-solicitacoes/[id]`, `oportunidades`, `oportunidades/[id]`, `minhas-propostas`, `prestadores/[id]`, `dashboard`, `perfil`, `configuracoes`, `chat/[id]`, `admin` e `status`;
+  - `historia.md`, `STATUS_HISTORIAS.md` e este log.
+- **Testes e validações:**
+  - checagem TypeScript (`tsc --noEmit`) aprovada.
+  - Validação manual no navegador, sobre o servidor de desenvolvimento em execução, em 1280px e 375px:
+    - visitante: página inicial, login, os dois cadastros e status do sistema;
+    - solicitante demo: página inicial, nova solicitação, minhas solicitações (abas, aviso e "Mostrar só esses"), detalhe do pedido, painel, minha conta, notificações e chat;
+    - prestador demo (Encanamento): oportunidades, detalhe da oportunidade, minhas propostas, painel na aba Prestador e perfil público;
+    - admin demo: painel administrativo (aviso de denúncias pendentes, abas e tabela com rolagem horizontal no celular).
+  - Na verificação, o aviso "N pedidos precisam de você" foi trocado por "em andamento" (ver decisões).
+  - Nenhum formulário foi enviado nos testes (nenhum pedido, proposta, pagamento ou ação administrativa), e as contas demo terminaram deslogadas.
+  - O build de produção não foi executado, porque o servidor de desenvolvimento estava em uso. As mensagens "Module not found" no console vieram da recompilação intermediária durante a cópia dos arquivos (o arquivo citado já não tinha a linha apontada). Sem alteração de backend.
+- Nenhuma dependência nova: React, Next.js, Axios e Lucide React já estão na tabela de bibliotecas.
+
+## 26/10/2026 — Troca de senha alinhada à regra do cadastro (8 caracteres)
+
+- **Contexto:** na US39, a tela "Minha conta" passou a exigir 8 caracteres na nova senha, igual ao cadastro (`authService`), mas a rota `PUT /perfil/senha` aceitava 6. Quem chamasse a API direto conseguia gravar uma senha mais curta que a permitida no cadastro. É uma correção da troca de senha já existente, sem escopo novo, por isso não gerou história nova (Regra 6).
+- **Alteração:** `updateSenha` agora usa a mesma regra do cadastro. A nova senha precisa ser texto, ter pelo menos 8 caracteres e no máximo 72 bytes UTF-8 (limite do bcrypt). Fora disso, a rota responde 400 sem gravar nada. Os outros comportamentos não mudaram: senha atual errada continua dando 400, e a gravação é sempre do hash bcrypt.
+- **Arquivos alterados:**
+  - `backend/src/controllers/perfilController.ts`: validação e anotação Swagger da rota (`minLength: 8` e o 400 descrito);
+  - `backend/src/config/openapi.ts`: `AlterarSenhaDTO.nova_senha` de `minLength: 6` para `8`, com a descrição do limite;
+  - este log.
+- **Arquivo criado:** `backend/tests/perfilSenha.test.js`, com testes unitários do controller compilado (models mockados, bcrypt real):
+  - recusa 7 caracteres, mais de 72 bytes e valor que não é texto, sem chamar `update`;
+  - aceita 8 caracteres e grava um hash que confere com a senha;
+  - mantém a recusa quando a senha atual está errada.
+- **Testes e validações:** `npm run test:unit` (build com `tsc` + Jest) aprovado, com 9 suítes e 142 testes (5 novos). Os testes de integração com MySQL não foram rodados, porque nenhum deles cobre essa rota.
+- Nenhuma dependência nova: Jest e BcryptJS já estão na tabela de bibliotecas.
+
+## 26/10/2026 — Integração da US40 (documentos legais e privacidade) ao redesign US37–US39
+
+- **Contexto:** a US40 (TCC-53) foi feita em paralelo, num worktree separado (`TCC-SistemaRequisicaoDeServico-privacidade`, branch `termos-privacidade-lgpd`, prévia nas portas 3002/3003), e publicada em `historias-pendentes` e `main` (`ab062fd` e `76ecb9a`). A pasta principal ainda estava no commit anterior (`415b844`), com o redesign US37–US39 sem commit. O usuário pediu para trazer a US40 para o site principal. A história já existia no backlog e no Jira, então nenhuma história nova foi criada (Regra 6).
+- **Como foi integrada:**
+  1. Backup do trabalho local fora do repositório (`~/backup-us39/`: patch e arquivos novos).
+  2. `git stash -u` do redesign, avanço da branch local por *fast-forward* até `ab062fd` (sem commit novo) e `git stash pop`.
+  3. Os conflitos ficaram em `historia.md`, neste log, nos dois cadastros, no perfil e no painel administrativo:
+     - nos documentos, os dois lados foram mantidos (US40 antes, US37–US39 depois);
+     - nas telas, partiu-se da versão do redesign e as mudanças da US40 foram reaplicadas à mão.
+  4. O índice foi limpo (`git reset`): tudo ficou como alteração local, para o usuário commitar.
+- **Decisões de arquitetura:**
+  - **Um rodapé só:** a US40 colocava um `RodapeLegal` global no `layout.tsx`, o que duplicaria o rodapé compartilhado da US39. Os links (Termos de Uso, Política de Privacidade, Central de Privacidade e Status do sistema) foram para `LinksRodape` em `components/ui/Pagina.tsx`, usado pelo `Rodape` e no fim da tela de login, que tem layout próprio. Saíram `RodapeLegal.tsx` e `legal.module.css`; os estilos dos documentos passaram para classes no `globals.css` (`.links-rodape`, `.texto-legal`, `.sumario-legal`).
+  - **Documentos legais (`DocumentoLegal.tsx`):** página com cabeçalho e rodapé compartilhados, o texto num cartão e, ao lado, o sumário, o contato do responsável e as referências oficiais. No celular, o sumário vira um bloco recolhível acima do texto. Textos, versões e rotas por versão da US40 não mudaram.
+  - **Central de Privacidade (`CentralPrivacidade.tsx`):**
+    - para o titular com sessão, fica dentro de "Minha conta" (`LayoutConta` ganhou a página `privacidade` e os itens "Central de Privacidade" e "Desativar conta");
+    - para o visitante, há uma tela de entrada com login e e-mail;
+    - para o admin, uma caixa de protocolos com etiqueta de status, formulário de resposta por protocolo e paginação.
+    A lógica (requisições, validações, mensagens e limites) é a mesma da US40.
+  - **Cadastros:** `AceiteDocumentos.tsx` virou a seção "4. Termos e privacidade", com os dois sinais desmarcados nas caixas de opção da US39 e os documentos abrindo em outra aba. O campo de estado passou de `termoLgpdAceito` para `termosAceitos`, e a ciência da Política ficou num estado próprio. O payload é o mesmo da US40 (`termos_uso_aceitos`, `privacidade_ciente` e as versões).
+  - **Perfil e admin:**
+    - a seção de desativação usa o texto da US40 (desativar não exclui os dados) e leva à Central; a âncora mudou de `#privacidade` para `#desativar`;
+    - o painel administrativo ganhou o atalho "Atendimento de privacidade" no cabeçalho.
+- **Arquivos alterados nesta etapa:**
+  - componentes: `frontend/src/components/AceiteDocumentos.tsx`, `DocumentoLegal.tsx`, `CentralPrivacidade.tsx`, `ui/Pagina.tsx` e `ui/LayoutConta.tsx`;
+  - páginas: `frontend/src/app/layout.tsx`, `login`, `register-solicitante`, `register-prestador`, `perfil` e `admin`;
+  - estilos: `frontend/src/app/globals.css`;
+  - documentação: `historia.md`, `STATUS_HISTORIAS.md` e este log.
+- **Arquivos removidos:** `frontend/src/components/RodapeLegal.tsx` e `frontend/src/components/legal.module.css`.
+- **Testes e validações:**
+  - `npm run test:unit`: 10 suítes e 160 testes aprovados;
+  - integração (`DB_NAME_TEST=tcc_servico_facil_test`): 4 suítes e 83 testes aprovados, com a migration da US40 aplicada no banco de teste;
+  - `tsc --noEmit` do frontend aprovado;
+  - migration da US40 já aplicada no banco de desenvolvimento, e a API da porta 3001 responde `GET /legal/documentos` com 200.
+  - **Navegador (1280px e 375px, sem rolagem horizontal e sem erros no console):**
+    - visitante: termos, política (sumário recolhível no celular), Central de entrada, login e os dois cadastros com a seção de aceite;
+    - solicitante demo: Central com o registro do cadastro (versão não registrada, conta anterior à US40), formulário e protocolos com resposta; perfil com "Desativar minha conta";
+    - admin demo: atalho no painel e caixa de protocolos.
+  - Nenhum pedido, resposta, cadastro ou desativação foi enviado nos testes, e as contas demo terminaram deslogadas.
+  - O servidor `next dev` da porta 3000 continuou entregando a versão antiga de `Pagina.tsx` mesmo com o arquivo certo (o watcher não detectou a cópia) e precisou ser reiniciado.
+- Nenhuma dependência nova: React, Next.js, Axios e Lucide React já estão na tabela de bibliotecas.
+
+## 26/10/2026 — Correção do e-mail de contato dos documentos legais (US40)
+
+- **Contexto:** o e-mail público do responsável pelos dados foi publicado com erro de digitação (`rodrigogofernandomelo15@gmail.com`). O usuário informou o endereço correto: `rodrigofernandomelo15@gmail.com`. A entrada anterior da US40 neste log fica como estava, por ser registro histórico.
+- **Decisão:** a correção foi feita na própria versão `2026-10-26.1`, sem publicar uma versão nova. Os documentos foram publicados no mesmo dia, só contas de teste aceitaram essa versão e a mudança é só o contato, sem alterar regras, finalidades nem direitos. Uma mudança de conteúdo depois de uso real continua exigindo uma versão nova, preservando a anterior.
+- **Arquivos alterados:**
+  - `frontend/src/conteudo/documentos-legais.json` e `backend/src/config/documentos-legais.json` (metadados vigentes);
+  - `frontend/src/conteudo/legal/2026-10-26.1.json` (metadados e as duas menções no texto);
+  - `backend/tests/documentosLegais.test.js` (contato esperado);
+  - `docs/PRIVACIDADE.md`;
+  - este log.
+- **Validações:**
+  - `npm run test:unit`: 10 suítes e 160 testes aprovados, incluindo o teste que confere se os metadados do frontend e do backend são idênticos;
+  - o HTML de `/termos-de-uso`, `/politica-de-privacidade` e `/termos-de-uso/2026-10-26.1` e a rota `GET /legal/documentos` mostram só o endereço novo.
+
+## 26/10/2026 — Checagem de CPF/CNPJ no cadastro de prestador
+
+- **Contexto:** o cadastro de cliente já conferia o CPF ao sair do campo, mas o de prestador só descobria um documento inválido pela resposta da API, depois do envio. É uma melhoria do formulário que já existia, dentro dos critérios da US39 (erros de validação embaixo do campo), por isso não gerou história nova (Regra 6).
+- **Alteração:**
+  - `register-prestador` usa `validarCPF`/`validarCNPJ` de `frontend/src/utils/documento.ts`, com as mesmas regras de dígitos verificadores do backend (`backend/src/validators/documento.ts`);
+  - o erro aparece embaixo do campo ao sair dele, com `aria-invalid` e `aria-describedby`, e o envio é bloqueado com uma mensagem quando o documento é inválido;
+  - o campo ganhou uma ajuda ("CPF (11 dígitos) ou CNPJ (14 dígitos), com ou sem pontuação");
+  - o documento vai para a API só com os números (`normalizarDocumento`), como no cadastro de cliente.
+  - A validação do backend continua valendo: a checagem no cliente só antecipa o aviso.
+- **Limite:** a checagem confere os dígitos verificadores, não consulta a Receita Federal; não garante que o documento existe ou pertence à pessoa.
+- **Arquivos alterados:** `frontend/src/app/register-prestador/page.tsx` e este log.
+- **Validações:**
+  - `tsc --noEmit` aprovado;
+  - no navegador, `11.222.333/0001-80` (dígito errado) mostrou o erro embaixo do campo e marcou `aria-invalid="true"`, e `11.222.333/0001-81` tirou o erro;
+  - o formulário não foi enviado.
+
+## 26/10/2026 — LGPD citada nos documentos legais e nome antigo retirado (US40)
+
+- **Contexto:** o usuário notou dois problemas.
+  - A LGPD aparecia só no quadro de referências ao lado do documento, sem ser citada no texto.
+  - Os Termos diziam "Eloserv (anteriormente ServiçoFácil)", mas o produto nunca foi lançado com o nome ServiçoFácil, que era só o nome interno do projeto.
+- **Decisão:** a correção foi feita na versão `2026-10-26.1`, publicada no mesmo dia e aceita só por contas de teste, como na correção do e-mail. As mudanças deixam explícita a lei e as bases que o texto já descrevia, sem criar finalidade nem obrigação nova. Uma mudança de conteúdo depois de uso real continua exigindo versão nova.
+- **Textos legais** (`frontend/src/conteudo/legal/2026-10-26.1.json`):
+  - **Termos:**
+    - seção 1: o nome antigo saiu ("Eloserv é um protótipo…");
+    - seção 9: passou a dizer que o tratamento de dados segue a Política, elaborada com base na LGPD (Lei nº 13.709/2018).
+  - **Política:**
+    - seção 1: cita a LGPD e o papel do responsável (controlador, art. 5º, VI);
+    - seção 3: dá as bases legais, que são a execução de contrato (art. 7º, V), o legítimo interesse para segurança (art. 7º, IX), o exercício regular de direitos (art. 7º, VI), o cumprimento de obrigação legal (art. 7º, II) e o consentimento para tratamentos opcionais (art. 7º, I, e art. 8º). Também cita o princípio da necessidade (art. 6º, III);
+    - seção 9: lista os direitos do titular (art. 18), os prazos de confirmação e acesso (art. 19) e a petição à ANPD (art. 18, § 1º);
+    - seção 10: cita as medidas de segurança (art. 46) e a comunicação de incidentes à ANPD e aos titulares (art. 48).
+- **Interface:**
+  - aviso do topo dos documentos (`DocumentoLegal.tsx`): "protótipo acadêmico Eloserv, elaborado com base na LGPD", sem o nome antigo;
+  - seção de aceite dos cadastros (`AceiteDocumentos.tsx`): os direitos de titular da LGPD são exercidos pela Central;
+  - subtítulo da Central (`CentralPrivacidade.tsx`): "direitos de titular previstos no art. 18 da LGPD";
+  - seção de desativação do perfil: passou a falar em "exercer os direitos previstos na LGPD";
+  - título do Swagger (`backend/src/config/openapi.ts`): de "API ServiçoFácil" para "API Eloserv".
+- **Nomes internos mantidos:** o nome técnico `tcc-servico-facil-backend` (pacote e `/health`), o banco `tcc_servico_facil` e as chaves `@ServicoFacil:*` do navegador continuam iguais, porque trocá-los quebraria as sessões e a configuração local.
+- **Validações:**
+  - JSON válido, `tsc --noEmit` aprovado e `npm run test:unit` com 10 suítes e 160 testes aprovados;
+  - o HTML de `/termos-de-uso`, `/politica-de-privacidade` e `/politica-de-privacidade/2026-10-26.1` não tem mais "ServiçoFácil" e mostra as citações da LGPD;
+  - o Swagger responde com o título "API Eloserv";
+  - a seção 3 da Política foi conferida no navegador, sem erros no console.
+
+## 26/10/2026 — Banco de dados renomeado para `tcc_eloserv` (US37)
+
+- **Contexto:** depois de tirar o nome antigo dos textos visíveis, o usuário pediu para o banco também deixar de se chamar `tcc_servico_facil`. É parte da troca de identidade da US37, então a tarefa foi acrescentada à US37 no `historia.md` (um critério e uma tarefa técnica de banco) e o Jira foi sincronizado com `--atualizar US37` (TCC-49). Não virou história nova.
+- **Como foi feito:** o MySQL 8.0 não tem comando para renomear banco, então o banco foi copiado.
+  1. **Inspeção:** o banco tem 15 tabelas e 25 chaves estrangeiras, sem views, triggers, rotinas ou eventos; charset `utf8mb4` / `utf8mb4_0900_ai_ci`.
+  2. **Dump:** `mysqldump --single-transaction --routines --triggers --events` dentro do container `tcc_servico_facil_db`, rodado pelo Docker do Windows, porque no WSL o `docker` não tem o socket da integração. O `--single-transaction` tira uma foto consistente sem travar a API, que estava usando o banco.
+  3. **Criação e importação:** `CREATE DATABASE tcc_eloserv` com o mesmo charset, seguido da importação do dump. O script recusa rodar se `tcc_eloserv` já tiver tabelas.
+  4. **Conferência:** 15 tabelas e 25 chaves estrangeiras nos dois bancos, e a mesma quantidade de linhas em cada tabela (0 diferenças), incluindo as 24 migrations do `SequelizeMeta`.
+- **Cópias de segurança:**
+  - o banco `tcc_servico_facil` foi mantido intacto, até o usuário confirmar que pode ser apagado;
+  - o dump foi guardado em `~/backup-banco/backup_tcc_servico_facil_2026-10-26.sql`, fora do repositório.
+- **Configuração alterada:**
+  - `backend/.env` (`DB_NAME`, arquivo fora do Git);
+  - `backend/.env.example` (`DB_NAME` e `DB_NAME_TEST`);
+  - nomes padrão em `backend/src/config/database.ts` e `backend/src/config/sequelize-cli.js`;
+  - `docker-compose.yml` (`MYSQL_DATABASE` e `DB_NAME`);
+  - `.github/workflows/validacao.yml` (banco do CI);
+  - mensagem de `backend/tests/ambiente.cjs`, `backend/tests/LEIA-ME.md` e `README.md`.
+- **Mantidos de propósito:**
+  - os nomes dos containers (`tcc_servico_facil_db`, `_backend`, `_frontend`) e do volume `mysql_data`, porque trocá-los obrigaria a recriar o container e arriscaria o volume de dados;
+  - o nome técnico do pacote (`tcc-servico-facil-backend`) e as chaves `@ServicoFacil:*` do navegador;
+  - os registros históricos (este log, `VERIFICACAO_FLUXOS.md` e `docs/PRIVACIDADE.md`), que citam os bancos usados na época.
+  - Os bancos de teste antigos (`tcc_servico_facil_test` e `tcc_servico_facil_privacidade_test`) continuam no MySQL e podem ser apagados.
+- **Observação sobre docker-compose:** `MYSQL_DATABASE` só cria o banco na primeira inicialização de um volume vazio. Numa instalação nova, `docker-compose up -d db` já cria `tcc_eloserv`. Numa instalação existente, o banco precisa ser copiado como descrito acima.
+- **Validações:**
+  - a API da porta 3001 foi reiniciada para ler o `.env`; `/health` e `/prestador/oportunidades` respondem 200, e o MySQL mostra conexões abertas só no `tcc_eloserv`;
+  - `sequelize-cli db:migrate:status` lista todas as migrations como `up` no banco novo;
+  - `DB_NAME_TEST=tcc_eloserv_test npm test`: 14 suítes e 243 testes aprovados (o banco de testes é criado pelos próprios testes);
+  - no navegador, o login da conta demo de solicitante funcionou e "Minhas solicitações" mostrou os 29 pedidos;
+  - a conta demo terminou deslogada.
+- **Atenção:** a API de prévia do worktree de privacidade (porta 3003) usa o mesmo `.env` por link simbólico, mas só passa a usar o banco novo quando for reiniciada; até lá, ela grava no banco antigo.
+- **Complemento (26/10/2026): bancos antigos apagados.** A pedido do usuário, `tcc_servico_facil`, `tcc_servico_facil_test` e `tcc_servico_facil_privacidade_test` foram removidos com `DROP DATABASE`. Antes disso, foi conferido que nenhum dos três tinha conexão aberta e que `tcc_servico_facil` tinha a mesma quantidade de linhas que `tcc_eloserv` em todas as tabelas, ou seja, nenhum dado novo foi gravado no banco antigo depois da cópia. Restam no MySQL só `tcc_eloserv` e `tcc_eloserv_test`. O dump `~/backup-banco/backup_tcc_servico_facil_2026-10-26.sql` (90 KB) foi mantido. A API de prévia do worktree de privacidade (porta 3003), se ainda estiver rodando, precisa ser reiniciada para usar o `tcc_eloserv`; os testes desse worktree devem usar `DB_NAME_TEST=tcc_eloserv_test`.
+
+## 26/10/2026 — Diagramas UML e MER em `docs/diagramas`
+
+- **Contexto:** a seção 3 (Metodologia) do `TCC.md` prevê Diagrama de Casos de Uso, Diagrama de Classes e MER, e o repositório não tinha nenhum. O usuário pediu esses três e o diagrama de sequência da contratação, em Mermaid e a partir do código atual. É documentação acadêmica exigida pelo `CLAUDE.md` (seção 4), sem funcionalidade, tela ou endpoint novo, por isso não virou história no backlog.
+- **Arquivos criados em `docs/diagramas/`:**
+  - `README.md`: índice, como visualizar e exportar para a monografia, e como manter os diagramas;
+  - `casos-de-uso.md`: atores com generalização (o prestador herda o solicitante, pela US33) e cinco diagramas por área, com 36 casos de uso. Inclui uma tabela de rastreabilidade caso de uso → história → endpoint;
+  - `classes.md`: as 14 classes de domínio com atributos, multiplicidades e composições (estas seguem o `ON DELETE CASCADE`), as 11 enumerações e as camadas do backend no fluxo de contratação;
+  - `mer.md`: visão resumida e diagrama completo, com as 15 tabelas, as 25 chaves estrangeiras com regra de exclusão e as restrições de unicidade;
+  - `sequencia-contratacao.md`: dois diagramas, da proposta e negociação até o aceite, pagamento, conclusão e avaliação. Mostram transações, bloqueios `FOR UPDATE` e as notificações emitidas depois do commit, e trazem uma tabela dos estados percorridos.
+- **Fontes conferidas:**
+  - models e `models/index.ts`;
+  - as rotas de `backend/src/routes` e os prefixos em `app.ts`;
+  - as regras de permissão nos controllers e services;
+  - o esquema real do banco `tcc_eloserv` (`information_schema`: colunas, chaves estrangeiras e índices únicos);
+  - as telas `minhas-solicitacoes/[id]` e `oportunidades/[id]`.
+- **Decisões:**
+  - o Mermaid não tem notação de casos de uso, então eles são desenhados como fluxograma com convenção explicada no arquivo;
+  - o MER usa os tipos físicos do MySQL, com `decimal(10_2)` no lugar de `decimal(10,2)`, porque o Mermaid não aceita vírgula no tipo;
+  - os campos `created_at` e `updated_at` foram omitidos dos diagramas;
+  - o MER resumido usa `direction LR` para caber numa página A4.
+- **Achado no código:** é possível confirmar a conclusão sem pagamento simulado. `solicitacaoService.concluir()` só libera a custódia se ela existir, e a tela do solicitante mostra o botão de conclusão sempre que a solicitação está `CONTRATADA`. Isso confirma a anotação "consigo concluir o serviço sem pagar" do `Notas.md`. O diagrama de sequência mostra o pagamento como `opt` e registra o ponto. O comportamento não foi alterado, porque exigir a custódia é mudança de regra e precisa passar antes pelo backlog e pelo Jira.
+- **Validação:**
+  - os 13 blocos Mermaid foram analisados (`mermaid.parse`) e desenhados (`mermaid.render`) sem erro no Mermaid 11.6.0, no navegador embutido, usando uma cópia temporária servida pelo `next dev` em `frontend/public/tmp-diagramas`, já apagada;
+  - as setas foram contadas: só as generalizações e os `«include»`/`«extend»` têm ponta de seta;
+  - o desenho dos casos de uso, das classes, do MER e da sequência foi conferido em captura de tela;
+  - o Mermaid 11.4.1 desenha seta indevida nas associações `---`, o que ficou registrado no README dos diagramas.
+- **Bibliotecas:** nenhuma dependência nova. O Mermaid é só a notação dos arquivos Markdown e foi carregado do CDN apenas para a validação.
+
+## 26/10/2026 — Conclusão do serviço exige pagamento simulado retido (US17)
+
+- **Contexto:** ao gerar o diagrama de sequência, ficou confirmado que era possível concluir um serviço sem o pagamento simulado, como anotado no `Notas.md` ("consigo concluir o serviço sem pagar"). O usuário pediu para exigir a custódia `RETIDO` antes da conclusão.
+- **Backlog e Jira:** a regra cabe na US17 (Confirmação de Conclusão), então virou critério de aceite dela, e não história nova. Também foram ajustadas as tarefas técnicas de Backend e Frontend, e acrescentada uma de Testes. O critério foi registrado como pendente e sincronizado no Jira (TCC-25) antes da implementação; depois foi marcado como feito e sincronizado de novo.
+- **Backend:**
+  - `solicitacaoService.concluir()` lê a custódia antes de alterar a solicitação e responde 409 ("O pagamento simulado ainda não foi confirmado...") quando ela não existe ou não está `RETIDO`;
+  - o caso da custódia `REEMBOLSADO` de uma contratação anterior também é recusado, porque ainda não houve pagamento da proposta atual;
+  - a checagem de custódia de outra proposta continua com a mensagem própria;
+  - a solicitação só vira `CONCLUIDA` depois da checagem, na mesma transação com bloqueio `FOR UPDATE`;
+  - `oportunidadeService.buscarOportunidade()` devolve `pagamento_contratacao`, a situação da custódia, só para o prestador da proposta `ACEITA`, e `null` para as demais pessoas;
+  - Swagger: resposta 409 em `PATCH /solicitacoes/{id}/concluir` e campo `pagamento_contratacao` em `OportunidadeDTO`.
+- **Frontend:**
+  - `minhas-solicitacoes/[id]`: o botão "Confirmar que o serviço foi concluído" fica desabilitado sem custódia `RETIDO`, com uma orientação para confirmar o pagamento na seção de pagamento (`aria-describedby`);
+  - `oportunidades/[id]`: o aviso do prestador contratado passou a dizer se o pagamento já está retido. Sem pagamento, um alerta explica que o cliente ainda não pagou, e "Marcar como concluído" fica desabilitado. A desistência continua disponível.
+- **Testes (`backend/tests/fluxos.integracao.test.js`):**
+  - três testes que concluíam sem pagar passaram a pagar antes;
+  - novos: recusa 409 para solicitante e prestador sem pagamento, sem mudar estado nem notificar, e conclusão logo após pagar;
+  - novos: custódia reembolsada da contratação anterior não autoriza concluir a nova;
+  - novos: `pagamento_contratacao` aparece só para o prestador contratado.
+- **Diagramas:**
+  - `docs/diagramas/sequencia-contratacao.md`: o pagamento deixou de ser opcional, a conclusão ganhou o ramo de recusa 409, e a observação virou a seção "Regra: pagamento antes da conclusão";
+  - a observação de `casos-de-uso.md` foi ajustada;
+  - os 13 blocos foram validados de novo no Mermaid 11.6.0.
+- **Validação:**
+  - `DB_NAME_TEST=tcc_eloserv_test npm test`: 14 suítes e 246 testes aprovados (eram 243);
+  - `npx tsc --noEmit` no frontend: OK;
+  - a API da porta 3001 foi reiniciada, porque o `ts-node-dev` não detectou as edições;
+  - no navegador, na solicitação demo "Revisão do quadro de disjuntores" (contratada e sem pagamento), as telas do solicitante e do prestador mostraram o botão desabilitado e a explicação;
+  - as contas demo terminaram deslogadas;
+  - a solicitação demo não foi paga nem concluída, para preservar os dados da banca.
+- **Bibliotecas:** nenhuma nova.
+
+## 26/10/2026 — US41: página de arquitetura e modelagem no próprio sistema
+
+- **Contexto:** o usuário vai apresentar o TCC em vídeo e preferiu mostrar os diagramas dentro do próprio Eloserv, em vez de um link externo. Por ser escopo novo, a US41 foi escrita no `historia.md` (Épico 9, Should Have, 5 pontos, na matriz MoSCoW) e importada para o Jira antes da implementação: TCC-54, ligada ao Épico 9 (TCC-34).
+- **Página `/arquitetura`:**
+  - é pública, com as abas Visão geral, Casos de uso, Classes, MER e Sequência da contratação, e cada aba abre direto pelo endereço `/arquitetura?aba=...`;
+  - um valor de aba desconhecido cai na Visão geral;
+  - tem link "Arquitetura" no rodapé de todas as telas e do login (`LinksRodape`).
+- **Fonte única:**
+  - o Server Component lê `docs/diagramas/*.md` com `fs` a cada acesso (`dynamic = 'force-dynamic'`), sem copiar os arquivos para o frontend;
+  - só os cinco arquivos da lista de abas podem ser lidos, o que impede acesso a outros caminhos;
+  - no Docker, um volume somente leitura `./docs/diagramas:/docs/diagramas:ro` torna os arquivos visíveis para o container; a variável `DIAGRAMAS_DIR` permite outro caminho;
+  - se um arquivo faltar, a página mostra um aviso em vez de quebrar.
+- **Componentes (`frontend/src/components/arquitetura/`):**
+  - `abas.ts`: lista das abas, que serve também de whitelist dos arquivos;
+  - `ConteudoMarkdown.tsx`: desenha o Markdown com `react-markdown` e `remark-gfm`. Os títulos descem um nível, porque a página já tem o próprio `h1`; as tabelas ficam roláveis e focáveis; os links entre `.md` viram links de aba. Cada bloco Mermaid ganha o título da seção onde está, usado no rótulo acessível e no nome do SVG;
+  - `DiagramaMermaid.tsx`: carrega o Mermaid sob demanda e desenha sobre um "papel" branco, igual ao SVG baixado. Tem zoom (afastar, aproximar, ajustar e 100%) e o botão "Baixar SVG". A área do diagrama é rolável e focável pelo teclado. Um erro de sintaxe vira aviso com os detalhes.
+- **CSS (`globals.css`):** estilos do texto, das tabelas e do papel dos diagramas. Os rótulos do Mermaid são HTML dentro do SVG e herdavam a cor clara e o tamanho de `p` da página, o que deixava o texto ilegível e fora das caixas. Uma regra específica faz eles herdarem do diagrama.
+- **Bibliotecas novas (tabela acima):** `mermaid` 11.17.2, `react-markdown` 9.0.1 e `remark-gfm` 4.0.0, com versão exata.
+  - A primeira instalação usou o Mermaid 11.6.0, que trazia alertas de `lodash-es` (alto) e vários do próprio Mermaid. A 11.17.2 eliminou esses alertas, restando um baixo do `katex`.
+  - Os alertas de `next`, `axios`, `postcss` e `follow-redirects` já existiam e não foram tratados nesta história.
+- **Validação:**
+  - `npx tsc --noEmit` no frontend sem erros;
+  - as cinco abas e um valor de aba inválido respondem 200;
+  - no navegador, os 13 diagramas foram desenhados sem erro, com 6, 3, 2 e 2 por aba;
+  - os 13 SVGs gerados pelo Mermaid 11.17.2 são XML válidos (`DOMParser` com `image/svg+xml`), ou seja, o arquivo baixado abre no navegador e no Word;
+  - as associações `---` dos casos de uso continuam sem seta, como no 11.6.0;
+  - o zoom foi testado no MER completo: de 18% ajustado para 28% em dois cliques, com rolagem horizontal;
+  - a largura de 375 px não tem rolagem horizontal da página;
+  - os links da Visão geral levam às abas.
+  - O download em si não foi acionado no navegador embutido, para não salvar arquivo na máquina do usuário.
+
+## 26/10/2026 — US42: tema claro desenhado, aprovado e planejado (sem código)
+
+- **Contexto:** o usuário quis um tema claro, sobretudo para usar capturas de tela claras na monografia. Antes de qualquer código, a variação clara da paleta Elo foi desenhada no canvas de design, na página nova "5 · Tema claro". Ela tem a prancha da paleta (tokens escuro → claro com o contraste de cada par), cabeçalho e rodapé claros e as telas de comparar propostas, chat, painel administrativo e celular. As pranchas existentes não foram alteradas.
+- **Paleta clara aprovada pelo usuário em 26/10/2026:**
+  - superfícies: fundo #F5F6FC, destaque #ECEEFA, superfície #FFFFFF, borda #D9DCEF e borda de campo #7C83AE;
+  - textos: texto #14163A, secundário #2F3563, apoio #4B5280 e detalhe #5B6290;
+  - interação: primária #4F46E5 (igual à escura) e link #4338CA;
+  - azul-céu: #075985 e #0369A1 sobre #E0F2FE;
+  - estados: aviso #92400E sobre #FEF3C7, erro #B91C1C (selo #DC2626), sucesso #047857 e informação #3730A3 sobre #EEF2FF.
+- **Contraste:** calculado por script antes do desenho. Todos os textos passam de 4,5:1, e o menor é o texto de detalhe, com 5,1:1. A borda de campo foi criada como papel próprio porque a borda de cartão não chegava a 3:1; ficou com 3,18:1 a 3,67:1. O azul-céu fixo do logo (#0EA5E9) fica com 2,77:1 sobre o branco, o que é aceito por ser logotipo, isento no WCAG. As cores do logo não mudaram.
+- **Backlog e Jira:**
+  - US42 "Tema Claro e Troca de Tema" no Épico 8, Should Have, 8 pontos, na matriz MoSCoW;
+  - importada no Jira como TCC-55, ligada ao Épico 8 (TCC-31);
+  - os critérios e as tarefas técnicas da história são o plano de implementação.
+- **Levantamento para o plano:**
+  - cerca de 180 cores e 33 `rgba` fixos em 27 arquivos `.tsx`, e 47 cores e 3 `rgba` soltos no `globals.css`;
+  - o `Logo.tsx` está fixo na versão escura;
+  - o `app/layout.tsx` não tem controle de tema.
+- **Decisões do plano:** os valores escuros atuais ficam em `:root`, para o tema escuro continuar idêntico. O claro entra por `data-tema="claro"` e pela preferência do sistema. A escolha (Automático, Claro ou Escuro) é salva em `@ServicoFacil:tema` e aplicada por um script no `<head>`, para não piscar. O seletor fica no menu da conta e no rodapé. Nenhuma biblioteca nova está prevista.
+- **Código:** nenhum arquivo do app foi alterado nesta etapa.
+
+## 26/10/2026 — US42, etapa 1: tokens de tema no `globals.css`
+
+- **O que mudou em `frontend/src/app/globals.css`:**
+  - o bloco `:root` passou de 11 para 58 variáveis, cobrindo todos os papéis da paleta: superfícies, bordas, quatro níveis de texto, interação, azul-céu, estados (sucesso, aviso, erro, informação e violeta), transparências dos chips, fundo do cabeçalho, sobreposição de modal, sombra e as cores fixas do logo;
+  - os nomes existentes (`--bg-color`, `--card-bg`, `--text-primary` etc.) foram mantidos, porque já eram usados cerca de 250 vezes nas telas;
+  - um bloco novo, `:root[data-tema="claro"]`, redefine os mesmos papéis com a paleta clara aprovada no canvas e `color-scheme: light`;
+  - as 42 regras do CSS que tinham cor fixa passaram a usar os tokens. Ficaram de fora só as cores do "papel" branco dos diagramas (US41), exceção prevista na história.
+- **Por que o tema claro ainda não liga sozinho:** sem `prefers-color-scheme` nesta etapa, ninguém vê o claro por enquanto. As telas ainda têm cerca de 180 cores fixas nos `.tsx`, e uma prévia com `data-tema="claro"` no login confirmou isso: o formulário fica claro e legível, mas o painel da esquerda continua escuro. A preferência do sistema e o seletor entram na etapa 4.
+- **Tons ajustados pelo script de contraste:**
+  - borda de campo escura: #2C3166 → #5F67A0. Tinha 1,4:1 e o campo quase não tinha contorno;
+  - selo de notificação: #EF4444 → #DC2626. O texto branco tinha 3,8:1;
+  - aviso forte claro: #B45309 → #A3480A, que tinha 4,35:1 sobre o fundo de destaque.
+  - As duas primeiras são mudanças pequenas e de propósito no tema escuro. O critério da US42 foi ajustado para registrá-las como exceção ao "escuro idêntico".
+- **Ferramenta nova:** `frontend/scripts/contraste-tema.mjs`, executado com `npm run contraste:tema`. Ele lê os dois blocos de tokens do `globals.css` e testa 59 pares de uso em cada tema: texto sobre as três superfícies, chips sobre as transparências compostas, avisos, botões, foco e bordas de campo. Termina com erro se algum par ficar abaixo de 4,5:1 (texto) ou 3:1 (borda, foco, ícone). Usa só Node.js nativo, sem dependência nova.
+- **Validações:**
+  - Escuro sem mudança: cada `var(--...)` foi expandido pelo valor escuro e comparado com o `globals.css` anterior, guardado em `~/backup-us42/globals.antes-etapa1.css`. Todas as regras resolvem para as mesmas cores, exceto a borda de campo, que mudou de propósito.
+  - Contraste: `npm run contraste:tema` aprovou todos os pares nos dois temas.
+  - Navegador: `/login` mostrou o fundo #0E1024 e a borda de campo nova (rgb 95, 103, 160). A prévia com `data-tema="claro"` foi desligada em seguida.
+- **Próxima etapa:** 2, troca das cores fixas dos `.tsx` pelos tokens.
+
+## 26/10/2026 — Cadastros conferidos contra o canvas: endereço do prestador, dois textos e seção de termos no canvas
+
+- **Contexto:** o usuário perguntou se o cadastro estava diferente do canvas. As telas `/register-solicitante` e `/register-prestador` foram comparadas com as pranchas "Cadastro de cliente" e "Cadastro de prestador", em 1440px. A estrutura batia; foram encontradas quatro diferenças. São ajustes dentro do redesign (US39) e dos cadastros (US01, US02, US40), sem escopo novo.
+- **Corrigido no app:**
+  - **prestador, "Documento e contato":** em formulário largo, a grade (colunas de no mínimo 220px) punha três campos na primeira linha e deixava o "Endereço de atendimento" sozinho numa coluna estreita, com o exemplo cortado. Nova variação `.grade-campos.campos-largos` (colunas de no mínimo 280px) no `globals.css`, usada só nessa seção, volta ao 2 x 2 do canvas;
+  - **cliente, CPF:** a ajuda voltou a ter a frase "Não aparece para os prestadores." do canvas. Ela é verdadeira: o perfil público não expõe o CPF;
+  - **cliente, coluna lateral:** "em Minha conta › Privacidade" apontava um caminho inexistente e foi trocado pelo caminho real, "em Meu perfil › Desativar conta".
+- **Corrigido no canvas:**
+  - as duas pranchas de cadastro tinham uma única caixa "Concordo com a LGPD", anterior à US40, e ganharam a seção "4. Termos e privacidade" igual à do app: botões dos dois documentos, aceite dos Termos de Uso, ciência da Política e o texto da Central de Privacidade;
+  - a altura das pranchas aumentou de 1300 para 1500 (cliente) e de 1550 para 1750 (prestador);
+  - o caminho de desativação do cliente foi corrigido também no canvas.
+- **Diferença mantida:** o canvas mostra os campos preenchidos com exemplos (CPF com erro, senha "7 de 8"), e o app abre vazio. É esperado, porque o aviso de CPF e o contador de senha do app aparecem ao digitar.
+- **Validação:**
+  - `npx tsc --noEmit` sem erros;
+  - em 1440px, os quatro campos do prestador ficam em 2 x 2, com 381px cada;
+  - em 375px, ficam numa coluna de 306px, sem rolagem horizontal;
+  - no cliente, os dois textos novos aparecem na página.
+
+## 26/10/2026 — US42, etapa 2: cores fixas dos `.tsx` trocadas pelos tokens
+
+- **Resultado:** nenhuma cor fixa restou nos arquivos `.tsx` de `frontend/src`, exceto no `components/Logo.tsx`, que é a etapa 3. Foram 236 trocas em 26 arquivos: 16 manuais e 220 automáticas.
+- **Tokens novos no `globals.css`:** 14, nos dois temas. Eram papéis que só as telas usavam:
+  - fundos: `--bg-raised` e `--bg-sunken` (painel e caixas do chat);
+  - sobreposições: `--overlay-soft`, `--overlay-media` e `--on-overlay-media`. O visualizador de imagem continua escuro nos dois temas;
+  - sombras: `--shadow-menu`, `--shadow-drawer` e `--shadow-card`, mais leves e azuladas no claro;
+  - outros: `--primary-tint-strong`, `--neutral-tint-soft`, `--sky-border`, `--success-soft-text`, `--on-accent` e `--violet-strong`.
+- **Como foi feito (`etapa2.py`):**
+  - **Trocas manuais com asserção de contagem:** casos em que a mesma cor tinha papéis diferentes. O branco do chat é o principal: o balão do outro participante usava texto branco e, no claro, ficaria branco sobre branco; agora o texto acompanha o fundo. Também os campos de digitação do chat (borda de campo e texto do tema), os selos "Menor preço", o seletor das configurações, o selo de notificações e as sombras inteiras.
+  - **Trocas automáticas:** cada cor cujo valor escuro é exatamente o de um token foi trocada por `var(--token)`, sem diferenciar maiúsculas e minúsculas, inclusive `rgba` com ou sem espaços.
+  - O conversor terminou listando zero cores restantes. Também não sobrou nenhuma cor com nome (`white`, `black`) nos `.tsx`.
+- **Prova de que o escuro não mudou (`conferir_tsx.py`):** cada `var(--...)` foi resolvido pelo valor escuro e comparado linha a linha com os `.tsx` originais, guardados em `~/backup-us42/src-antes-etapa2`. Só 9 linhas mudaram, todas de propósito:
+  - correções de contraste que já falhavam: o texto do botão verde do chat (branco #FFFFFF sobre #10B981, 2,5:1) passou a #0E1024 (7,4:1); os dois campos de digitação do chat ganharam a borda de campo nova (#5F67A0); o selo de notificações passou ao vermelho #DC2626, como na etapa 1;
+  - texto branco (#FFFFFF ou #EEF2FF) trocado pelo texto do tema (#F5F7FF), uma diferença imperceptível, em quatro lugares.
+- **Ajuste encontrado pela auditoria:** o vermelho forte do claro (`--danger-strong`) passou de #DC2626 para #B91C1C. No chip "Cancelada", ele tinha 3,95:1 sobre o fundo rosado; agora tem 5,3:1. O par entrou no script de contraste.
+- **Correção no script de contraste:** ele passou a ignorar comentários CSS. Um comentário com o texto "--danger-tint: 5,3:1" tinha sido lido como token e escondido o valor claro de `--danger-bg`.
+- **Validações:**
+  - `npx tsc --noEmit` sem erros;
+  - `npm run contraste:tema`: 152 pares aprovados, 76 em cada tema;
+  - o resultado no projeto é idêntico ao da cópia testada (`diff -rq`);
+  - escuro: página inicial e detalhe conferidos no navegador, iguais aos de antes;
+  - claro, por prévia com `data-tema="claro"` (o tema claro ainda não liga sozinho): uma auditoria automática no navegador mediu o contraste real de cada texto visível contra o fundo efetivo, compondo as transparências. Passou em 19 telas e no painel do chat:
+    - páginas públicas: início, entrar, cadastro de prestador, status, arquitetura e Termos de Uso;
+    - conta de solicitante: painel, minhas solicitações, detalhe, nova solicitação, perfil, configurações, Central de Privacidade e oportunidades;
+    - conta de administrador: admin, atendimento de privacidade, minhas propostas e detalhe de oportunidade.
+  - A única falha que restou é o nome "eloserv" do logo, que é a etapa 3.
+  - Com o painel do navegador escondido, as transições de CSS não avançam e a medição pega a cor de antes da troca; por isso a auditoria desliga as transições.
+- **Contas demo:** terminaram deslogadas. Abrir o chat da contratação demo pode ter marcado mensagens como lidas, que é o comportamento normal.
+- **Próxima etapa:** 3, o logo nas duas versões fixas da marca.
+
+## 26/10/2026 — US42, etapa 3: logo nas duas versões fixas da marca
+
+- **O que mudou:**
+  - `components/Logo.tsx` passou a usar os tokens `--logo-indigo`, `--logo-sky` e `--logo-text`, criados na etapa 1. Os valores continuam sendo as cores fixas da marca: na versão escura, #818CF8, #38BDF8 e "serv" em #F5F7FF; na clara, a já aprovada no canvas, #4F46E5, #0EA5E9 e "serv" em #0F172A. O tema só escolhe qual das duas versões aparece; nenhuma cor do logo foi alterada;
+  - o recorte entre os elos (o traço grosso na cor do fundo) passou a ter `var(--bg-color)` como padrão, em vez de #0E1024 fixo;
+  - o cabeçalho, cujo fundo é translúcido, ganhou o token `--header-solid`: a cor do fundo já composta, #0E1024 no escuro e #FEFEFF no claro. O `Cabecalho.tsx` passa essa cor ao logo;
+  - o login já passava `var(--bg-highlight)`;
+  - o comentário de documentação do `Logo.tsx` descreve as duas versões.
+- **Favicon (`app/icon.svg`):** não mudou. O símbolo fica sobre um quadrado escuro próprio, então funciona igual em abas claras e escuras do navegador.
+- **Resultado:** agora não há nenhuma cor fixa nos `.tsx`. As únicas cores hexadecimais que aparecem estão no comentário de documentação da marca, no `Logo.tsx`.
+- **Validação:**
+  - `npx tsc --noEmit` sem erros;
+  - `npm run contraste:tema`: todos os pares passam;
+  - no navegador, cabeçalho e rodapé de `/termos-de-uso` foram lidos nos dois temas. Elos, "elo" e "serv" resolvem exatamente para as cores fixas de cada versão;
+  - o recorte coincide com o fundo real: no cabeçalho, #0E1024 / #FEFEFF; no rodapé, #0E1024 / #F5F6FC;
+  - no painel do login, o recorte coincide com o fundo do painel nos dois temas, rgb(19,22,58) / rgb(236,238,250);
+  - capturas confirmaram o logo legível nos dois temas. Antes, o "serv" sumia no claro.
+- **Próxima etapa:** 4, preferência do sistema, seletor Automático/Claro/Escuro e aplicação antes da primeira pintura. É ela que liga o tema claro para os usuários.
+
+## 26/10/2026 — US42, etapa 4: preferência do sistema, seletor de tema e aplicação antes da pintura (história concluída)
+
+- **Arquivos novos:**
+  - **`frontend/src/utils/tema.ts`:** guarda a regra de tema.
+    - Preferências possíveis: `automatico`, `claro` e `escuro`.
+    - A escolha fica salva em `@ServicoFacil:tema`, o mesmo prefixo das outras chaves. "Automático" é a ausência de chave, então quem nunca escolheu segue o sistema.
+    - Funções `lerPreferencia`, `resolverTema` (consulta `prefers-color-scheme`), `aplicarTema` (escreve `data-tema` no `<html>` e acerta o `meta theme-color` pela variável `--bg-color`) e `escolherTema` (salva, aplica e avisa os seletores).
+    - Constante `SCRIPT_TEMA_INICIAL`: a mesma regra em JavaScript puro, para rodar antes do React.
+    - Armazenamento indisponível cai em "Automático", com `try/catch`.
+  - **`frontend/src/components/TemaSincronizado.tsx`:** componente sem interface montado no layout. No modo Automático, acompanha a troca de tema do sistema com a página aberta; quando a escolha muda em outra aba (evento `storage`), aplica aqui também e atualiza os seletores.
+  - **`frontend/src/components/ui/SeletorTema.tsx`:**
+    - grupo de botões de rádio de verdade (`fieldset` com legenda), com aparência de controle segmentado;
+    - ícones de monitor, sol e lua, e cada opção com `aria-label` próprio;
+    - o tema escolhido aparece por extenso ("Tema: Automático (segue o sistema)");
+    - o teclado funciona pelas setas, há contorno de foco e as opções têm 44 × 44 px.
+- **Integração:**
+  - **`app/layout.tsx`:** `<script>` com `SCRIPT_TEMA_INICIAL` no `<head>`, além de `suppressHydrationWarning` no `<html>` (o `data-tema` não vem do servidor) e `<TemaSincronizado />`;
+  - **seletor:** no menu da conta, entre Configurações e Sair; no rodapé (`Rodape`) de todas as páginas; e no login, que não usa o rodapé completo;
+  - **`globals.css`:** `color-scheme: dark` no `:root`, para os controles nativos (barras de rolagem, listas, seletor de data) acompanharem o escuro, como o claro já tinha `color-scheme: light`; e os estilos `.seletor-tema*`.
+- **Por que o tema não depende de `@media` no CSS:** o script resolve a preferência e escreve sempre o tema efetivo em `data-tema`. Assim, os valores claros ficam num único bloco `:root[data-tema="claro"]`, sem duplicar a paleta numa media query.
+- **Ajuste durante os testes:** a árvore de acessibilidade mostrava o valor interno ("automatico") como nome das opções. Cada rádio ganhou `aria-label` explícito, e a árvore passou a mostrar "Automático, segue o sistema", "Claro" e "Escuro".
+- **Validação:**
+  - `npx tsc --noEmit` sem erros, e `npm run contraste:tema` aprova todos os pares;
+  - no HTML do servidor, o script fica dentro do `<head>`, antes do `<body>`, e é síncrono; o tema é aplicado antes do primeiro conteúdo da página;
+  - no navegador, com a preferência do sistema emulada:
+    - sem escolha salva e sistema claro, a página nasce clara, o seletor mostra "Automático" e o `theme-color` fica #F5F6FC;
+    - sem escolha salva e sistema escuro, a página nasce escura, com #0E1024;
+    - "Claro" com o sistema escuro salva a chave, aplica na hora e continua claro em outra página depois de um carregamento completo;
+    - a seta para a direita no teclado passa a "Escuro" e salva, com contorno de foco visível;
+    - voltar para "Automático" apaga a chave e segue o sistema;
+    - os seletores do menu e do rodapé ficam sincronizados, e o menu continua aberto ao trocar;
+    - a troca na segunda aba se aplica na primeira;
+    - em 375px, o seletor quebra para baixo dos links do rodapé, sem rolagem horizontal.
+  - A troca ao vivo do tema do sistema só pôde ser testada com o painel do navegador visível. Escondido, o navegador não avalia mudanças de mídia, e nem um ouvinte criado no console recebia o evento. Com o painel visível, a página passou ao claro e ao escuro sem recarregar.
+  - A conta demo terminou deslogada, e o tema ficou em "Automático".
+- **Bibliotecas:** nenhuma nova. Só APIs nativas do navegador (Web Storage e `matchMedia`), documentadas no topo de `tema.ts`.
+- **US42 concluída:** os oito critérios de aceite foram marcados no `historia.md` e sincronizados no Jira (TCC-55). Fica para depois só a tarefa de documentação de tirar capturas em tema claro para a monografia, que é feita na redação.

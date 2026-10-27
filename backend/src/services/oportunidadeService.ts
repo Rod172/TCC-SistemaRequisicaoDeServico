@@ -128,12 +128,18 @@ export class OportunidadeService {
         })
       : null;
 
+    // Só o prestador contratado vê a situação do pagamento da própria contratação (US13/US17).
+    const custodia = minhaProposta?.status === 'ACEITA'
+      ? await TransacaoCustodia.findOne({ where: { proposta_id: minhaProposta.id }, attributes: ['status_pagamento'] })
+      : null;
+
     return {
       ...oportunidade.get({ plain: true }),
       // Precisa bater com o filtro de `enviarProposta` (ABERTA/EM_NEGOCIACAO) — senão a tela nega uma
       // ação que o backend aceitaria de verdade.
       pode_enviar_proposta: !!prestadorId && prestadorId !== oportunidade.solicitante_id && !minhaProposta && ['ABERTA', 'EM_NEGOCIACAO'].includes(oportunidade.status),
       minha_proposta: minhaProposta ? minhaProposta.get({ plain: true }) : null,
+      pagamento_contratacao: custodia ? custodia.status_pagamento : null,
     };
   }
 

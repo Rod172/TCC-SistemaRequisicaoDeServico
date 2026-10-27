@@ -3,7 +3,7 @@
 const { documentos, validarAceiteDocumentos } = require('../dist/services/documentosLegaisService');
 const publico = require('../../frontend/src/conteudo/documentos-legais.json');
 const valido = { termos_uso_aceitos: true, privacidade_ciente: true, termos_uso_versao: documentos.versao_termos, privacidade_versao: documentos.versao_privacidade };
-test('metadados do frontend e backend são idênticos e têm contato configurado',()=>{expect(publico).toEqual(documentos);expect(documentos.email_privacidade).toBe('rodrigogofernandomelo15@gmail.com');});
+test('metadados do frontend e backend são idênticos e têm contato configurado',()=>{expect(publico).toEqual(documentos);expect(documentos.email_privacidade).toBe('rodrigofernandomelo15@gmail.com');});
 test.each([
  {},{termos_uso_aceitos:false},{termos_uso_aceitos:'true'},{termos_uso_aceitos:1},
  {privacidade_ciente:false},{privacidade_ciente:'true'},{termos_uso_versao:'antiga'},{privacidade_versao:'antiga'},

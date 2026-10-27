@@ -14,7 +14,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const dbName = process.env.DB_NAME || 'tcc_servico_facil';
+const dbName = process.env.DB_NAME || 'tcc_eloserv';
 const dbUser = process.env.DB_USER || 'root';
 const dbPassword = process.env.DB_PASSWORD || 'root';
 const dbHost = process.env.DB_HOST || '127.0.0.1';

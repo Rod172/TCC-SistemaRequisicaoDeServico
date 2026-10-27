@@ -88,15 +88,15 @@ export default function ChatDrawer({
       {/* ── Fundo escurecido ─────────────── */}
       <div
         onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 150 }}
+        style={{ position: 'fixed', inset: 0, background: 'var(--overlay-soft)', zIndex: 150 }}
       />
 
       {/* ── Painel deslizante ─────────────── */}
       <div style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(420px, 100vw)',
-        background: '#0b1220', borderLeft: '1px solid var(--card-border)', zIndex: 151,
+        background: 'var(--bg-sunken)', borderLeft: '1px solid var(--card-border)', zIndex: 151,
         display: 'flex', flexDirection: 'column', padding: '1.25rem',
-        boxShadow: '-8px 0 30px rgba(0,0,0,0.4)',
+        boxShadow: 'var(--shadow-drawer)',
         animation: 'chatDrawerSlideIn 0.2s ease-out',
       }}>
         <style>{`
@@ -108,21 +108,21 @@ export default function ChatDrawer({
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <MessageCircle size={18} color="#60a5fa" />
+            <MessageCircle size={18} color="var(--link-color)" />
             <strong style={{ fontSize: '0.95rem' }}>{titulo || 'Chat'}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <button
               onClick={() => setDenunciando((v) => !v)}
               title="Denunciar esta conversa/solicitação"
-              style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex' }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
             >
               <Flag size={16} />
             </button>
             <button
               onClick={onClose}
               title="Fechar"
-              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex' }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}
             >
               <X size={20} />
             </button>
@@ -131,8 +131,8 @@ export default function ChatDrawer({
 
         {statusProposta === 'RECUSADA' && (
           <div style={{
-            background: 'rgba(148,163,184,0.1)', border: '1px solid #334155', borderRadius: '8px',
-            padding: '0.6rem 0.8rem', marginBottom: '0.75rem', fontSize: '0.78rem', color: '#94a3b8',
+            background: 'var(--neutral-tint-soft)', border: '1px solid var(--card-border)', borderRadius: '8px',
+            padding: '0.6rem 0.8rem', marginBottom: '0.75rem', fontSize: '0.78rem', color: 'var(--text-secondary)',
           }}>
             Esta negociação foi encerrada — a conversa fica disponível só para consulta.
           </div>
@@ -145,7 +145,7 @@ export default function ChatDrawer({
               disabled={decidindo}
               style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem',
-                background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px',
+                background: 'var(--accent-color)', color: 'var(--on-accent)', border: 'none', borderRadius: '8px',
                 padding: '0.5rem', fontSize: '0.8rem', fontWeight: 600, cursor: decidindo ? 'default' : 'pointer',
                 opacity: decidindo ? 0.7 : 1,
               }}
@@ -157,7 +157,7 @@ export default function ChatDrawer({
               disabled={decidindo}
               style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem',
-                background: 'transparent', border: '1px solid var(--danger-color)', color: '#f87171', borderRadius: '8px',
+                background: 'transparent', border: '1px solid var(--danger-color)', color: 'var(--danger-strong)', borderRadius: '8px',
                 padding: '0.5rem', fontSize: '0.8rem', fontWeight: 600, cursor: decidindo ? 'default' : 'pointer',
                 opacity: decidindo ? 0.7 : 1,
               }}
@@ -169,22 +169,22 @@ export default function ChatDrawer({
 
         {denunciando && (
           <form onSubmit={enviarDenuncia} style={{
-            background: '#161f30', border: '1px solid var(--danger-color)', borderRadius: '8px',
+            background: 'var(--bg-raised)', border: '1px solid var(--danger-color)', borderRadius: '8px',
             padding: '0.75rem', marginBottom: '0.75rem',
           }}>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', marginBottom: '0.5rem' }}>
               Denunciar esta solicitação para a administração revisar.
             </p>
-            {mensagem && <p style={{ color: '#6ee7b7', fontSize: '0.78rem', marginBottom: '0.5rem' }}>{mensagem}</p>}
+            {mensagem && <p style={{ color: 'var(--success-soft-text)', fontSize: '0.78rem', marginBottom: '0.5rem' }}>{mensagem}</p>}
             <input
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Motivo da denúncia"
               maxLength={1000}
-              style={{ width: '100%', padding: '0.5rem 0.6rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '0.82rem', marginBottom: '0.5rem' }}
+              style={{ width: '100%', padding: '0.5rem 0.6rem', background: 'var(--bg-color)', border: '1px solid var(--field-border)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.82rem', marginBottom: '0.5rem' }}
             />
             <button type="submit" disabled={enviando || !motivo.trim()} style={{
-              padding: '0.45rem 0.9rem', background: 'var(--danger-color)', color: '#fff', border: 'none',
+              padding: '0.45rem 0.9rem', background: 'var(--danger-color)', color: 'var(--on-primary)', border: 'none',
               borderRadius: '6px', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
             }}>
               {enviando ? 'Enviando...' : 'Enviar denúncia'}

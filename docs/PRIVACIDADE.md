@@ -9,7 +9,7 @@ História: US40 · Jira: TCC-53 · Épico original: TCC-3. Versão inicial dos d
 - `/privacidade`: contato público por e-mail e, com conta ativa, registro de aceite e protocolos próprios.
 - `/admin/privacidade`: caixa administrativa, acessível pelo painel e protegida no backend por JWT e perfil ADMIN.
 
-Responsável informado pelo usuário: Rodrigo Fernando Melo Dias da Silva. Contato público autorizado: rodrigogofernandomelo15@gmail.com. O telefone não foi necessário nem publicado. Os links de e-mail não enviam mensagens automaticamente.
+Responsável informado pelo usuário: Rodrigo Fernando Melo Dias da Silva. Contato público autorizado: rodrigofernandomelo15@gmail.com. O telefone não foi necessário nem publicado. Os links de e-mail não enviam mensagens automaticamente.
 
 O cadastro tem dois sinais inicialmente desmarcados: aceite dos Termos e ciência da Política. Ciência não é consentimento genérico para qualquer tratamento. Tratamentos opcionais que efetivamente dependam de consentimento precisam de finalidade e escolha próprias; esta etapa não adiciona marketing/rastreamento. O token de sessão e o perfil são mantidos em localStorage, conforme o cliente já existente.
 

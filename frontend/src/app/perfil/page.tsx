@@ -3,10 +3,14 @@
 /**
  * @file perfil/page.tsx
  * @description Tela "Meu Perfil" (US04) do usuário autenticado: edição de dados cadastrais e foto,
- * troca de senha e exclusão de conta (LGPD). Consome a API protegida por JWT em /api/v1/perfil.
+ * troca de senha e desativação da conta. Consome a API protegida por JWT em /api/v1/perfil.
+ * Layout da US39 ("Minha conta"): navegação lateral compartilhada com as configurações de notificação
+ * e a Central de Privacidade, e as seções de dados pessoais, senha e desativação uma abaixo da outra,
+ * cada uma com o próprio aviso de sucesso ou erro. Desde a US40, a desativação deixa claro que não
+ * exclui os dados e encaminha os pedidos sobre dados pessoais à Central de Privacidade.
  *
  * BIBLIOTECAS UTILIZADAS:
- * 1. Lucide React (^0.383.0): Ícones para campos do formulário e abas.
+ * 1. Lucide React (^0.383.0): Ícones para campos do formulário e seções.
  *    Doc Oficial: https://lucide.dev/
  * 2. Next.js (^14.2.3): Framework React com App Router.
  *    Doc Oficial: https://nextjs.org/docs
@@ -17,15 +21,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  User, Phone, MapPin, Camera, Lock, ShieldAlert, CheckCircle,
-  AlertCircle, ArrowLeft, LogOut, Save, Trash2, KeyRound, Settings,
-} from 'lucide-react';
+import { Camera, KeyRound, Save, Trash2 } from 'lucide-react';
 import api from '@/services/api';
+import LayoutConta from '@/components/ui/LayoutConta';
+import { Aviso, EstadoLista, iniciais } from '@/components/ui/Elementos';
 
 const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1').replace(/\/api\/v1\/?$/, '');
 
-type Aba = 'dados' | 'senha' | 'privacidade';
+/** Mesmo mínimo exigido no cadastro (authService), para a regra da senha ser uma só no app. */
+const SENHA_MINIMA = 8;
+
+type Secao = 'dados' | 'senha' | 'privacidade';
 
 interface PerfilData {
   id: string;
@@ -41,7 +47,6 @@ export default function PerfilPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [abaAtiva, setAbaAtiva] = useState<Aba>('dados');
   const [perfil, setPerfil] = useState<PerfilData | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -57,6 +62,8 @@ export default function PerfilPage() {
 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Seção a que a mensagem pertence: o aviso aparece dentro dela, perto de onde a pessoa agiu.
+  const [secaoMsg, setSecaoMsg] = useState<Secao>('dados');
 
   useEffect(() => {
     const token = localStorage.getItem('@ServicoFacil:token');
@@ -92,20 +99,15 @@ export default function PerfilPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function limparMensagens() {
+  function limparMensagens(secao: Secao) {
     setSuccessMsg(null);
     setErrorMsg(null);
-  }
-
-  function handleLogout() {
-    localStorage.removeItem('@ServicoFacil:token');
-    localStorage.removeItem('@ServicoFacil:user');
-    router.push('/');
+    setSecaoMsg(secao);
   }
 
   async function handleSalvarDados(e: React.FormEvent) {
     e.preventDefault();
-    limparMensagens();
+    limparMensagens('dados');
     setSalvandoDados(true);
 
     try {
@@ -124,7 +126,7 @@ export default function PerfilPage() {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
 
-    limparMensagens();
+    limparMensagens('dados');
     setEnviandoFoto(true);
 
     const formData = new FormData();
@@ -147,7 +149,12 @@ export default function PerfilPage() {
 
   async function handleAlterarSenha(e: React.FormEvent) {
     e.preventDefault();
-    limparMensagens();
+    limparMensagens('senha');
+
+    if (senhaForm.nova_senha.length < SENHA_MINIMA) {
+      setErrorMsg(`A nova senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.`);
+      return;
+    }
 
     if (senhaForm.nova_senha !== senhaForm.confirmar_senha) {
       setErrorMsg('A confirmação da nova senha não coincide.');
@@ -170,7 +177,7 @@ export default function PerfilPage() {
   }
 
   async function handleExcluirConta() {
-    limparMensagens();
+    limparMensagens('privacidade');
     setExcluindo(true);
     try {
       await api.delete('/perfil');
@@ -183,357 +190,130 @@ export default function PerfilPage() {
     }
   }
 
+  function avisos(secao: Secao) {
+    if (secaoMsg !== secao) return null;
+    return (
+      <>
+        {errorMsg && <Aviso tipo="erro">{errorMsg}</Aviso>}
+        {successMsg && <Aviso tipo="sucesso">{successMsg}</Aviso>}
+      </>
+    );
+  }
+
   if (carregando) {
     return (
-      <main style={{ maxWidth: '760px', margin: '4rem auto', padding: '0 1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        Carregando seu perfil...
-      </main>
+      <LayoutConta pagina="perfil">
+        <EstadoLista tipo="carregando">Carregando seu perfil...</EstadoLista>
+      </LayoutConta>
     );
   }
 
   if (!perfil) {
     return (
-      <main style={{ maxWidth: '760px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
-        <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-          <ArrowLeft size={16} /> Voltar para a página inicial
-        </Link>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)',
-          color: '#fca5a5', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem',
-        }}>
-          <AlertCircle size={20} />
-          <span>{errorMsg || 'Não foi possível carregar os dados do seu perfil.'}</span>
-        </div>
-      </main>
+      <LayoutConta pagina="perfil">
+        <EstadoLista tipo="erro">{errorMsg || 'Não foi possível carregar os dados do seu perfil.'}</EstadoLista>
+      </LayoutConta>
     );
   }
 
+  const tipoConta = perfil.tipo_perfil === 'PRESTADOR' ? 'Prestador de Serviço' : perfil.tipo_perfil === 'ADMIN' ? 'Administrador' : 'Cliente';
+  const faltamNaSenha = Math.max(0, SENHA_MINIMA - senhaForm.nova_senha.length);
+
   return (
-    <main style={{ maxWidth: '760px', margin: '2rem auto', padding: '0 1.5rem 4rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <Link href="/" style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-          color: 'var(--text-secondary)', fontSize: '0.9rem',
-        }}>
-          <ArrowLeft size={16} />
-          Voltar para a página inicial
-        </Link>
-
-        <button onClick={handleLogout} style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-          background: 'transparent', border: '1px solid #334155', color: '#94a3b8',
-          borderRadius: '8px', padding: '0.5rem 0.9rem', fontSize: '0.85rem', cursor: 'pointer',
-        }}>
-          <LogOut size={15} /> Sair
-        </button>
-      </div>
-
-      {/* ── Cabeçalho com Avatar ─────────────────────────── */}
-      <div style={{
-        background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-        borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
-        display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap',
-      }}>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <div style={{
-            width: '84px', height: '84px', borderRadius: '50%', overflow: 'hidden',
-            background: '#0f172a', border: '2px solid #8b5cf6',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {perfil?.foto_url ? (
+    <LayoutConta pagina="perfil">
+      {/* ── Dados pessoais ─────────────────────────── */}
+      <form id="dados" onSubmit={handleSalvarDados} aria-labelledby="titulo-dados" className="card grande empilhado" style={{ gap: '1.1rem', scrollMarginTop: '1rem' }}>
+        <h2 id="titulo-dados" className="titulo-secao">Dados pessoais</h2>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span aria-hidden="true" className="avatar" style={{ width: 72, height: 72, fontSize: '1.5rem' }}>
+            {perfil.foto_url
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`${BACKEND_ORIGIN}${perfil.foto_url}`}
-                alt="Foto de perfil"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              <User size={36} color="#8b5cf6" />
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={enviandoFoto}
-            title="Alterar foto de perfil"
-            style={{
-              position: 'absolute', bottom: '-2px', right: '-2px',
-              width: '30px', height: '30px', borderRadius: '50%',
-              background: '#8b5cf6', border: '2px solid var(--card-bg)',
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: enviandoFoto ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <Camera size={14} />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleSelecionarFoto}
-            hidden
-          />
-        </div>
-
-        <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-            {perfil?.nome}
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-            {perfil?.email}
-          </p>
-          <span style={{
-            display: 'inline-block', padding: '0.25rem 0.7rem', borderRadius: '20px',
-            fontSize: '0.75rem', fontWeight: 600,
-            background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
-          }}>
-            {perfil?.tipo_perfil === 'PRESTADOR' ? 'Prestador de Serviço' : perfil?.tipo_perfil === 'ADMIN' ? 'Administrador' : 'Solicitante'}
+              ? <img src={`${BACKEND_ORIGIN}${perfil.foto_url}`} alt="" />
+              : iniciais(perfil.nome)}
           </span>
-          <div>
-            <Link href="/configuracoes" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '0.6rem', color: '#60a5fa', fontSize: '0.8rem', textDecoration: 'none' }}>
-              <Settings size={13} /> Configurações de notificação
-            </Link>
-      <Link href="/privacidade" style={{ display: 'inline-block', margin: '1rem 0' }}>Central de Privacidade e registros do cadastro</Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Alertas ──────────────────────────────────────── */}
-      {errorMsg && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger-color)',
-          color: '#fca5a5', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem',
-        }}>
-          <AlertCircle size={20} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-      {successMsg && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--accent-color)',
-          color: '#6ee7b7', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem',
-        }}>
-          <CheckCircle size={20} />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
-      {/* ── Abas ─────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #334155', marginBottom: '1.75rem', overflowX: 'auto' }}>
-        {([
-          { id: 'dados', label: 'Dados Pessoais', icon: <User size={16} /> },
-          { id: 'senha', label: 'Alterar Senha', icon: <KeyRound size={16} /> },
-          { id: 'privacidade', label: 'Privacidade (LGPD)', icon: <ShieldAlert size={16} /> },
-        ] as { id: Aba; label: string; icon: React.ReactNode }[]).map((aba) => (
-          <button
-            key={aba.id}
-            onClick={() => { setAbaAtiva(aba.id); limparMensagens(); }}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0,
-              background: 'transparent', border: 'none', whiteSpace: 'nowrap',
-              borderBottom: abaAtiva === aba.id ? '2px solid #8b5cf6' : '2px solid transparent',
-              color: abaAtiva === aba.id ? '#fff' : 'var(--text-secondary)',
-              padding: '0.75rem 0.25rem', marginRight: '1.25rem',
-              fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            {aba.icon} {aba.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Conteúdo: Dados Pessoais ───────────────────────── */}
-      {abaAtiva === 'dados' && (
-        <form onSubmit={handleSalvarDados} style={{
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
-          display: 'flex', flexDirection: 'column', gap: '1.25rem',
-        }}>
-          <Campo label="Nome completo" icon={<User size={18} />}>
-            <input
-              type="text"
-              value={dadosForm.nome}
-              onChange={(e) => setDadosForm((p) => ({ ...p, nome: e.target.value }))}
-              required
-              style={estiloInput}
-            />
-          </Campo>
-
-          <Campo label="Telefone" icon={<Phone size={18} />}>
-            <input
-              type="tel"
-              value={dadosForm.telefone}
-              onChange={(e) => setDadosForm((p) => ({ ...p, telefone: e.target.value }))}
-              required
-              style={estiloInput}
-            />
-          </Campo>
-
-          <Campo label="Endereço" icon={<MapPin size={18} />}>
-            <input
-              type="text"
-              value={dadosForm.endereco}
-              onChange={(e) => setDadosForm((p) => ({ ...p, endereco: e.target.value }))}
-              placeholder="Rua, número, bairro, cidade"
-              style={estiloInput}
-            />
-          </Campo>
-
-          <button type="submit" disabled={salvandoDados} style={{ ...estiloBotao, alignSelf: 'flex-start' }}>
-            <Save size={16} /> {salvandoDados ? 'Salvando...' : 'Salvar alterações'}
-          </button>
-        </form>
-      )}
-
-      {/* ── Conteúdo: Alterar Senha ───────────────────────── */}
-      {abaAtiva === 'senha' && (
-        <form onSubmit={handleAlterarSenha} style={{
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
-          display: 'flex', flexDirection: 'column', gap: '1.25rem',
-        }}>
-          <Campo label="Senha atual" icon={<Lock size={18} />}>
-            <input
-              type="password"
-              value={senhaForm.senha_atual}
-              onChange={(e) => setSenhaForm((p) => ({ ...p, senha_atual: e.target.value }))}
-              required
-              style={estiloInput}
-            />
-          </Campo>
-
-          <Campo label="Nova senha" icon={<Lock size={18} />}>
-            <input
-              type="password"
-              value={senhaForm.nova_senha}
-              onChange={(e) => setSenhaForm((p) => ({ ...p, nova_senha: e.target.value }))}
-              required
-              minLength={6}
-              style={estiloInput}
-            />
-          </Campo>
-
-          <Campo label="Confirmar nova senha" icon={<Lock size={18} />}>
-            <input
-              type="password"
-              value={senhaForm.confirmar_senha}
-              onChange={(e) => setSenhaForm((p) => ({ ...p, confirmar_senha: e.target.value }))}
-              required
-              minLength={6}
-              style={estiloInput}
-            />
-          </Campo>
-
-          <button type="submit" disabled={salvandoSenha} style={{ ...estiloBotao, alignSelf: 'flex-start' }}>
-            <KeyRound size={16} /> {salvandoSenha ? 'Alterando...' : 'Alterar senha'}
-          </button>
-        </form>
-      )}
-
-      {/* ── Conteúdo: Privacidade (LGPD) ───────────────────── */}
-      {abaAtiva === 'privacidade' && (
-        <div style={{
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 'var(--border-radius)', padding: 'clamp(1.25rem, 5vw, 2rem)',
-        }}>
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
-            <ShieldAlert size={22} color="#f87171" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Desativação da conta e direitos sobre seus dados
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Desativar a conta bloqueia seu acesso e preserva o histórico. Essa ação não exclui nem
-                anonimiza seus dados e não pode ser desfeita pelo próprio usuário. Para solicitar acesso,
-                correção ou análise de exclusão dos dados, utilize a Central de Privacidade.
-              </p>
-            </div>
-          </div>
-
-          {!confirmarExclusao ? (
-            <button
-              type="button"
-              onClick={() => setConfirmarExclusao(true)}
-              style={{ ...estiloBotao, background: 'transparent', border: '1px solid var(--danger-color)', color: '#f87171' }}
-            >
-              <Trash2 size={16} /> Desativar minha conta
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0 }}>
+            <strong style={{ fontSize: '1rem', overflowWrap: 'anywhere' }}>{perfil.nome}</strong>
+            <span className="texto-apoio" style={{ fontSize: '0.82rem', overflowWrap: 'anywhere' }}>{perfil.email} · {tipoConta}</span>
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={enviandoFoto} className="btn btn-texto" style={{ alignSelf: 'flex-start', minHeight: '36px', padding: 0 }}>
+              <Camera size={15} aria-hidden="true" /> {enviandoFoto ? 'Enviando foto...' : 'Alterar foto'}
             </button>
-          ) : (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger-color)',
-              borderRadius: '8px', padding: '1.25rem',
-            }}>
-              <p style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>
-                Tem certeza? Você será desconectado imediatamente e perderá o acesso à sua conta.
-              </p>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  onClick={handleExcluirConta}
-                  disabled={excluindo}
-                  style={{ ...estiloBotao, background: 'var(--danger-color)' }}
-                >
-                  <Trash2 size={16} /> {excluindo ? 'Desativando...' : 'Sim, desativar minha conta'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmarExclusao(false)}
-                  style={{ ...estiloBotao, background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleSelecionarFoto} hidden aria-label="Alterar foto de perfil" />
+          </div>
         </div>
-      )}
-    </main>
+        <div className="grade-campos">
+          <div className="campo-grupo inteiro">
+            <label htmlFor="perfil-nome" className="rotulo">Nome completo</label>
+            <input id="perfil-nome" type="text" required autoComplete="name" className="campo" value={dadosForm.nome} onChange={(e) => setDadosForm((p) => ({ ...p, nome: e.target.value }))} />
+          </div>
+          <div className="campo-grupo">
+            <label htmlFor="perfil-telefone" className="rotulo">Telefone</label>
+            <input id="perfil-telefone" type="tel" required autoComplete="tel" className="campo" value={dadosForm.telefone} onChange={(e) => setDadosForm((p) => ({ ...p, telefone: e.target.value }))} />
+          </div>
+          <div className="campo-grupo">
+            <label htmlFor="perfil-endereco" className="rotulo">Endereço</label>
+            <input id="perfil-endereco" type="text" autoComplete="street-address" className="campo" value={dadosForm.endereco} onChange={(e) => setDadosForm((p) => ({ ...p, endereco: e.target.value }))} placeholder="Rua, número, bairro, cidade" />
+          </div>
+        </div>
+        {avisos('dados')}
+        <button type="submit" disabled={salvandoDados} className="btn btn-primario" style={{ alignSelf: 'flex-start' }}>
+          <Save size={16} aria-hidden="true" /> {salvandoDados ? 'Salvando...' : 'Salvar alterações'}
+        </button>
+      </form>
+
+      {/* ── Senha ─────────────────────────── */}
+      <form id="senha" onSubmit={handleAlterarSenha} aria-labelledby="titulo-senha" className="card grande empilhado" style={{ gap: '1.1rem', scrollMarginTop: '1rem' }}>
+        <h2 id="titulo-senha" className="titulo-secao">Senha</h2>
+        <div className="grade-campos" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))' }}>
+          <div className="campo-grupo">
+            <label htmlFor="senha-atual" className="rotulo">Senha atual</label>
+            <input id="senha-atual" type="password" required autoComplete="current-password" className="campo" value={senhaForm.senha_atual} onChange={(e) => setSenhaForm((p) => ({ ...p, senha_atual: e.target.value }))} />
+          </div>
+          <div className="campo-grupo">
+            <label htmlFor="senha-nova" className="rotulo">Nova senha</label>
+            <input id="senha-nova" type="password" required minLength={SENHA_MINIMA} autoComplete="new-password" className="campo" value={senhaForm.nova_senha} onChange={(e) => setSenhaForm((p) => ({ ...p, nova_senha: e.target.value }))} aria-describedby="senha-nova-regra" />
+            <span id="senha-nova-regra" className="ajuda" style={{ color: senhaForm.nova_senha && faltamNaSenha === 0 ? 'var(--success-strong)' : undefined }}>
+              {senhaForm.nova_senha === '' ? `No mínimo ${SENHA_MINIMA} caracteres.` : faltamNaSenha > 0 ? `Faltam ${faltamNaSenha} caracteres.` : 'Tamanho ok.'}
+            </span>
+          </div>
+          <div className="campo-grupo">
+            <label htmlFor="senha-confirmar" className="rotulo">Confirmar nova senha</label>
+            <input id="senha-confirmar" type="password" required minLength={SENHA_MINIMA} autoComplete="new-password" className="campo" value={senhaForm.confirmar_senha} onChange={(e) => setSenhaForm((p) => ({ ...p, confirmar_senha: e.target.value }))} />
+          </div>
+        </div>
+        {avisos('senha')}
+        <button type="submit" disabled={salvandoSenha} className="btn btn-secundario" style={{ alignSelf: 'flex-start' }}>
+          <KeyRound size={16} aria-hidden="true" /> {salvandoSenha ? 'Alterando...' : 'Alterar senha'}
+        </button>
+      </form>
+
+      {/* ── Desativação da conta (texto da US40) ─── */}
+      <section id="desativar" aria-labelledby="titulo-privacidade" className="card grande perigo empilhado" style={{ gap: '0.9rem', scrollMarginTop: '1rem' }}>
+        <h2 id="titulo-privacidade" className="titulo-secao">Desativação da conta e direitos sobre seus dados</h2>
+        <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-body)' }}>
+          Desativar a conta bloqueia seu acesso e preserva o histórico. Essa ação não exclui nem anonimiza seus dados.{' '}
+          <strong style={{ color: 'var(--text-primary)' }}>Ela não pode ser desfeita pelo próprio usuário.</strong>
+        </p>
+        <p style={{ fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--text-body)' }}>
+          Para exercer os direitos previstos na LGPD, como acesso, correção ou análise de exclusão dos dados, use a{' '}
+          <Link href="/privacidade" style={{ fontWeight: 600 }}>Central de Privacidade</Link>, onde também ficam os registros do seu cadastro.
+        </p>
+        {avisos('privacidade')}
+        {!confirmarExclusao ? (
+          <button type="button" onClick={() => setConfirmarExclusao(true)} className="btn btn-perigo" style={{ alignSelf: 'flex-start' }}>
+            <Trash2 size={16} aria-hidden="true" /> Desativar minha conta
+          </button>
+        ) : (
+          <div role="alertdialog" aria-labelledby="titulo-confirmar-exclusao" className="empilhado" style={{ gap: '0.75rem', padding: '1rem', borderRadius: '12px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}>
+            <p id="titulo-confirmar-exclusao" style={{ fontSize: '0.9rem' }}>Tem certeza? Você será desconectado imediatamente e perderá o acesso à sua conta.</p>
+            <div className="grupo-botoes">
+              <button type="button" onClick={() => setConfirmarExclusao(false)} className="btn btn-secundario" autoFocus>Voltar sem alterar</button>
+              <button type="button" onClick={handleExcluirConta} disabled={excluindo} className="btn btn-perigo">
+                <Trash2 size={16} aria-hidden="true" /> {excluindo ? 'Desativando...' : 'Sim, desativar minha conta'}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    </LayoutConta>
   );
 }
-
-/* ── Subcomponentes e estilos compartilhados ──────────────────────── */
-
-function Campo({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
-  const campoId = React.useId();
-  return (
-    <div>
-      <label htmlFor={campoId} style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-        {label}
-      </label>
-      <div style={{ position: 'relative' }}>
-        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', display: 'flex' }}>
-          {icon}
-        </span>
-        {React.isValidElement(children) ? React.cloneElement(children as React.ReactElement<{ id?: string }>, { id: campoId }) : children}
-      </div>
-    </div>
-  );
-}
-
-const estiloInput: React.CSSProperties = {
-  width: '100%',
-  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-  background: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: '8px',
-  color: '#fff',
-  fontSize: '0.95rem',
-};
-
-const estiloBotao: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-  padding: '0.75rem 1.25rem',
-  background: '#8b5cf6',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '8px',
-  fontWeight: 600,
-  fontSize: '0.9rem',
-  cursor: 'pointer',
-  transition: 'background var(--transition-speed)',
-};

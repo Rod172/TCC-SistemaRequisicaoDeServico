@@ -3,7 +3,12 @@
 /**
  * @file register-prestador/page.tsx
  * @description Formulário de cadastro de Prestador de Serviço (Profissional) em Next.js 14 / React com TypeScript.
- * 
+ * Organizado em seções numeradas (US39), com as categorias como botões de alternância e uma prévia,
+ * ao lado, de como o perfil aparece para os clientes, atualizada enquanto o prestador preenche.
+ * Desde a US40, o aceite dos Termos de Uso e a ciência da Política de Privacidade são dois sinais
+ * separados, enviados com as versões vigentes dos documentos. O CPF/CNPJ é conferido pelos dígitos
+ * verificadores ao sair do campo e antes do envio, como no cadastro de cliente.
+ *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Lucide React (^0.383.0): Ícones para campos e categorias do formulário.
  *    Doc Oficial: https://lucide.dev/
@@ -16,10 +21,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Briefcase, Mail, Shield, Phone, MapPin, Lock, CheckCircle, AlertCircle, ArrowLeft, FileText, Wrench, CheckSquare, Square } from 'lucide-react';
+import { AlertCircle, ArrowRight, Check, Upload, UserCircle2 } from 'lucide-react';
 import api from '@/services/api';
+import Pagina, { CabecalhoPagina } from '@/components/ui/Pagina';
+import { Aviso, Avatar } from '@/components/ui/Elementos';
 import AceiteDocumentos from '@/components/AceiteDocumentos';
 import documentos from '@/conteudo/documentos-legais.json';
+import { normalizarDocumento, validarCNPJ, validarCPF } from '@/utils/documento';
 
 const CATEGORIAS_DISPONIVEIS = [
   { id: 'ELETRICA', label: 'Elétrica & Iluminação' },
@@ -32,8 +40,10 @@ const CATEGORIAS_DISPONIVEIS = [
   { id: 'MECANICA', label: 'Mecânica & Auto' },
 ];
 
+/** Mesmo mínimo exigido pelo backend no cadastro (authService). */
+const SENHA_MINIMA = 8;
+
 export default function RegisterPrestadorPage() {
-  const [privacidadeCiente, setPrivacidadeCiente] = useState(false);
   const router = useRouter();
   const [formData, setFormData] = useState({
     nome: '',
@@ -44,8 +54,11 @@ export default function RegisterPrestadorPage() {
     senha: '',
     confirmarSenha: '',
     descricaoBio: '',
-    termoLgpdAceito: false,
+    termosAceitos: false,
   });
+  // Ciência da Política separada do aceite dos Termos (US40): nenhum dos dois vem marcado.
+  const [privacidadeCiente, setPrivacidadeCiente] = useState(false);
+  const [docTocado, setDocTocado] = useState(false);
 
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,16 +107,33 @@ export default function RegisterPrestadorPage() {
     );
   };
 
+  const docValido = validarCPF(formData.cnpjCpf) || validarCNPJ(formData.cnpjCpf);
+  const docInvalido = docTocado && formData.cnpjCpf.trim() !== '' && !docValido;
+  const faltamNaSenha = Math.max(0, SENHA_MINIMA - formData.senha.length);
+  const senhasDiferentes = formData.confirmarSenha !== '' && formData.senha !== formData.confirmarSenha;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
+
+    // Mesma checagem de dígitos verificadores do backend, antes de enviar o cadastro.
+    if (!docValido) {
+      setDocTocado(true);
+      setErrorMsg('CPF ou CNPJ inválido. Confira os dígitos e tente novamente.');
+      return;
+    }
 
     if (foto && validarFoto(foto)) {
       setErrorMsg(validarFoto(foto));
       return;
     }
     setErroFoto(null);
+
+    if (formData.senha.length < SENHA_MINIMA) {
+      setErrorMsg(`A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres.`);
+      return;
+    }
 
     if (formData.senha !== formData.confirmarSenha) {
       setErrorMsg('As senhas digitadas não coincidem.');
@@ -115,7 +145,7 @@ export default function RegisterPrestadorPage() {
       return;
     }
 
-    if (!formData.termoLgpdAceito || !privacidadeCiente) {
+    if (!formData.termosAceitos || !privacidadeCiente) {
       setErrorMsg('Aceite os Termos de Uso e confirme a leitura da Política de Privacidade para prosseguir.');
       return;
     }
@@ -126,13 +156,13 @@ export default function RegisterPrestadorPage() {
       const payload = {
         nome: formData.nome,
         email: formData.email,
-        cnpj_cpf: formData.cnpjCpf,
+        cnpj_cpf: normalizarDocumento(formData.cnpjCpf),
         telefone: formData.telefone,
         endereco: formData.endereco,
         senha: formData.senha,
         descricao_bio: formData.descricaoBio,
         categorias: categoriasSelecionadas,
-        termos_uso_aceitos: formData.termoLgpdAceito,
+        termos_uso_aceitos: formData.termosAceitos,
         privacidade_ciente: privacidadeCiente,
         termos_uso_versao: documentos.versao_termos,
         privacidade_versao: documentos.versao_privacidade,
@@ -160,382 +190,162 @@ export default function RegisterPrestadorPage() {
     }
   };
 
+  const nomePrevia = formData.nome.trim() || 'Seu nome ou empresa';
+  const categoriasPrevia = CATEGORIAS_DISPONIVEIS.filter((c) => categoriasSelecionadas.includes(c.id));
+
   return (
-    <main style={{ maxWidth: '750px', margin: '2rem auto', padding: '0 1.5rem' }}>
-      <Link href="/" style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        marginBottom: '1.5rem',
-        color: 'var(--text-secondary)',
-        fontSize: '0.9rem'
-      }}>
-        <ArrowLeft size={16} />
-        Voltar para a página inicial
-      </Link>
+    <Pagina>
+      <CabecalhoPagina
+        voltar={{ href: '/', rotulo: 'Página inicial' }}
+        area="Conta profissional"
+        titulo="Criar conta para atender clientes"
+        subtitulo="Seu perfil aparece para os clientes junto com cada proposta que você enviar."
+        acoes={<Link href="/register-solicitante" className="btn btn-secundario">Quero só contratar <ArrowRight size={16} aria-hidden="true" /></Link>}
+      />
 
-      <div style={{
-        background: 'var(--card-bg)',
-        border: '1px solid var(--card-border)',
-        borderRadius: 'var(--border-radius)',
-        padding: 'clamp(1.25rem, 6vw, 2.5rem) clamp(1rem, 5vw, 2rem)',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            background: 'rgba(16, 185, 129, 0.15)',
-            color: 'var(--accent-color)',
-            marginBottom: '1rem'
-          }}>
-            <Briefcase size={24} />
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-            Cadastro de Prestador de Serviço
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            Crie sua conta profissional para receber solicitações de clientes e enviar propostas comerciais.
-          </p>
-        </div>
-
-        {errorMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--danger-color)',
-            color: '#fca5a5',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            fontSize: '0.9rem'
-          }}>
-            <AlertCircle size={20} style={{ flexShrink: 0 }} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {successMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid var(--accent-color)',
-            color: '#6ee7b7',
-            padding: '1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            fontSize: '0.9rem'
-          }}>
-            <CheckCircle size={20} style={{ flexShrink: 0 }} />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <label htmlFor="foto-prestador" style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>Foto de perfil (opcional)</label>
-            <p id="ajuda-foto-prestador" style={{ fontSize: '.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>JPEG, PNG ou WEBP, até 5 MB. A foto aparecerá no seu perfil público.</p>
-            <input ref={fotoInput} id="foto-prestador" name="foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFoto} disabled={loading} aria-describedby="ajuda-foto-prestador erro-foto-prestador" aria-invalid={Boolean(erroFoto)} style={{ width: '100%', minWidth: 0 }} />
-            {erroFoto && <p id="erro-foto-prestador" role="alert" style={{ color: '#fca5a5', marginTop: 8 }}>{erroFoto}</p>}
-            {fotoPreview && <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginTop: 12 }}>
-              <img src={fotoPreview} alt="Prévia da foto de perfil selecionada" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: '50%' }} />
-              <button type="button" disabled={loading} onClick={() => { setFoto(null); setErroFoto(null); if (fotoInput.current) fotoInput.current.value = ''; }} style={{ padding: '.65rem 1rem', background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: 8, cursor: 'pointer' }}>Remover foto</button>
-            </div>}
-          </div>
-          {/* Nome ou Razão Social */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-              Nome Completo ou Razão Social *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Briefcase size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-              <input
-                type="text"
-                name="nome"
-                required
-                value={formData.nome}
-                onChange={handleChange}
-                placeholder="Ex: Marcos Refrigeração & Elétrica"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                  background: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '0.95rem'
-                }}
-              />
-            </div>
-          </div>
-
-          {/* E-mail e CPF/CNPJ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                E-mail Comercial *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="marcos@servicos.com"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                CPF ou CNPJ *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Shield size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="text"
-                  name="cnpjCpf"
-                  required
-                  value={formData.cnpjCpf}
-                  onChange={handleChange}
-                  placeholder="12.345.678/0001-90"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Telefone e Endereço */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Telefone / WhatsApp Comercial *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Phone size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="text"
-                  name="telefone"
-                  required
-                  value={formData.telefone}
-                  onChange={handleChange}
-                  placeholder="(16) 98765-4321"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Endereço de Atendimento / Base
-              </label>
-              <div style={{ position: 'relative' }}>
-                <MapPin size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="text"
-                  name="endereco"
-                  value={formData.endereco}
-                  onChange={handleChange}
-                  placeholder="Av. Brasil, 500 - Ribeirão Preto, SP"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Categorias de Atuação Profissional */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Categorias de Atuação Profissional (Selecione uma ou mais) *
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '0.75rem',
-              background: '#0f172a',
-              padding: '1.25rem',
-              borderRadius: '8px',
-              border: '1px solid #334155'
-            }}>
-              {CATEGORIAS_DISPONIVEIS.map((cat) => {
-                const isSelected = categoriasSelecionadas.includes(cat.id);
-                return (
-                  <button
-                    type="button"
-                    key={cat.id}
-                    onClick={() => handleCategoriaToggle(cat.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.6rem 0.8rem',
-                      borderRadius: '6px',
-                      background: isSelected ? 'rgba(16, 185, 129, 0.15)' : '#1e293b',
-                      border: isSelected ? '1px solid var(--accent-color)' : '1px solid #334155',
-                      color: isSelected ? 'var(--accent-color)' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      textAlign: 'left',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-                    <span>{cat.label}</span>
+      <div className="layout-lateral">
+        <form onSubmit={handleSubmit} className="principal card grande" style={{ gap: '1.75rem' }}>
+          <fieldset className="secao-form">
+            <legend>1. Seu perfil profissional</legend>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {fotoPreview
+                ? <img src={fotoPreview} alt="Prévia da foto de perfil selecionada" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%' }} />
+                : <span aria-hidden="true" style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--sky-bg)', border: '2px dashed var(--card-border)', color: 'var(--brand-sky)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UserCircle2 size={30} /></span>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div className="grupo-botoes">
+                  <button type="button" className="btn btn-secundario" disabled={loading} onClick={() => fotoInput.current?.click()} aria-describedby="ajuda-foto-prestador">
+                    <Upload size={16} aria-hidden="true" /> {foto ? 'Trocar foto' : 'Escolher foto'} <span className="opcional" style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(opcional)</span>
                   </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Descrição Profissional / Bio */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-              Descrição Profissional / Resumo de Experiência
-            </label>
-            <textarea
-              name="descricaoBio"
-              rows={3}
-              value={formData.descricaoBio}
-              onChange={handleChange}
-              placeholder="Descreva suas qualificações, anos de experiência e os tipos de serviços que executa..."
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                background: '#0f172a',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                color: '#fff',
-                fontSize: '0.95rem',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-
-          {/* Senha e Confirmar Senha */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Senha *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="password"
-                  name="senha"
-                  required
-                  value={formData.senha}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
+                  {foto && (
+                    <button type="button" className="btn btn-texto discreto" disabled={loading} onClick={() => { setFoto(null); setErroFoto(null); if (fotoInput.current) fotoInput.current.value = ''; }}>
+                      Remover foto
+                    </button>
+                  )}
+                </div>
+                <input ref={fotoInput} id="foto-prestador" name="foto" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFoto} disabled={loading} aria-label="Foto de perfil" aria-invalid={Boolean(erroFoto)} style={{ display: 'none' }} />
+                <span id="ajuda-foto-prestador" className="ajuda">JPEG, PNG ou WEBP, até 5 MB. A foto aparece no seu perfil público.</span>
+                {erroFoto && <span role="alert" className="erro-campo"><AlertCircle size={14} aria-hidden="true" />{erroFoto}</span>}
               </div>
             </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-                Confirmar Senha *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-                <input
-                  type="password"
-                  name="confirmarSenha"
-                  required
-                  value={formData.confirmarSenha}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '0.95rem'
-                  }}
-                />
+            <div className="campo-grupo">
+              <label htmlFor="pre-nome" className="rotulo">Nome ou razão social</label>
+              <input id="pre-nome" type="text" name="nome" required className="campo" value={formData.nome} onChange={handleChange} placeholder="Ex.: Marcos Refrigeração & Elétrica" aria-describedby="pre-nome-ajuda" />
+              <span id="pre-nome-ajuda" className="ajuda">É o nome que os clientes verão nas suas propostas.</span>
+            </div>
+            <div role="group" aria-labelledby="pre-cat-titulo" className="campo-grupo" style={{ gap: '0.6rem' }}>
+              <span id="pre-cat-titulo" className="rotulo">Em que você trabalha? <span className="opcional">Escolha uma ou mais</span></span>
+              <div className="chips" style={{ gap: '0.5rem' }}>
+                {CATEGORIAS_DISPONIVEIS.map((cat) => {
+                  const isSelected = categoriasSelecionadas.includes(cat.id);
+                  return (
+                    <button
+                      type="button" key={cat.id} onClick={() => handleCategoriaToggle(cat.id)} aria-pressed={isSelected}
+                      className="btn"
+                      style={{
+                        minHeight: '40px', borderRadius: '999px', padding: '0 0.9rem', fontSize: '0.875rem',
+                        border: isSelected ? '1px solid var(--accent-indigo)' : '1px solid var(--card-border)',
+                        background: isSelected ? 'var(--primary-tint-strong)' : 'transparent',
+                        color: isSelected ? 'var(--text-primary)' : 'var(--text-body)',
+                      }}
+                    >
+                      {isSelected && <Check size={15} aria-hidden="true" />}{cat.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+            <div className="campo-grupo">
+              <label htmlFor="pre-bio" className="rotulo">Sobre você <span className="opcional">(opcional, mas ajuda muito)</span></label>
+              <textarea id="pre-bio" name="descricaoBio" rows={4} className="campo" value={formData.descricaoBio} onChange={handleChange} placeholder="Descreva suas qualificações, anos de experiência e os tipos de serviços que executa..." aria-describedby="pre-bio-ajuda" />
+              <span id="pre-bio-ajuda" className="ajuda">Conte há quanto tempo trabalha, o que faz e onde atende.</span>
+            </div>
+          </fieldset>
+
+          <fieldset className="secao-form">
+            <legend>2. Documento e contato</legend>
+            <div className="grade-campos campos-largos">
+              <div className="campo-grupo">
+                <label htmlFor="pre-doc" className="rotulo">CPF ou CNPJ</label>
+                <input
+                  id="pre-doc" type="text" name="cnpjCpf" required inputMode="numeric" className="campo"
+                  value={formData.cnpjCpf} onChange={handleChange} onBlur={() => setDocTocado(true)} placeholder="12.345.678/0001-90"
+                  aria-invalid={docInvalido} aria-describedby={docInvalido ? 'pre-doc-erro pre-doc-ajuda' : 'pre-doc-ajuda'}
+                />
+                {docInvalido && <span id="pre-doc-erro" className="erro-campo"><AlertCircle size={14} aria-hidden="true" />CPF ou CNPJ inválido: confira os dígitos.</span>}
+                <span id="pre-doc-ajuda" className="ajuda">CPF (11 dígitos) ou CNPJ (14 dígitos), com ou sem pontuação.</span>
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="pre-email" className="rotulo">E-mail comercial</label>
+                <input id="pre-email" type="email" name="email" required autoComplete="email" className="campo" value={formData.email} onChange={handleChange} placeholder="marcos@servicos.com" />
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="pre-tel" className="rotulo">Telefone / WhatsApp</label>
+                <input id="pre-tel" type="tel" name="telefone" required autoComplete="tel" className="campo" value={formData.telefone} onChange={handleChange} placeholder="(16) 98765-4321" />
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="pre-end" className="rotulo">Endereço de atendimento <span className="opcional">(opcional)</span></label>
+                <input id="pre-end" type="text" name="endereco" className="campo" value={formData.endereco} onChange={handleChange} placeholder="Av. Brasil, 500 - Ribeirão Preto, SP" />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset className="secao-form">
+            <legend>3. Acesso</legend>
+            <div className="grade-campos">
+              <div className="campo-grupo">
+                <label htmlFor="pre-senha" className="rotulo">Senha</label>
+                <input id="pre-senha" type="password" name="senha" required minLength={SENHA_MINIMA} autoComplete="new-password" className="campo" value={formData.senha} onChange={handleChange} aria-describedby="pre-senha-regra" />
+                <span id="pre-senha-regra" className="ajuda" style={{ color: formData.senha && faltamNaSenha === 0 ? 'var(--success-strong)' : undefined }}>
+                  {formData.senha === '' ? `No mínimo ${SENHA_MINIMA} caracteres.` : faltamNaSenha > 0 ? `Faltam ${faltamNaSenha} caracteres.` : 'Tamanho ok.'}
+                </span>
+              </div>
+              <div className="campo-grupo">
+                <label htmlFor="pre-senha2" className="rotulo">Confirmar senha</label>
+                <input id="pre-senha2" type="password" name="confirmarSenha" required autoComplete="new-password" className="campo" value={formData.confirmarSenha} onChange={handleChange} aria-invalid={senhasDiferentes} aria-describedby={senhasDiferentes ? 'pre-senha2-erro' : undefined} />
+                {senhasDiferentes && <span id="pre-senha2-erro" className="erro-campo"><AlertCircle size={14} aria-hidden="true" />As senhas não coincidem.</span>}
+              </div>
+            </div>
+          </fieldset>
+
+          <AceiteDocumentos
+            numero={4} termos={formData.termosAceitos} ciencia={privacidadeCiente}
+            alterarTermos={(valor) => setFormData((prev) => ({ ...prev, termosAceitos: valor }))}
+            alterarCiencia={setPrivacidadeCiente}
+          />
+
+          {errorMsg && <Aviso tipo="erro">{errorMsg}</Aviso>}
+          {successMsg && <Aviso tipo="sucesso">{successMsg}</Aviso>}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button type="submit" disabled={loading} className="btn btn-primario btn-grande btn-bloco">
+              {loading ? 'Criando conta...' : 'Criar conta profissional'}
+            </button>
+            <span className="texto-apoio" style={{ textAlign: 'center' }}>Já tem conta? <Link href="/login" style={{ fontWeight: 600 }}>Entrar</Link></span>
           </div>
-
-          {/* Checkbox Termo LGPD */}
-          <AceiteDocumentos termos={formData.termoLgpdAceito} ciencia={privacidadeCiente}
-              alterarTermos={valor => setFormData(prev => ({ ...prev, termoLgpdAceito: valor }))}
-              alterarCiencia={setPrivacidadeCiente} />
-
-          {/* Botão de Submissão */}
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: '1rem',
-              padding: '0.875rem',
-              background: loading ? '#475569' : 'var(--accent-color)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '1rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background var(--transition-speed)'
-            }}
-          >
-            {loading ? 'Cadastrando Prestador...' : 'Finalizar Cadastro de Prestador'}
-          </button>
         </form>
+
+        <aside className="lateral" aria-label="Prévia do perfil">
+          <span className="rotulo-area" style={{ color: 'var(--text-secondary)' }}>Prévia — como os clientes verão você</span>
+          <div className="card empilhado" style={{ gap: '0.85rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <Avatar nome={nomePrevia} foto={fotoPreview} tamanho={52} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                <strong style={{ fontSize: '1rem', overflowWrap: 'anywhere', color: formData.nome.trim() ? undefined : 'var(--text-secondary)' }}>{nomePrevia}</strong>
+                <span className="texto-apoio" style={{ fontSize: '0.8rem' }}>Sem avaliações ainda{formData.endereco.trim() ? ` · ${formData.endereco.trim()}` : ''}</span>
+              </div>
+            </div>
+            {categoriasPrevia.length > 0 && (
+              <div className="chips">{categoriasPrevia.map((c) => <span key={c.id} className="chip categoria">{c.label}</span>)}</div>
+            )}
+            <p style={{ fontSize: '0.875rem', lineHeight: 1.55, color: formData.descricaoBio.trim() ? 'var(--text-body)' : 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+              {formData.descricaoBio.trim()
+                ? (formData.descricaoBio.trim().length > 180 ? `${formData.descricaoBio.trim().slice(0, 180)}…` : formData.descricaoBio.trim())
+                : 'Sua apresentação aparece aqui.'}
+            </p>
+          </div>
+          <p className="texto-apoio" style={{ fontSize: '0.82rem', lineHeight: 1.55 }}>A prévia muda enquanto você preenche. Depois do cadastro, sua nota aparece aqui conforme os clientes avaliam os serviços.</p>
+        </aside>
       </div>
-    </main>
+    </Pagina>
   );
 }

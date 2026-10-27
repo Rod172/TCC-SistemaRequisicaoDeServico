@@ -484,10 +484,12 @@
 - [x] Botão "Marcar como Concluído".
 - [x] Alteração do status da solicitação para `CONCLUIDA`.
 - [x] Liberação do valor retido em custódia e liberação da tela de avaliação de satisfação.
+- [x] A conclusão só é aceita quando o pagamento simulado da proposta contratada estiver retido em custódia (`RETIDO`, US13). Sem isso, a API recusa a conclusão com erro 409, e as telas do Solicitante e do Prestador deixam o botão de conclusão indisponível, explicando que o pagamento precisa ser confirmado antes.
 
 #### Tarefas Técnicas:
-- **Backend (Node.js)**: Endpoint `PATCH /api/v1/solicitacoes/:id/concluir` (`solicitacaoService.concluir`) — Solicitante ou Prestador contratado confirmam; libera a `TransacaoCustodia` (US13) para `LIBERADO` quando houver, e notifica o outro lado.
-- **Frontend (React)**: Botão "Marcar como concluído" nas telas de detalhe do Solicitante (`minhas-solicitacoes/[id]`) e do Prestador (`oportunidades/[id]`).
+- **Backend (Node.js)**: Endpoint `PATCH /api/v1/solicitacoes/:id/concluir` (`solicitacaoService.concluir`) — Solicitante ou Prestador contratado confirmam; exige a `TransacaoCustodia` (US13) da proposta aceita em `RETIDO` (sem ela, responde 409), libera-a para `LIBERADO` e notifica o outro lado.
+- **Frontend (React)**: Botão "Marcar como concluído" nas telas de detalhe do Solicitante (`minhas-solicitacoes/[id]`) e do Prestador (`oportunidades/[id]`), habilitado só depois do pagamento simulado; antes disso, a tela orienta o Solicitante a confirmar o pagamento e informa o Prestador de que ele ainda não foi feito.
+- **Testes**: integração cobrindo a recusa da conclusão sem custódia e a conclusão com custódia `RETIDO`.
 
 ---
 
@@ -587,6 +589,118 @@
 
 ---
 
+### US37 - Identidade Visual da Marca Eloserv (Logo, Paleta e Favicon)
+**Como** Usuário (Cliente ou Prestador) e Avaliador do TCC
+**Quero** que a plataforma tenha nome, logo e cores próprios e consistentes em todas as telas
+**Para que** o produto transmita confiança, seja reconhecível e deixe de usar o nome genérico "ServiçoFácil" e o logo provisório.
+
+#### Critérios de Aceite:
+- [x] O nome da plataforma passa a ser **Eloserv** em todos os textos visíveis (título da aba do navegador, cabeçalho, página inicial, rodapé e links de navegação).
+- [x] O logo da marca (símbolo de dois elos encadeados — cliente e prestador — + palavra "eloserv" na fonte Sora) substitui o "S" provisório no cabeçalho, com cores fixas: índigo `#4F46E5` + azul-céu `#0EA5E9` (versão clara) e `#818CF8` + `#38BDF8` (versão para fundo escuro).
+- [x] O ícone da aba do navegador (favicon) usa o símbolo do logo.
+- [x] A paleta "Elo", derivada das cores do logo, é aplicada em toda a interface: fundo `#0E1024`, superfície `#171A3A`, borda `#2C3166`, texto `#EEF2FF`, texto secundário `#A5ACD6` e cor primária `#4F46E5` (botões com texto branco).
+- [x] As cores semânticas de status são preservadas (sucesso em verde, erro em vermelho, alerta em âmbar, "Contratada" em violeta), para não mudar o significado visual já conhecido pelo usuário.
+- [x] Os pares de texto e fundo da nova paleta mantêm contraste mínimo WCAG AA (4,5:1).
+- [x] O banco de dados deixa o nome antigo e passa a se chamar `tcc_eloserv` (e `tcc_eloserv_test` nos testes), com todos os dados, migrations e seeders preservados, e o banco antigo mantido como cópia até a confirmação.
+
+#### Tarefas Técnicas:
+- **Design**: Exploração de 6 nomes/logos e 5 paletas em canvas de design (protótipos da página inicial, página do usuário logado e tela mobile), com escolha do nome Eloserv e da paleta "Elo".
+- **Frontend (Next.js)**: Tokens de cor em `globals.css`, componente reutilizável `Logo.tsx` (símbolo SVG + palavra), favicon `app/icon.svg`, `metadata` do `layout.tsx` e substituição das cores fixas nos estilos inline das telas pelos valores da nova paleta. As chaves internas do `localStorage` (`@ServicoFacil:*`) são mantidas, pois não aparecem para o usuário e renomeá-las deslogaria as sessões existentes.
+- **Banco de Dados (MySQL)**: Cópia de `tcc_servico_facil` para `tcc_eloserv` com `mysqldump` (estrutura, chaves estrangeiras, dados e histórico do `SequelizeMeta`), atualização de `.env`, `.env.example`, `docker-compose.yml`, `sequelize-cli.js`, `database.ts`, testes, CI e README. Nomes de container e volume do Docker são mantidos para não recriar o volume de dados.
+
+---
+
+### US38 - Nova Página Inicial para Visitante e Usuário Logado
+**Como** Visitante, Solicitante ou Prestador
+**Quero** uma página inicial que explique a plataforma para quem chega e, depois do login, mostre o que preciso fazer agora
+**Para que** eu comece um pedido ou encontre clientes rapidamente, sem precisar procurar as funções nos menus.
+
+#### Critérios de Aceite:
+- [x] **Visitante — cabeçalho:** logo, links "Como funciona" e "Para prestadores", "Entrar" e "Criar conta", sem a busca de oportunidades (que confundia com o campo de pedido).
+- [x] **Visitante — destaque:** campo "O que você precisa?" que inicia uma nova solicitação com o título já preenchido (sem login, o texto fica guardado como rascunho e o usuário vai para o login), atalhos para as categorias da plataforma, aviso do pagamento com garantia (US13) e um card de propostas identificado como exemplo.
+- [x] **Visitante — "Como funciona":** cinco passos (publicar, comparar propostas, conversar pelo chat, pagar com garantia, avaliar).
+- [x] **Visitante — "Para prestadores":** bloco próprio, separado do conteúdo do cliente, com os pedidos abertos reais do feed público (US08/US36) e chamadas para o cadastro de prestador e para o feed completo.
+- [x] **Logado — cabeçalho:** busca adequada ao perfil, links do perfil (Oportunidades e Minhas propostas para o prestador; Painel Admin para o admin), sino de notificações, botão "Nova solicitação" e um menu da conta que agrupa Meu painel, Meu perfil, Configurações e Sair (em telas estreitas, os links do perfil também passam para esse menu).
+- [x] **Solicitante:** saudação com resumo das propostas pendentes, campo para um novo pedido, "Seus pedidos" com o status e a próxima ação de cada um (comparar propostas, continuar negociação, acompanhar serviço, ver detalhes), card de mensagens recentes e card explicando a garantia do pagamento.
+- [x] **Prestador:** indicadores (propostas aguardando resposta, serviços contratados em andamento, valor retido em custódia e reputação), "Oportunidades para você", últimas propostas com status, card de mensagens recentes e atalho "Também precisa de um serviço?" (US33).
+- [x] Todos os números e listas vêm da API real, com estados de carregamento, lista vazia e erro; o único conteúdo fixo é o card de exemplo do visitante.
+- [x] Layout responsivo: blocos empilham em telas estreitas (390px) sem rolagem horizontal.
+
+#### Tarefas Técnicas:
+- **Design**: Protótipo da página do visitante e da página logada (perfis Solicitante e Prestador) no mesmo canvas de design da US37, revisado com o usuário antes da implementação.
+- **Frontend (Next.js)**: `app/page.tsx` reorganizada em cabeçalho, conteúdo e rodapé, com os novos componentes `components/home/HomeVisitante.tsx` e `components/home/HomeLogado.tsx` e o menu da conta `components/MenuConta.tsx`. `nova-solicitacao` passa a aceitar `?titulo=` e `?categoria=` e o rascunho guardado. Sem endpoint novo: reaproveita `GET /dashboards/solicitante`, `GET /dashboards/prestador`, `GET /solicitacoes/minhas`, `GET /prestador/propostas`, `GET /prestador/oportunidades` e `GET /notificacoes`. O card de mensagens usa as notificações de nova mensagem do chat (US14/US16), porque não existe rota de conversas recentes.
+
+---
+
+### US39 - Redesign das Telas Internas com Componentes Compartilhados
+**Como** Visitante, Solicitante, Prestador ou Administrador
+**Quero** que todas as telas sigam o mesmo visual da nova página inicial e mostrem claramente o próximo passo
+**Para que** eu use a plataforma sem precisar reaprender cada tela e saiba sempre o que fazer a seguir.
+
+#### Critérios de Aceite:
+- [x] Cabeçalho e rodapé compartilhados em todas as telas internas (o login tem layout próprio), com o link da seção atual destacado.
+- [x] Botões, campos, etiquetas de status, avisos e estados de carregando, lista vazia e erro padronizados: um único botão principal por área, ações de cancelar/desativar no estilo de perigo e erros de validação embaixo do campo.
+- [x] **Entrada:** login em duas colunas com opção de mostrar a senha e as contas de demonstração como bloco secundário; cadastros de cliente e de prestador em seções numeradas, com a regra real da senha visível e, no prestador, prévia de como o perfil aparece para os clientes.
+- [x] **Cliente:** nova solicitação com etapas e prévia do pedido; "Minhas solicitações" com abas por status e contagem, destaque dos pedidos que precisam de ação e a próxima ação de cada um; detalhe com a linha do andamento (publicado → propostas → contratado → concluído → avaliado), propostas comparáveis (valor, prazo e validade alinhados, "Menor preço"), estados de contraproposta e de proposta expirada explicados no próprio card e perguntas sem resposta destacadas; pedido contratado com pagamento com garantia, conclusão e avaliação em sequência.
+- [x] **Prestador:** feed de oportunidades com filtros laterais e filtros ativos removíveis; detalhe da oportunidade com o formulário de proposta ao lado e o resumo do que o cliente verá; "Minhas propostas" com abas por status e ações em destaque (contraproposta, serviço contratado); perfil público com resumo de reputação.
+  - *Ajuste na implementação:* a lista de "Minhas propostas" não recebe os campos de contraproposta da API, então o destaque de contraproposta fica no detalhe da oportunidade; a lista destaca as propostas aceitas (serviço contratado).
+- [x] **Conta e gestão:** painel com abas Prestador/Solicitante; "Minha conta" com navegação lateral (dados pessoais, senha, notificações, privacidade); notificações com interruptores acessíveis; chat com o contexto da proposta ao lado; painel administrativo com indicadores, abas e tabela com rolagem horizontal; status do sistema com link para a documentação da API.
+  - *Ajuste na implementação:* a rota do chat recebe só o id da conversa, então o cartão lateral mostra a conversa e o atalho de volta, sem os dados da proposta; o painel administrativo não ganhou os blocos de indicadores porque as listagens da API vêm filtradas e não há rota de totais (fica o aviso de denúncias pendentes e a contagem na aba).
+- [x] Nenhuma regra de negócio ou endpoint alterado: os fluxos existentes (propostas, contraproposta, pagamento simulado, conclusão, avaliação, denúncia, perguntas, chat, administração) continuam funcionando como antes.
+- [x] Telas responsivas (390px sem rolagem horizontal), áreas de toque de pelo menos 44px, rótulos associados a todos os campos e foco visível.
+
+#### Tarefas Técnicas:
+- **Design**: Protótipo das 16 telas e da prancha de componentes no canvas de design da US37/US38, revisado e aprovado pelo usuário antes da implementação.
+- **Frontend (Next.js)**: Componentes compartilhados em `components/ui/` (cabeçalho, rodapé, layout de página, etapas, etiqueta de status, avisos e estilos) e reestruturação visual de todas as páginas em `app/`, mantendo os estados, chamadas à API e validações existentes.
+
+---
+
+### US42 - Tema Claro e Troca de Tema
+**Como** usuário da plataforma (Solicitante, Prestador, Administrador ou visitante)
+**Quero** usar o Eloserv em tema claro ou escuro, escolhendo o tema ou seguindo a preferência do meu dispositivo
+**Para que** a leitura fique confortável em qualquer ambiente e as telas possam ser capturadas em tema claro para a monografia.
+
+#### Critérios de Aceite:
+- [x] Tema claro com a paleta Elo clara aprovada em 26/10/2026 (página "5 · Tema claro" do canvas de design), aplicado a todas as telas, componentes, avisos, chips, modais, chat e notificações.
+- [x] Sem escolha salva, o tema segue a preferência do sistema operacional (`prefers-color-scheme`). O usuário pode escolher **Automático**, **Claro** ou **Escuro** no menu da conta; visitantes escolhem no rodapé. O tema ativo fica indicado no controle.
+- [x] A escolha fica salva no navegador e vale em todas as telas e nas próximas visitas. É aplicada antes da primeira pintura, sem a página piscar no tema errado ao carregar.
+- [x] O logo usa as versões fixas da marca: escura (#818CF8 + #38BDF8) no tema escuro e clara (#4F46E5 + #0EA5E9, "serv" em #0F172A) no claro. O recorte entre os elos acompanha o fundo.
+- [x] Contraste WCAG AA nos dois temas: texto com pelo menos 4,5:1; bordas de campos de formulário e ícones informativos com pelo menos 3:1.
+- [x] Nenhuma cor fixa de interface fora das variáveis de tema. As exceções são as cores fixas do logo e o "papel" branco dos diagramas da página `/arquitetura` (US41).
+- [x] Controles nativos (campos, listas, barras de rolagem, seletor de data) acompanham o tema (`color-scheme`).
+- [x] O tema escuro continua idêntico ao atual (US39), exceto correções de contraste que já falhavam: borda de campo #2C3166 → #5F67A0 (inclusive nos campos do chat), selo de notificação #EF4444 → #DC2626 e texto do botão verde do chat, de branco para #0E1024. As telas funcionam em 1280px e 375px nos dois temas.
+
+#### Tarefas Técnicas:
+- **Frontend (Next.js) — 1. Tokens de tema (`globals.css`):**
+  - completar as variáveis de `:root` com todos os papéis da paleta: fundo, destaque, superfície, borda, borda de campo, texto, texto secundário, apoio, detalhe, primária e hover, link, azul-céu (texto, ícone e fundo), aviso, erro, sucesso e informação (texto, fundo e borda), recorte do logo e sombra;
+  - valores atuais em `:root` (escuro) e valores claros em `:root[data-tema="claro"]` e em `@media (prefers-color-scheme: light)` com `:root:not([data-tema="escuro"])`;
+  - `color-scheme: dark` / `light` em cada bloco.
+- **Frontend — 2. Retirada das cores fixas:**
+  - substituir as cerca de 47 cores e 3 `rgba` soltos no `globals.css`, e as cerca de 180 cores e 33 `rgba` em 27 arquivos `.tsx`, por `var(--...)`, seguindo a tabela escuro → claro do canvas;
+  - ordem: `components/ui` (Elementos, Pagina, LayoutConta, Cabecalho), depois `MenuConta`, `NotificationBell`, `ChatPanel`/`ChatDrawer`, páginas inicial, solicitações, oportunidades, painel, admin, status e cadastros;
+  - um script de checagem lista as cores hexadecimais restantes fora das exceções e roda antes de concluir.
+- **Frontend — 3. Logo (`Logo.tsx`):** as duas versões fixas da marca, escolhidas pelas variáveis do tema, com o recorte na variável de fundo. A prop `corFundo` continua para fundos especiais.
+- **Frontend — 4. Preferência e troca:**
+  - `lib/tema.ts`, com ler, salvar e aplicar o tema, a chave `@ServicoFacil:tema` (prefixo usado pelas outras chaves) e os valores `automatico`, `claro` e `escuro`;
+  - em `app/layout.tsx`, um script curto no `<head>` aplica `data-tema` antes da pintura, com `suppressHydrationWarning` no `<html>` e `try/catch` para navegador sem armazenamento;
+  - componente `SeletorTema`, um controle segmentado acessível (`radiogroup`, foco visível, alvos de 44 px), no `MenuConta` e no rodapé (`LinksRodape`);
+  - no modo automático, acompanhar a troca de preferência do sistema com a página aberta (`matchMedia` com `change`).
+- **Frontend — 5. Casos especiais:**
+  - barra de status, gráficos e indicadores do painel e da página `/status`;
+  - imagens e anexos do chat;
+  - foco visível (`outline`) com contraste nos dois temas;
+  - `theme-color` do navegador no celular.
+- **Testes e validação:**
+  - script de contraste sobre os tokens dos dois temas, para os pares de texto, borda de campo e ícone;
+  - checagem de cores fixas restantes;
+  - `tsc` sem erros;
+  - conferência no navegador de todas as telas nos dois temas, em 1280px e 375px, com contas demo de solicitante, prestador e admin;
+  - recarga sem piscar com preferência clara e escura do sistema;
+  - persistência da escolha entre páginas e visitas.
+- **Documentação:** `LOG_DESENVOLVIMENTO.md` (sem bibliotecas novas previstas), `STATUS_HISTORIAS.md` e capturas de tela em tema claro para a monografia.
+
+---
+
 ## 🛠️ Épico 9: Engenharia de Software, Testes e Documentação de API
 
 ### US24 - Documentação Interativa da API (Swagger / OpenAPI)
@@ -629,6 +743,31 @@
 
 #### Tarefas Técnicas:
 - **Backend (Node.js)**: Implementação de testes de integração utilizando **Jest** e **Supertest**.
+
+---
+
+### US41 - Página de Arquitetura e Modelagem do Sistema
+**Como** integrante da equipe que apresenta o TCC (e Avaliador da Banca)
+**Quero** consultar, dentro da própria plataforma, os diagramas de casos de uso, classes, MER e sequência da contratação
+**Para que** a modelagem seja apresentada junto com o sistema funcionando, inclusive no vídeo de apresentação, sem depender de links externos.
+
+#### Critérios de Aceite:
+- [x] Página pública `/arquitetura`, acessível sem login, com link "Arquitetura" no rodapé.
+- [x] Abas Visão geral, Casos de uso, Classes, MER e Sequência da contratação, cada uma com endereço próprio (`/arquitetura?aba=...`) para abrir direto na gravação.
+- [x] O conteúdo vem dos arquivos `docs/diagramas/*.md`, a fonte única dos diagramas. A página não guarda cópia e mostra textos, tabelas e diagramas Mermaid desenhados.
+- [x] Cada diagrama tem zoom (aproximar, afastar e ajustar à largura) e um botão para baixar em SVG, para usar na monografia.
+- [x] Os diagramas aparecem sobre fundo claro, legível no vídeo e igual ao SVG baixado. A página funciona em 1280px e 375px e pode ser navegada pelo teclado.
+- [x] Um diagrama com erro ou um arquivo ausente mostra um aviso, sem quebrar o resto da página.
+
+#### Tarefas Técnicas:
+- **Frontend (Next.js)**:
+  - rota `app/arquitetura/page.tsx` (Server Component que lê os `.md` com `fs`);
+  - componente cliente `DiagramaMermaid`, com a biblioteca `mermaid` carregada sob demanda;
+  - Markdown desenhado com `react-markdown` e `remark-gfm` (tabelas);
+  - links entre os arquivos `.md` convertidos em links de aba;
+  - link "Arquitetura" em `LinksRodape`.
+- **DevOps**: volume somente leitura `./docs/diagramas` no serviço `frontend` do `docker-compose.yml`, para a página encontrar os arquivos também no container.
+- **Documentação**: bibliotecas novas anotadas no código e na tabela do `LOG_DESENVOLVIMENTO.md`.
 
 ---
 
@@ -710,7 +849,11 @@
 | **E9** | US26 | Testes de Integração (Jest/Supertest) | Should Have | 5 |
 | **E10** | US27 | Painel Administrativo e Moderação | Should Have | 8 |
 | **E10** | US32 | Denúncia de Solicitação para Moderação | Should Have | 5 |
-
 | **E4** | US35 | Resposta à Contraproposta | Must Have | 5 |
 | **E3** | US36 | Descoberta de Oportunidades em Negociação | Must Have | 3 |
 | **E1** | US40 | Documentos Legais, Aceite Versionado e Direitos de Privacidade | Must Have | 8 |
+| **E8** | US37 | Identidade Visual Eloserv (Logo, Paleta e Favicon) | Could Have | 5 |
+| **E8** | US38 | Nova Página Inicial (Visitante e Logado) | Should Have | 8 |
+| **E8** | US39 | Redesign das Telas Internas com Componentes Compartilhados | Should Have | 13 |
+| **E9** | US41 | Página de Arquitetura e Modelagem do Sistema | Should Have | 5 |
+| **E8** | US42 | Tema Claro e Troca de Tema | Should Have | 8 |
