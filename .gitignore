@@ -39,3 +39,6 @@ scratch_*.py
 /backend/node_modules
 /frontend/node_modules
 __pycache__/
+
+# PDF de apoio à monografia (gerado localmente, não versionado)
+docs/material-tcc/
