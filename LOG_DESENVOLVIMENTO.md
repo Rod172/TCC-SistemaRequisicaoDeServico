@@ -1116,3 +1116,27 @@ Nenhuma biblioteca nova adicionada.
   - **Login:** seletor em uma linha, abaixo dos links.
   - **Tipos:** `npx tsc --noEmit` passou sem erros.
 - **Bibliotecas:** nenhuma nova.
+
+## 08/11/2026 — Contas de demonstração com nomes e e-mails fictícios realistas (US25)
+
+- **Motivo:** as telas da monografia e o vídeo da apresentação não podem mostrar nomes de teste. As contas de demonstração se chamavam "Ana Demonstração (Solicitante)", "João Elétrica Demo" e semelhantes, com e-mails `demo.*@servicofacil.com`.
+- **Mudança:** as 4 contas passaram a usar nomes e e-mails fictícios realistas. O domínio é `example.com`, reservado para exemplos, então nenhum e-mail pertence a alguém de verdade. A senha continua `Demo@123`.
+
+  | Conta | Antes | Agora |
+  |---|---|---|
+  | Solicitante | Ana Demonstração (Solicitante) · `demo.solicitante@servicofacil.com` | Ana Ribeiro · `ana.ribeiro@example.com` |
+  | Prestador · Elétrica | João Elétrica Demo · `demo.prestador.eletrica@servicofacil.com` | João Pereira Elétrica · `joao.pereira@example.com` |
+  | Prestador · Encanamento | Maria Encanamentos Demo · `demo.prestador.encanamento@servicofacil.com` | Maria Oliveira Encanamentos · `maria.oliveira@example.com` |
+  | Administrador | Admin Demonstração · `demo.admin@servicofacil.com` | Administrador Eloserv · `admin@example.com` |
+
+  O endereço da solicitante deixou de ser "Rua da Demonstração" e passou a ser "Rua Teodoro Sampaio, 1500 - São Paulo, SP".
+- **Arquivos modificados:**
+  - `backend/src/seeders/20260901000001-demo-solicitacoes.js`: nomes, e-mails e endereço das contas;
+  - `frontend/src/app/login/page.tsx`: e-mails dos botões de "Contas de demonstração".
+- **Bancos locais:**
+  - **`tcc_eloserv`:** as 4 contas foram atualizadas, com backup antes em `~/backup-banco/backup_tcc_eloserv_antes_contas_demo_2026-11-08.sql`.
+  - **`tcc_eloserv_apresentacao`:** cópia criada em 04/11/2026 para os prints da monografia. Já tinha esses dados, e agora os botões do login funcionam nela também.
+- **Validação:**
+  - os 4 botões do login, clicados no navegador, abriram a sessão da conta certa nos dois bancos;
+  - `DB_NAME_TEST=tcc_eloserv_test npx jest tests/seeders.integracao.test.js` passou (seed idempotente, coerente e reversível).
+- **Bibliotecas:** nenhuma nova. Ajuste de dados de demonstração dentro da US25, sem mudança de escopo.

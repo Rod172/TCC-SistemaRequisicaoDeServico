@@ -28,10 +28,10 @@ import { LinksRodape } from '@/components/ui/Pagina';
 import SeletorTema from '@/components/ui/SeletorTema';
 
 const CONTAS_DEMO = [
-  { rotulo: 'Solicitante', email: 'demo.solicitante@servicofacil.com' },
-  { rotulo: 'Admin', email: 'demo.admin@servicofacil.com' },
-  { rotulo: 'Prestador · Elétrica', email: 'demo.prestador.eletrica@servicofacil.com' },
-  { rotulo: 'Prestador · Encanamento', email: 'demo.prestador.encanamento@servicofacil.com' },
+  { rotulo: 'Solicitante', email: 'ana.ribeiro@example.com' },
+  { rotulo: 'Admin', email: 'admin@example.com' },
+  { rotulo: 'Prestador · Elétrica', email: 'joao.pereira@example.com' },
+  { rotulo: 'Prestador · Encanamento', email: 'maria.oliveira@example.com' },
 ];
 const SENHA_DEMO = 'Demo@123';
 

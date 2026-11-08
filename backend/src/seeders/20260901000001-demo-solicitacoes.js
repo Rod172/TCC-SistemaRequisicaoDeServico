@@ -3,6 +3,8 @@
  * @description Seeder de demonstração para a banca do TCC: cria 1 solicitante, 2 prestadores, 1 admin e
  * solicitações em estágios diferentes (EM_NEGOCIACAO com propostas para comparar, EM_NEGOCIACAO com
  * contraproposta e CONTRATADA já aceita), cobrindo US06, US08-US12 sem depender de cadastro manual.
+ * Nomes e e-mails são fictícios e realistas (domínio example.com, reservado para exemplos), para as telas
+ * da monografia e da apresentação não mostrarem nomes de teste.
  *
  * BIBLIOTECAS UTILIZADAS:
  * 1. Sequelize CLI (^6.6.2): Automação de Seeders via `queryInterface.bulkInsert`.
@@ -41,11 +43,11 @@ module.exports = {
     await queryInterface.bulkInsert('usuarios', [
       {
         id: IDS.solicitante,
-        nome: 'Ana Demonstração (Solicitante)',
-        email: 'demo.solicitante@servicofacil.com',
+        nome: 'Ana Ribeiro',
+        email: 'ana.ribeiro@example.com',
         cpf: '00000000001',
         telefone: '11900000001',
-        endereco: 'Rua da Demonstração, 100 - São Paulo, SP',
+        endereco: 'Rua Teodoro Sampaio, 1500 - São Paulo, SP',
         senha_hash: senhaHash,
         tipo_perfil: 'SOLICITANTE',
         termo_lgpd_aceito: true,
@@ -56,8 +58,8 @@ module.exports = {
       },
       {
         id: IDS.prestadorEletrica,
-        nome: 'João Elétrica Demo',
-        email: 'demo.prestador.eletrica@servicofacil.com',
+        nome: 'João Pereira Elétrica',
+        email: 'joao.pereira@example.com',
         cpf: '00000000002',
         telefone: '11900000002',
         senha_hash: senhaHash,
@@ -70,8 +72,8 @@ module.exports = {
       },
       {
         id: IDS.prestadorEncanamento,
-        nome: 'Maria Encanamentos Demo',
-        email: 'demo.prestador.encanamento@servicofacil.com',
+        nome: 'Maria Oliveira Encanamentos',
+        email: 'maria.oliveira@example.com',
         cpf: '00000000003',
         telefone: '11900000003',
         senha_hash: senhaHash,
@@ -84,8 +86,8 @@ module.exports = {
       },
       {
         id: IDS.admin,
-        nome: 'Admin Demonstração',
-        email: 'demo.admin@servicofacil.com',
+        nome: 'Administrador Eloserv',
+        email: 'admin@example.com',
         cpf: '00000000009',
         telefone: '11900000009',
         senha_hash: senhaHash,
